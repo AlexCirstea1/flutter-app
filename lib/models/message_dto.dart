@@ -1,0 +1,33 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'message_dto.g.dart';
+
+@JsonSerializable()
+class MessageDTO {
+  final String id;
+  final String sender;
+  final String recipient;
+  final String content;
+  final DateTime timestamp;
+  bool isRead;
+  DateTime? readTimestamp;
+  bool isDelivered;
+  DateTime? deliveredTimestamp;
+
+  MessageDTO({
+    required this.id,
+    required this.sender,
+    required this.recipient,
+    required this.content,
+    required this.timestamp,
+    this.isRead = false,
+    this.readTimestamp,
+    this.isDelivered = false,
+    this.deliveredTimestamp,
+  });
+
+  factory MessageDTO.fromJson(Map<String, dynamic> json) =>
+      _$MessageDTOFromJson(json);
+
+  Map<String, dynamic> toJson() => _$MessageDTOToJson(this);
+}
