@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:uuid/uuid.dart';
 
 import '../config/environment.dart';
@@ -29,15 +30,18 @@ class _ChatPageState extends State<ChatPage> {
   final StorageService _storageService = StorageService();
   final WebSocketService _webSocketService = WebSocketService();
   final TextEditingController _messageController = TextEditingController();
+
+  // Controller and listener for ScrollablePositionedList
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener =
+  ItemPositionsListener.create();
+
   final List<MessageDTO> _messages = [];
-  String? _currentUserId;
-
-  final ScrollController _scrollController = ScrollController();
-
-  bool _isFetchingHistory = false;
-
   StreamSubscription<Map<String, dynamic>>? _messageSubscription;
   StreamSubscription<bool>? _connectionStatusSubscription;
+
+  String? _currentUserId;
+  bool _isFetchingHistory = false;
 
   @override
   void initState() {
@@ -47,7 +51,6 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _initializeChat() async {
     _currentUserId = await _storageService.getUserId();
-
     if (_currentUserId == null) {
       LoggerService.logError('Current user ID is null');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -57,79 +60,214 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
-    LoggerService.logInfo("Current User ID: $_currentUserId");
+    LoggerService.logInfo("ChatPage for $_currentUserId -> ${widget.chatUserId}");
 
+    // 1) Fetch existing conversation
     await _fetchChatHistory();
-    _initializeWebSocket();
-  }
 
-  Future<void> _initializeWebSocket() async {
+    // 2) Ensure WebSocket is connected
     if (!_webSocketService.isConnected) {
       await _webSocketService.connect();
     }
 
+    // 3) Listen to WebSocket messages
     _messageSubscription = _webSocketService.messages.listen((message) {
-      final String type = message['type'] ?? '';
+      final type = message['type'] ?? '';
       switch (type) {
-        case 'PRIVATE_MESSAGE':
-          _handleIncomingPrivateMessage(message);
+        case 'INCOMING_MESSAGE':
+        case 'SENT_MESSAGE':
+          _handleIncomingOrSentMessage(message);
           break;
         case 'READ_RECEIPT':
           _handleReadReceipt(message);
           break;
-      // Handle other message types if needed
         default:
-          LoggerService.logInfo('Unknown message type: $type');
+          LoggerService.logInfo('Ignoring unknown message type: $type');
       }
     });
 
+    // 4) Watch connection status
     _connectionStatusSubscription =
-        _webSocketService.connectionStatus.listen((isConnected) {
-          if (!isConnected) {
+        _webSocketService.connectionStatus.listen((connected) {
+          if (!connected) {
             LoggerService.logInfo('WebSocket disconnected');
           } else {
-            LoggerService.logInfo('WebSocket connected/reconnected');
+            LoggerService.logInfo('WebSocket reconnected');
           }
         });
   }
 
-  void _handleIncomingPrivateMessage(Map<String, dynamic> message) {
-    final String senderId = message['sender']?.toString() ?? '';
-    final String recipientId = message['recipient']?.toString() ?? '';
-    final String content = message['content']?.toString() ?? '';
-    final String timestampStr = message['timestamp']?.toString() ?? DateTime.now().toIso8601String();
+  /// Fetch conversation via GET /api/messages?recipientId=...
+  Future<void> _fetchChatHistory() async {
+    setState(() => _isFetchingHistory = true);
 
-    // Check if the message is relevant to this chat
-    if ((senderId == widget.chatUserId && recipientId == _currentUserId) ||
-        (senderId == _currentUserId && recipientId == widget.chatUserId)) {
-      final DateTime timestamp = DateTime.parse(timestampStr);
-      final MessageDTO incomingMessage = MessageDTO(
-        id: message['id']?.toString() ?? const Uuid().v4().toString(),
-        sender: senderId,
-        recipient: recipientId,
-        content: content,
-        timestamp: timestamp,
-        isRead: message['isRead'] ?? false,
-        readTimestamp: message['readTimestamp'] != null
-            ? DateTime.parse(message['readTimestamp'])
-            : null,
+    final accessToken = await _storageService.getAccessToken();
+    if (accessToken == null) {
+      LoggerService.logError('Access token not found');
+      return;
+    }
+
+    final url = Uri.parse(
+      '${Environment.apiBaseUrl}/messages?recipientId=${widget.chatUserId}',
+    );
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $accessToken'},
       );
+      if (response.statusCode == 200) {
+        final rawBody = utf8.decode(response.bodyBytes);
+        final List<dynamic> history = jsonDecode(rawBody);
 
-      setState(() {
-        _messages.add(incomingMessage);
-      });
+        setState(() {
+          _messages.clear();
+          for (var m in history) {
+            _messages.add(
+              MessageDTO(
+                id: m['id']?.toString() ?? const Uuid().v4(),
+                sender: m['sender'] ?? '',
+                recipient: m['recipient'] ?? '',
+                content: m['content'] ?? '',
+                timestamp: DateTime.parse(
+                  m['timestamp'] ?? DateTime.now().toIso8601String(),
+                ),
+                isRead: m['read'] ?? false,
+                readTimestamp: m['readTimestamp'] != null
+                    ? DateTime.parse(m['readTimestamp'])
+                    : null,
+              ),
+            );
+          }
+          // Sort messages ascending
+          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        });
 
-      _scrollToBottom();
+        // Mark any unread messages as read
+        await _markMessagesAsRead();
+      } else {
+        LoggerService.logError(
+          'Failed to fetch chat history. Code: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      LoggerService.logError('Error fetching chat history', e);
+    } finally {
+      setState(() => _isFetchingHistory = false);
     }
   }
 
+  /// POST /api/chats/mark-as-read
+  Future<void> _markMessagesAsRead() async {
+    if (_currentUserId == null) return;
+    final accessToken = await _storageService.getAccessToken();
+    if (accessToken == null) return;
+
+    final unreadMessages = _messages
+        .where((msg) => msg.recipient == _currentUserId && !msg.isRead)
+        .toList();
+    if (unreadMessages.isEmpty) return;
+
+    final url = Uri.parse('${Environment.apiBaseUrl}/chats/mark-as-read');
+    final body = {
+      'messageIds': unreadMessages.map((m) => m.id).toList(),
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        LoggerService.logInfo('Marked messages as read on server.');
+        final now = DateTime.now();
+        setState(() {
+          for (var msg in unreadMessages) {
+            msg.isRead = true;
+            msg.readTimestamp = now;
+          }
+        });
+      } else {
+        LoggerService.logError(
+          'Failed to mark messages as read (status=${response.statusCode}).',
+        );
+      }
+    } catch (e) {
+      LoggerService.logError('Error marking messages as read', e);
+    }
+  }
+
+  /// Handles a newly arrived or sent message from the WebSocket stream
+  void _handleIncomingOrSentMessage(Map<String, dynamic> msg) {
+    final String sender = msg['sender'] ?? '';
+    final String recipient = msg['recipient'] ?? '';
+
+    // Create a new MessageDTO from the server payload
+    final newMsg = MessageDTO(
+      id: msg['id']?.toString() ?? const Uuid().v4(),
+      sender: sender,
+      recipient: recipient,
+      content: msg['content'] ?? '',
+      timestamp: DateTime.parse(
+        msg['timestamp'] ?? DateTime.now().toIso8601String(),
+      ),
+      isRead: msg['read'] ?? false,
+      readTimestamp: msg['readTimestamp'] != null
+          ? DateTime.parse(msg['readTimestamp'])
+          : null,
+      clientTempId: msg['clientTempId']?.toString(),
+    );
+
+    final clientTempId = newMsg.clientTempId;
+
+    setState(() {
+      // 1) If we previously added an ephemeral message with clientTempId, replace it
+      if (clientTempId != null && clientTempId.isNotEmpty) {
+        final ephemeralIndex = _messages.indexWhere((m) => m.id == clientTempId);
+        if (ephemeralIndex >= 0) {
+          final ephemeralMsg = _messages[ephemeralIndex];
+          LoggerService.logInfo('Ephemeral message: sender=${ephemeralMsg.sender}, recipient=${ephemeralMsg.recipient}');
+          LoggerService.logInfo('Replacing with: sender=${newMsg.sender}, recipient=${newMsg.recipient}');
+
+          _messages[ephemeralIndex] = newMsg;
+          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          return;
+        }
+      }
+
+      // 2) Otherwise, either insert new or update existing
+      final existingIndex = _messages.indexWhere((m) => m.id == newMsg.id);
+      if (existingIndex >= 0) {
+        // Update the existing message
+        _messages[existingIndex] = newMsg;
+      } else {
+        // Insert new
+        _messages.add(newMsg);
+      }
+      _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    });
+
+    // 3) If I'm the recipient of this message and it's not read, mark it read
+    if (recipient == _currentUserId && !newMsg.isRead) {
+      _markMessageAsReadViaREST(newMsg.id);
+    }
+  }
+
+  /// Handles an incoming read-receipt notification
   void _handleReadReceipt(Map<String, dynamic> message) {
     final String readerId = message['readerId'] ?? '';
     final List<dynamic> messageIds = message['messageIds'] ?? [];
     final String readTimestampStr = message['readTimestamp'] ?? '';
-    final DateTime readTimestamp =
-    readTimestampStr.isNotEmpty ? DateTime.parse(readTimestampStr) : DateTime.now();
+    final DateTime readTimestamp = readTimestampStr.isNotEmpty
+        ? DateTime.parse(readTimestampStr)
+        : DateTime.now();
 
+    // If the "reader" is the other user, update the local state
     if (readerId == widget.chatUserId) {
       setState(() {
         for (var msg in _messages) {
@@ -142,80 +280,10 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _fetchChatHistory() async {
-    setState(() {
-      _isFetchingHistory = true;
-    });
-
+  /// Mark a single message as read via POST /api/chats/mark-as-read
+  Future<void> _markMessageAsReadViaREST(String messageId) async {
     final accessToken = await _storageService.getAccessToken();
-    if (accessToken == null) {
-      LoggerService.logError('Access token not found');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Access token not found')));
-      setState(() {
-        _isFetchingHistory = false;
-      });
-      return;
-    }
-
-    LoggerService.logInfo("Fetching chat history for User ID: $_currentUserId");
-
-    final url = Uri.parse('${Environment.apiBaseUrl}/messages?recipientId=${widget.chatUserId}');
-    try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> history = jsonDecode(response.body);
-        LoggerService.logInfo("Fetched ${history.length} messages from history.");
-
-        setState(() {
-          _messages.clear();
-          _messages.addAll(history.map((message) => MessageDTO(
-            id: message['id']?.toString() ?? const Uuid().v4().toString(),
-            sender: message['sender']?.toString() ?? '',
-            recipient: message['recipient']?.toString() ?? '',
-            content: message['content']?.toString() ?? '',
-            timestamp: DateTime.parse(message['timestamp']?.toString() ?? DateTime.now().toIso8601String()),
-            isRead: message['isRead'] ?? false,
-            readTimestamp: message['readTimestamp'] != null
-                ? DateTime.parse(message['readTimestamp'])
-                : null,
-          )));
-        });
-
-        _scrollToBottom();
-
-        // After fetching messages, mark unread messages as read
-        await _markMessagesAsRead();
-      } else {
-        LoggerService.logError(
-            'Failed to fetch chat history. Status code: ${response.statusCode}');
-      }
-    } catch (e) {
-      LoggerService.logError('Failed to fetch chat history', e);
-    } finally {
-      setState(() {
-        _isFetchingHistory = false;
-      });
-    }
-  }
-
-  Future<void> _markMessagesAsRead() async {
-    final accessToken = await _storageService.getAccessToken();
-    if (accessToken == null || _currentUserId == null) return;
-
-    // Identify unread messages sent by chatUserId to currentUserId
-    List<String> unreadMessageIds = _messages
-        .where((msg) => msg.sender == widget.chatUserId && !msg.isRead)
-        .map((msg) => msg.id)
-        .toList();
-
-    if (unreadMessageIds.isEmpty) return; // Nothing to mark as read
+    if (accessToken == null) return;
 
     final url = Uri.parse('${Environment.apiBaseUrl}/chats/mark-as-read');
     try {
@@ -226,102 +294,84 @@ class _ChatPageState extends State<ChatPage> {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'messageIds': unreadMessageIds,
+          'messageIds': [messageId]
         }),
       );
-
       if (response.statusCode == 200) {
-        LoggerService.logInfo('Messages marked as read.');
-
-        // Update local messages
+        LoggerService.logInfo("Message $messageId marked as read via REST.");
+        final now = DateTime.now();
         setState(() {
-          final now = DateTime.now();
-          for (var msg in _messages) {
-            if (unreadMessageIds.contains(msg.id)) {
-              msg.isRead = true;
-              msg.readTimestamp = now;
-            }
+          final msg = _messages.firstWhere(
+                (m) => m.id == messageId,
+            orElse: () => MessageDTO(
+              id: '',
+              sender: '',
+              recipient: '',
+              content: '',
+              timestamp: DateTime.now(),
+            ),
+          );
+          if (msg.id.isNotEmpty) {
+            msg.isRead = true;
+            msg.readTimestamp = now;
           }
         });
       } else {
         LoggerService.logError(
-            'Failed to mark messages as read. Status code: ${response.statusCode}');
+          'Failed to mark msg as read. Code ${response.statusCode}',
+        );
       }
     } catch (e) {
-      LoggerService.logError('Error marking messages as read', e);
+      LoggerService.logError('Error marking single msg as read', e);
     }
   }
 
-  void _sendMessage() async {
-    final messageContent = _messageController.text.trim();
-    if (messageContent.isEmpty) return;
+  /// Sends a new message over STOMP to /app/sendPrivateMessage
+  void _sendMessage() {
+    final content = _messageController.text.trim();
+    if (content.isEmpty) return;
 
-    final accessToken = await _storageService.getAccessToken();
-    if (accessToken == null) {
-      LoggerService.logError('Access token not found');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Access token not found')));
-      return;
-    }
+    final now = DateTime.now();
+    final tempId = const Uuid().v4();
 
-    try {
-      final now = DateTime.now();
-      final tempMessageId = const Uuid().v4().toString(); // Temporary ID
-
-      // Add message locally first
-      setState(() {
-        _messages.add(MessageDTO(
-          id: tempMessageId,
+    setState(() {
+      _messages.add(
+        MessageDTO(
+          id: tempId,
           sender: _currentUserId!,
           recipient: widget.chatUserId,
-          content: messageContent,
+          content: content,
           timestamp: now,
           isRead: false,
-        ));
-      });
-
-      // Send the message via WebSocket
-      Map<String, dynamic> chatMessage = {
-        'sender': _currentUserId,
-        'recipient': widget.chatUserId,
-        'content': messageContent,
-      };
-
-      _webSocketService.sendMessage('/app/sendPrivateMessage', chatMessage);
-      LoggerService.logInfo("Message sent: $chatMessage");
-
-      _messageController.clear();
-
-      _scrollToBottom();
-    } catch (error) {
-      LoggerService.logError('Error sending message: $error');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Failed to send message')));
-    }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      }
+          clientTempId: null,
+        ),
+      );
+      _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     });
+    _messageController.clear();
+
+    // STOMP message
+    final msgMap = {
+      'sender': _currentUserId,
+      'recipient': widget.chatUserId,
+      'content': content,
+      'clientTempId': tempId,
+    };
+    _webSocketService.sendMessage('/app/sendPrivateMessage', msgMap);
   }
 
   @override
   void dispose() {
     _messageSubscription?.cancel();
     _connectionStatusSubscription?.cancel();
-    _webSocketService.disconnect();
     _messageController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
-  String _formatTimestamp(String timestamp) {
-    DateTime dateTime = DateTime.parse(timestamp);
-    // Format as HH:MM
-    return "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}";
+  String _formatTime(DateTime dt) {
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return "$hh:$mm";
   }
 
   @override
@@ -330,98 +380,31 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         title: Text('Chat with ${widget.chatUsername}'),
       ),
-      backgroundColor: Colors.white,
       body: Column(
         children: [
           Expanded(
             child: _isFetchingHistory
                 ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-              controller: _scrollController,
-              padding:
-              const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8.0),
+                : ScrollablePositionedList.builder(
+              itemScrollController: _itemScrollController,
+              itemPositionsListener: _itemPositionsListener,
+              // If you want the view to start at the bottom:
+              initialScrollIndex:
+              _messages.isEmpty ? 0 : _messages.length - 1,
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final msg = _messages[index];
-                final isSender = msg.sender.toLowerCase() == _currentUserId!.toLowerCase();
-
-                return Padding(
-                  padding:
-                  const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                  child: Align(
-                    alignment:
-                    isSender ? Alignment.centerRight : Alignment.centerLeft,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.7,
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-                        decoration: BoxDecoration(
-                          color: isSender ? Colors.blue : Colors.grey[300],
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(12),
-                            topRight: const Radius.circular(12),
-                            bottomLeft: isSender
-                                ? const Radius.circular(12)
-                                : Radius.zero,
-                            bottomRight: isSender
-                                ? Radius.zero
-                                : const Radius.circular(12),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment:
-                          isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              msg.content,
-                              style: TextStyle(
-                                color: isSender ? Colors.white : Colors.black,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _formatTimestamp(msg.timestamp.toIso8601String()),
-                                  style: TextStyle(
-                                    color:
-                                    isSender ? Colors.white70 : Colors.black54,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                if (isSender)
-                                  Icon(
-                                    msg.isRead ? Icons.done_all : Icons.done,
-                                    size: 16,
-                                    color: msg.isRead ? Colors.white70 : Colors.white70,
-                                  ),
-                              ],
-                            ),
-                            if (isSender && msg.readTimestamp != null)
-                              Text(
-                                "Read at ${_formatTimestamp(msg.readTimestamp!.toIso8601String())}",
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 10,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+                final bool isSender = (msg.sender == _currentUserId);
+                return _buildMessageBubble(msg, isSender);
               },
             ),
           ),
           SafeArea(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12.0,
+                vertical: 8.0,
+              ),
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
@@ -473,6 +456,71 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(MessageDTO msg, bool isSender) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        vertical: 4.0,
+        horizontal: 8.0,
+      ),
+      child: Align(
+        alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints:
+          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              vertical: 10,
+              horizontal: 15,
+            ),
+            decoration: BoxDecoration(
+              color: isSender ? Colors.blue : Colors.grey[300],
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(12),
+                topRight: const Radius.circular(12),
+                bottomLeft: isSender ? const Radius.circular(12) : Radius.zero,
+                bottomRight:
+                isSender ? Radius.zero : const Radius.circular(12),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment:
+              isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                Text(
+                  msg.content,
+                  style: TextStyle(
+                    color: isSender ? Colors.white : Colors.black,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatTime(msg.timestamp),
+                      style: TextStyle(
+                        color: isSender ? Colors.white70 : Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    if (isSender)
+                      Icon(
+                        msg.isRead ? Icons.done_all : Icons.done,
+                        size: 16,
+                        color: msg.isRead ? Colors.white70 : Colors.white70,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

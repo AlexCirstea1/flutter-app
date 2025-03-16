@@ -1,5 +1,3 @@
-// lib/services/websocket_service.dart
-
 import 'dart:async';
 import 'dart:convert';
 
@@ -11,6 +9,8 @@ import '../config/environment.dart';
 import '../config/logger_config.dart';
 import 'storage_service.dart';
 
+/// A helper class to handle STOMP WebSocket connections, subscriptions, and
+/// broadcasting messages to the rest of the app through streams.
 class WebSocketService {
   // Singleton pattern
   WebSocketService._privateConstructor();
@@ -27,11 +27,10 @@ class WebSocketService {
   final StreamController<bool> _connectionStatusController =
       StreamController.broadcast();
 
-  // Getters for streams
+  // Getters for external listeners
   Stream<Map<String, dynamic>> get messages => _messageController.stream;
   Stream<bool> get connectionStatus => _connectionStatusController.stream;
 
-  // Getter to check connection status
   bool get isConnected => _stompClient?.connected ?? false;
 
   Future<void> connect() async {
@@ -41,9 +40,10 @@ class WebSocketService {
       return;
     }
 
+    // Create and activate a StompClient
     _stompClient = StompClient(
       config: StompConfig(
-        url: Environment.webSocketUrl,
+        url: Environment.webSocketUrl, // e.g. "ws://<host>:<port>/ws"
         onConnect: _onConnect,
         beforeConnect: () async {
           LoggerService.logInfo('Attempting to connect to WebSocket...');
@@ -63,8 +63,8 @@ class WebSocketService {
           LoggerService.logError('STOMP error', frame.body);
           _connectionStatusController.add(false);
         },
-        reconnectDelay:
-            const Duration(milliseconds: 5000), // Reconnect after 5 seconds
+        // Try reconnecting after 5 seconds if the connection drops
+        reconnectDelay: const Duration(milliseconds: 5000),
       ),
     );
 
@@ -75,51 +75,54 @@ class WebSocketService {
     LoggerService.logInfo('WebSocket connected');
     _connectionStatusController.add(true);
 
-    // Example subscription: Private messages
+    // 1) Incoming private messages for the recipient
     _stompClient?.subscribe(
       destination: '/user/queue/messages',
-      callback: _onMessageReceived,
+      callback: (StompFrame frame) {
+        _handleIncomingFrame(frame, tag: 'INCOMING_MESSAGE');
+      },
     );
 
-    // Example subscription: User search results
+    // 2) "Sent" confirmations back to the sender with the real DB ID, timestamps, etc.
+    _stompClient?.subscribe(
+      destination: '/user/queue/sent',
+      callback: (StompFrame frame) {
+        _handleIncomingFrame(frame, tag: 'SENT_MESSAGE');
+      },
+    );
+
+    // 3) Read receipts to the sender when the recipient reads their messages
+    _stompClient?.subscribe(
+      destination: '/user/queue/read-receipts',
+      callback: (StompFrame frame) {
+        _handleIncomingFrame(frame, tag: 'READ_RECEIPT');
+      },
+    );
+
+    // 4) User search results
     _stompClient?.subscribe(
       destination: '/user/queue/userSearchResults',
-      callback: _onUserSearchResultsReceived,
+      callback: (StompFrame frame) {
+        _handleIncomingFrame(frame, tag: 'USER_SEARCH_RESULTS');
+      },
     );
-
-    // Add more subscriptions as needed
   }
 
-  void _onMessageReceived(StompFrame frame) {
-    LoggerService.logInfo("Received Message: ${frame.body}");
-    if (frame.body != null) {
-      try {
-        final Map<String, dynamic> messageData = jsonDecode(frame.body!);
-        _messageController.add(messageData);
-      } catch (e) {
-        LoggerService.logError('Error parsing message data', e);
-      }
+  void _handleIncomingFrame(StompFrame frame, {required String tag}) {
+    if (frame.body == null) return;
+    LoggerService.logInfo("Received [$tag]: ${frame.body}");
+
+    try {
+      final Map<String, dynamic> data = jsonDecode(frame.body!);
+      // Insert a 'type' or 'tag' so the UI knows how to handle it
+      data['type'] = tag;
+      _messageController.add(data);
+    } catch (e) {
+      LoggerService.logError('Error parsing STOMP frame ($tag)', e);
     }
   }
 
-  void _onUserSearchResultsReceived(StompFrame frame) {
-    LoggerService.logInfo("Received User Search Results: ${frame.body}");
-    if (frame.body != null) {
-      try {
-        final Map<String, dynamic> response = jsonDecode(frame.body!);
-        if (response['type'] == 'USER_SEARCH_RESULTS') {
-          final List<dynamic> users = response['payload'] ?? [];
-          _messageController.add({
-            'type': 'USER_SEARCH_RESULTS',
-            'payload': users,
-          });
-        }
-      } catch (e) {
-        LoggerService.logError('Error parsing user search results', e);
-      }
-    }
-  }
-
+  /// Send a generic JSON-encodable message to a STOMP destination
   void sendMessage(String destination, Map<String, dynamic> message) {
     if (_stompClient != null && _stompClient!.connected) {
       final String messageJson = jsonEncode(message);
@@ -127,7 +130,7 @@ class WebSocketService {
         destination: destination,
         body: messageJson,
       );
-      LoggerService.logInfo("Sent Message: $message");
+      LoggerService.logInfo("Sent message to $destination: $message");
     } else {
       LoggerService.logError(
           'Cannot send message. WebSocket is not connected.');

@@ -19,6 +19,5 @@ class ChatHistoryDTO {
 
   factory ChatHistoryDTO.fromJson(Map<String, dynamic> json) =>
       _$ChatHistoryDTOFromJson(json);
-
   Map<String, dynamic> toJson() => _$ChatHistoryDTOToJson(this);
 }

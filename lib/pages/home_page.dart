@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../config/environment.dart';
 import '../config/logger_config.dart';
 import '../models/chat_history_dto.dart';
+import '../models/message_dto.dart';
 import '../pages/chat_page.dart';
 import '../pages/select_user_page.dart';
 import '../services/auth_service.dart';
@@ -24,6 +25,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final StorageService _storageService = StorageService();
   final AuthService _authService = AuthService();
   final WebSocketService _webSocketService = WebSocketService();
+
   final String _usernamePlaceholder = 'User';
   String _username = '';
   int _selectedIndex = 0;
@@ -41,10 +43,6 @@ class _MyHomePageState extends State<MyHomePage> {
     _initializeWebSocket();
   }
 
-  Future<void> _initializeUserId() async {
-    _currentUserId = await _storageService.getUserId();
-  }
-
   Future<void> _loadUsername() async {
     String? storedUsername = await _storageService.getUsername();
     setState(() {
@@ -52,109 +50,154 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  Future<void> _logout() async {
-    String? accessToken = await _storageService.getAccessToken();
-    if (accessToken != null) {
-      bool success = await _authService.logout(accessToken);
-      if (success) {
-        await _storageService.clearLoginDetails();
-        _webSocketService
-            .disconnect(); // Ensure WebSocket is disconnected on logout
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/login');
-        }
-      }
-    }
-  }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  Future<void> _initializeUserId() async {
+    _currentUserId = await _storageService.getUserId();
   }
 
   Future<void> _initializeWebSocket() async {
     await _webSocketService.connect();
 
+    // Listen to all incoming WS messages
     _webSocketService.messages.listen((message) {
       final String type = message['type'] ?? '';
       switch (type) {
-        case 'NEW_CHAT_MESSAGE':
-          _fetchChatHistory();
+        case 'INCOMING_MESSAGE':
+        case 'SENT_MESSAGE':
+          _handleNewOrUpdatedMessage(message);
           break;
         case 'READ_RECEIPT':
           _handleReadReceipt(message);
           break;
-        // Handle other message types if needed
+        case 'USER_SEARCH_RESULTS':
+        // Not handled here on home screen
+          break;
         default:
           LoggerService.logInfo('Unknown message type received: $type');
       }
     });
 
+    // Watch connection status
     _webSocketService.connectionStatus.listen((isConnected) {
       if (!isConnected) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('WebSocket disconnected')));
+          const SnackBar(content: Text('WebSocket disconnected')),
+        );
       } else {
-        LoggerService.logInfo('WebSocket reconnected');
+        LoggerService.logInfo('WebSocket connected/reconnected');
       }
     });
   }
 
-  void _handleReadReceipt(Map<String, dynamic> message) {
-    if (_currentUserId == null) return;
-    // Parse the read receipt notification
-    // Expected structure: { "type": "READ_RECEIPT", "readerId": "...", "messageIds": [...], "readTimestamp": "..." }
+  /// Handle new or updated message from WS
+  void _handleNewOrUpdatedMessage(Map<String, dynamic> msg) {
+    final String sender = msg['sender'] ?? '';
+    final String recipient = msg['recipient'] ?? '';
+    if (sender.isEmpty || recipient.isEmpty) return;
 
-    final String readerId = message['readerId'] ?? '';
-    final List<dynamic> messageIds = message['messageIds'] ?? [];
-    final String readTimestampStr = message['readTimestamp'] ?? '';
-    final DateTime readTimestamp = readTimestampStr.isNotEmpty
-        ? DateTime.parse(readTimestampStr)
-        : DateTime.now();
+    String? userId = _currentUserId;
+    if (userId == null) return;
 
+    // "otherParticipant" is who I'm chatting with
+    final otherParticipant = (userId == sender) ? recipient : sender;
+
+    setState(() {
+      // 1) Find existing chat
+      final existingIndex = _chatHistory.indexWhere(
+            (c) => c.participant == otherParticipant,
+      );
+
+      // 2) Construct new message
+      final newMessage = MessageDTO(
+        id: msg['id']?.toString() ?? '',
+        sender: sender,
+        recipient: recipient,
+        content: msg['content']?.toString() ?? '',
+        timestamp: DateTime.parse(msg['timestamp'] ?? DateTime.now().toIso8601String()),
+        isRead: msg['read'] ?? false,
+        readTimestamp: msg['readTimestamp'] != null
+            ? DateTime.parse(msg['readTimestamp'])
+            : null,
+      );
+
+      // 3) If no chat, create one
+      if (existingIndex < 0) {
+        final newChat = ChatHistoryDTO(
+          participant: otherParticipant,
+          participantUsername: otherParticipant,
+          messages: [newMessage],
+          unreadCount: (newMessage.sender != userId && !newMessage.isRead) ? 1 : 0,
+        );
+        _chatHistory.insert(0, newChat);
+      } else {
+        // 4) Update existing chat
+        final chat = _chatHistory[existingIndex];
+
+        // Insert or update the message
+        final oldIndex = chat.messages.indexWhere((m) => m.id == newMessage.id);
+        if (oldIndex >= 0) {
+          chat.messages[oldIndex] = newMessage;
+        } else {
+          chat.messages.add(newMessage);
+        }
+
+        // Recalc unread if I'm the recipient
+        if (newMessage.recipient == userId && !newMessage.isRead) {
+          chat.unreadCount++;
+        }
+
+        chat.messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        // Move this chat to top
+        _chatHistory.removeAt(existingIndex);
+        _chatHistory.insert(0, chat);
+      }
+    });
+  }
+
+  /// Handle read receipts from server
+  void _handleReadReceipt(Map<String, dynamic> data) {
+    final String readerId = data['readerId'] ?? '';
+    final List<dynamic> msgIds = data['messageIds'] ?? [];
+    final String tsStr = data['readTimestamp'] ?? '';
+    if (readerId.isEmpty || msgIds.isEmpty || tsStr.isEmpty) return;
+
+    final DateTime readAt = DateTime.parse(tsStr);
     setState(() {
       for (var chat in _chatHistory) {
         if (chat.participant == readerId) {
-          // Update messages in this chat
           for (var msg in chat.messages) {
-            if (messageIds.contains(msg.id)) {
+            if (msgIds.contains(msg.id)) {
               msg.isRead = true;
-              msg.readTimestamp = readTimestamp;
+              msg.readTimestamp = readAt;
             }
           }
-
-          // Recalculate unreadCount
-          chat.unreadCount = chat.messages
-              .where((m) =>
-                  m.recipient == _currentUserId &&
-                  m.sender == readerId &&
-                  !m.isRead)
-              .length;
         }
+        chat.unreadCount = chat.messages
+            .where((m) =>
+        m.recipient == _currentUserId &&
+            m.sender == chat.participant &&
+            !m.isRead)
+            .length;
       }
     });
   }
 
+  /// Fetch entire chat history from /api/chats
   Future<void> _fetchChatHistory() async {
-    setState(() {
-      _isLoadingHistory = true;
-    });
+    setState(() => _isLoadingHistory = true);
 
     final accessToken = await _storageService.getAccessToken();
     if (accessToken == null) {
       LoggerService.logError('Access token not found');
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Access token not found')));
-      setState(() {
-        _isLoadingHistory = false;
-      });
+        const SnackBar(content: Text('Access token not found')),
+      );
+      setState(() => _isLoadingHistory = false);
       return;
     }
 
-    LoggerService.logInfo("Fetching chat history for User ID");
-
+    LoggerService.logInfo("Fetching chat history...");
     final url = Uri.parse('${Environment.apiBaseUrl}/chats');
+
     try {
       final response = await http.get(
         url,
@@ -165,12 +208,15 @@ class _MyHomePageState extends State<MyHomePage> {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> historyJson = jsonDecode(response.body);
+        // Force UTF-8 decode, then parse
+        final rawBody = utf8.decode(response.bodyBytes);
+        final List<dynamic> historyJson = jsonDecode(rawBody);
+
         List<ChatHistoryDTO> fetchedChatHistory = historyJson
             .map((chatJson) => ChatHistoryDTO.fromJson(chatJson))
             .toList();
 
-        // Sort the fetchedChatHistory based on last message timestamp descending
+        // Sort by last message timestamp desc
         fetchedChatHistory.sort((a, b) {
           DateTime aLast = a.messages.isNotEmpty
               ? a.messages.last.timestamp
@@ -181,26 +227,40 @@ class _MyHomePageState extends State<MyHomePage> {
           return bLast.compareTo(aLast);
         });
 
-        LoggerService.logInfo(
-            "Fetched and sorted ${fetchedChatHistory.length} chats from history.");
-
         setState(() {
           _chatHistory = fetchedChatHistory;
         });
       } else {
         LoggerService.logError(
-            'Failed to fetch chat history. Status code: ${response.statusCode}');
+          'Failed to fetch chat history. Status code: ${response.statusCode}',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to fetch chat history.')));
+          const SnackBar(content: Text('Failed to fetch chat history.')),
+        );
       }
     } catch (e) {
       LoggerService.logError('Failed to fetch chat history', e);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('An error occurred while fetching chat history.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('An error occurred while fetching chat history.'),
+        ),
+      );
     } finally {
-      setState(() {
-        _isLoadingHistory = false;
-      });
+      setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  Future<void> _logout() async {
+    String? accessToken = await _storageService.getAccessToken();
+    if (accessToken != null) {
+      bool success = await _authService.logout(accessToken);
+      if (success) {
+        await _storageService.clearLoginDetails();
+        _webSocketService.disconnect();
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      }
     }
   }
 
@@ -208,9 +268,7 @@ class _MyHomePageState extends State<MyHomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SelectUserPage()),
-    ).then((value) {
-      _fetchChatHistory();
-    });
+    ).then((value) => _fetchChatHistory());
   }
 
   void _navigateToChat(ChatHistoryDTO chat) {
@@ -222,8 +280,12 @@ class _MyHomePageState extends State<MyHomePage> {
           chatUsername: chat.participantUsername,
         ),
       ),
-    ).then((value) {
-      _fetchChatHistory();
+    ).then((value) => _fetchChatHistory());
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
     });
   }
 
@@ -241,7 +303,7 @@ class _MyHomePageState extends State<MyHomePage> {
       itemBuilder: (context, index) {
         final chat = _chatHistory[index];
         final latestMessage =
-            chat.messages.isNotEmpty ? chat.messages.last : null;
+        chat.messages.isNotEmpty ? chat.messages.last : null;
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
@@ -251,7 +313,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           child: ListTile(
             contentPadding:
-                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
             leading: CircleAvatar(
               radius: 24,
               backgroundColor: Theme.of(context).colorScheme.primary,
@@ -271,23 +333,23 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             subtitle: latestMessage != null
                 ? Text(
-                    latestMessage.content.length > 50
-                        ? "${latestMessage.content.substring(0, 50)}..."
-                        : latestMessage.content,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14),
-                  )
+              latestMessage.content.length > 50
+                  ? "${latestMessage.content.substring(0, 50)}..."
+                  : latestMessage.content,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 14),
+            )
                 : const Text(
-                    'No messages yet.',
-                    style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-                  ),
+              'No messages yet.',
+              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+            ),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (latestMessage != null)
                   Text(
-                    _formatTimestamp(latestMessage.timestamp.toIso8601String()),
+                    _formatTimestamp(latestMessage.timestamp),
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 if (chat.unreadCount > 0)
@@ -313,14 +375,14 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  String _formatTimestamp(String? timestamp) {
-    if (timestamp == null) return '';
-    DateTime dateTime = DateTime.parse(timestamp).toLocal();
-    return "${_getMonthAbbreviation(dateTime.month)} ${dateTime.day}, ${dateTime.year} ${_formatTwoDigits(dateTime.hour)}:${_formatTwoDigits(dateTime.minute)}";
+  String _formatTimestamp(DateTime dateTime) {
+    // e.g. "Jan 19, 2025 14:05"
+    return "${_getMonthAbbreviation(dateTime.month)} ${dateTime.day}, ${dateTime.year} "
+        "${_formatTwoDigits(dateTime.hour)}:${_formatTwoDigits(dateTime.minute)}";
   }
 
   String _getMonthAbbreviation(int month) {
-    const List<String> months = [
+    const months = [
       'Jan',
       'Feb',
       'Mar',
@@ -337,9 +399,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return months[month - 1];
   }
 
-  String _formatTwoDigits(int n) {
-    return n.toString().padLeft(2, '0');
-  }
+  String _formatTwoDigits(int n) => n.toString().padLeft(2, '0');
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +408,7 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text('Welcome, $_username'),
         automaticallyImplyLeading: false,
         leading: IconButton(
-          icon: const Icon(Icons.chat),
+          icon: const Icon(Icons.search),
           onPressed: _navigateToSelectUser,
           tooltip: 'Start a New Chat',
         ),
@@ -359,30 +419,29 @@ class _MyHomePageState extends State<MyHomePage> {
             tooltip: 'Logout',
           ),
         ],
-        elevation: 0,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Theme.of(context).colorScheme.background,
-              Theme.of(context).colorScheme.surface,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      body: RefreshIndicator(
+        onRefresh: _fetchChatHistory,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.surface,
+                Theme.of(context).colorScheme.surface,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
-        ),
-        child: RefreshIndicator(
-          onRefresh: _fetchChatHistory,
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
             child: Column(
               children: [
-                const SizedBox(height: 10),
-                Expanded(
-                  child: _buildChatList(),
-                ),
+                const SizedBox(height: 8),
+                Expanded(child: _buildChatList()),
               ],
             ),
           ),

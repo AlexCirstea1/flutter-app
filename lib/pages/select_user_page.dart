@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../pages/chat_page.dart';
@@ -17,7 +16,6 @@ class _SelectUserPageState extends State<SelectUserPage> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   Timer? _debounce;
-  Map<String, dynamic>? _selectedUser;
 
   @override
   void initState() {
@@ -26,46 +24,23 @@ class _SelectUserPageState extends State<SelectUserPage> {
   }
 
   Future<void> _initializeWebSocket() async {
-    // Ensure WebSocketService is connected
     if (!_webSocketService.isConnected) {
       await _webSocketService.connect();
     }
-
-    // Listen to incoming messages
+    // Listen for search results
     _webSocketService.messages.listen((message) {
       if (message['type'] == 'USER_SEARCH_RESULTS') {
         final List<dynamic> users = message['payload'] ?? [];
         setState(() {
-          _searchResults = users
-              .map((u) => {
-                    'id': u['id'],
-                    'username': u['username'],
-                  })
-              .toList();
+          _searchResults = users.map((u) {
+            return {
+              'id': u['id'] ?? '',
+              'username': u['username'] ?? 'Unknown',
+            };
+          }).toList();
         });
       }
-      // Handle other message types if necessary
     });
-  }
-
-  void _sendUserSearch(String query) {
-    if (query.trim().isEmpty) {
-      setState(() {
-        _searchResults = [];
-      });
-      return;
-    }
-
-    // Create the search message
-    Map<String, dynamic> searchMessage = {
-      "type": "USER_SEARCH",
-      "payload": {
-        "query": query.trim(),
-      },
-    };
-
-    // Send the search message via WebSocket
-    _webSocketService.sendMessage('/app/userSearch', searchMessage);
   }
 
   void _onSearchChanged(String query) {
@@ -73,6 +48,18 @@ class _SelectUserPageState extends State<SelectUserPage> {
     _debounce = Timer(const Duration(milliseconds: 300), () {
       _sendUserSearch(query);
     });
+  }
+
+  void _sendUserSearch(String query) {
+    if (query.trim().isEmpty) {
+      setState(() => _searchResults = []);
+      return;
+    }
+    final msg = {
+      'type': 'USER_SEARCH',
+      'payload': {'query': query.trim()},
+    };
+    _webSocketService.sendMessage('/app/userSearch', msg);
   }
 
   void _createChat(Map<String, dynamic> user) {

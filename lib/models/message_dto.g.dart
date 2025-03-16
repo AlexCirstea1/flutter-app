@@ -20,6 +20,7 @@ MessageDTO _$MessageDTOFromJson(Map<String, dynamic> json) => MessageDTO(
       deliveredTimestamp: json['deliveredTimestamp'] == null
           ? null
           : DateTime.parse(json['deliveredTimestamp'] as String),
+      clientTempId: json['clientTempId'] as String?,
     );
 
 Map<String, dynamic> _$MessageDTOToJson(MessageDTO instance) =>
@@ -33,4 +34,5 @@ Map<String, dynamic> _$MessageDTOToJson(MessageDTO instance) =>
       'readTimestamp': instance.readTimestamp?.toIso8601String(),
       'isDelivered': instance.isDelivered,
       'deliveredTimestamp': instance.deliveredTimestamp?.toIso8601String(),
+      'clientTempId': instance.clientTempId,
     };

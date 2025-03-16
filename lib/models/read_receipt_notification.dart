@@ -16,6 +16,5 @@ class ReadReceiptNotification {
 
   factory ReadReceiptNotification.fromJson(Map<String, dynamic> json) =>
       _$ReadReceiptNotificationFromJson(json);
-
   Map<String, dynamic> toJson() => _$ReadReceiptNotificationToJson(this);
 }
