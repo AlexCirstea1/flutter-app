@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/avatar_service.dart';
 import '../services/storage_service.dart';
 import '../widget/bottom_nav_bar.dart'; // Import the BottomNavBar
 
@@ -17,6 +20,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String _username = '';
   String _email = '';
   bool _hasPin = false;
+  Uint8List? _avatarBytes;
+
 
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
@@ -39,6 +44,11 @@ class _ProfilePageState extends State<ProfilePage> {
             _hasPin = userData['hasPin'] ?? false;
             _isLoading = false;
           });
+
+          // If the userData includes the user ID, call _fetchAvatar here:
+          if (userData['id'] != null) {
+            await _fetchAvatar(userData['id']);
+          }
         }
       }
     } catch (error) {
@@ -46,6 +56,15 @@ class _ProfilePageState extends State<ProfilePage> {
         _isLoading = false;
       });
     }
+  }
+
+
+  Future<void> _fetchAvatar(String userId) async {
+    final avatarService = AvatarService(_storageService);
+    final bytes = await avatarService.getAvatar(userId);
+    setState(() {
+      _avatarBytes = bytes;
+    });
   }
 
   void _onItemTapped(int index) {
@@ -107,14 +126,19 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 50,
                       backgroundColor: Colors.blueAccent,
-                      child: Icon(
+                      backgroundImage: _avatarBytes != null
+                          ? MemoryImage(_avatarBytes!)
+                          : null,
+                      child: _avatarBytes == null
+                          ? const Icon(
                         Icons.person,
                         size: 60,
                         color: Colors.white,
-                      ),
+                      )
+                          : null,
                     ),
                     const SizedBox(height: 20),
                     Text(

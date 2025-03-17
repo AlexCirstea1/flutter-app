@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -10,6 +11,7 @@ import '../models/message_dto.dart';
 import '../pages/chat_page.dart';
 import '../pages/select_user_page.dart';
 import '../services/auth_service.dart';
+import '../services/avatar_service.dart';  // <--- import your AvatarService
 import '../services/storage_service.dart';
 import '../services/websocket_service.dart';
 import '../widget/bottom_nav_bar.dart';
@@ -26,6 +28,9 @@ class _MyHomePageState extends State<MyHomePage> {
   final AuthService _authService = AuthService();
   final WebSocketService _webSocketService = WebSocketService();
 
+  // Create an AvatarService to fetch & cache avatars
+  late AvatarService _avatarService;
+
   final String _usernamePlaceholder = 'User';
   String _username = '';
   int _selectedIndex = 0;
@@ -37,6 +42,8 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    _avatarService = AvatarService(_storageService);
+
     _loadUsername();
     _initializeUserId();
     _fetchChatHistory();
@@ -112,7 +119,9 @@ class _MyHomePageState extends State<MyHomePage> {
         sender: sender,
         recipient: recipient,
         content: msg['content']?.toString() ?? '',
-        timestamp: DateTime.parse(msg['timestamp'] ?? DateTime.now().toIso8601String()),
+        timestamp: DateTime.parse(
+          msg['timestamp'] ?? DateTime.now().toIso8601String(),
+        ),
         isRead: msg['read'] ?? false,
         readTimestamp: msg['readTimestamp'] != null
             ? DateTime.parse(msg['readTimestamp'])
@@ -125,7 +134,9 @@ class _MyHomePageState extends State<MyHomePage> {
           participant: otherParticipant,
           participantUsername: otherParticipant,
           messages: [newMessage],
-          unreadCount: (newMessage.sender != userId && !newMessage.isRead) ? 1 : 0,
+          unreadCount: (newMessage.sender != userId && !newMessage.isRead)
+              ? 1
+              : 0,
         );
         _chatHistory.insert(0, newChat);
       } else {
@@ -183,6 +194,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   /// Fetch entire chat history from /api/chats
   Future<void> _fetchChatHistory() async {
+    if (!mounted) return;
     setState(() => _isLoadingHistory = true);
 
     final accessToken = await _storageService.getAccessToken();
@@ -227,9 +239,16 @@ class _MyHomePageState extends State<MyHomePage> {
           return bLast.compareTo(aLast);
         });
 
+        if (mounted) {
+          setState(() {
+            _chatHistory = fetchedChatHistory;
+          });
+        }
+
         setState(() {
           _chatHistory = fetchedChatHistory;
         });
+
       } else {
         LoggerService.logError(
           'Failed to fetch chat history. Status code: ${response.statusCode}',
@@ -246,7 +265,9 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       );
     } finally {
-      setState(() => _isLoadingHistory = false);
+      if (mounted) {
+        setState(() => _isLoadingHistory = false);
+      }
     }
   }
 
@@ -289,6 +310,15 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  // ----------------------------
+  // AVATAR-RELATED LOGIC
+  // ----------------------------
+  // We can store a local map if you prefer, or rely solely on AvatarService's internal cache.
+
+  Future<Uint8List?> _fetchAvatar(String userId) async {
+    return await _avatarService.getAvatar(userId);
+  }
+
   Widget _buildChatList() {
     if (_isLoadingHistory) {
       return const Center(child: CircularProgressIndicator());
@@ -302,8 +332,7 @@ class _MyHomePageState extends State<MyHomePage> {
       itemCount: _chatHistory.length,
       itemBuilder: (context, index) {
         final chat = _chatHistory[index];
-        final latestMessage =
-        chat.messages.isNotEmpty ? chat.messages.last : null;
+        final latestMessage = chat.messages.isNotEmpty ? chat.messages.last : null;
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
@@ -312,17 +341,40 @@ class _MyHomePageState extends State<MyHomePage> {
             borderRadius: BorderRadius.circular(12.0),
           ),
           child: ListTile(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-            leading: CircleAvatar(
-              radius: 24,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: Text(
-                chat.participantUsername.isNotEmpty
-                    ? chat.participantUsername[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(color: Colors.white, fontSize: 20),
-              ),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 8.0,
+              horizontal: 16.0,
+            ),
+            leading: FutureBuilder<Uint8List?>(
+              future: _fetchAvatar(chat.participant),
+              builder: (context, snapshot) {
+                final avatarBytes = snapshot.data;
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  // We can show a placeholder while loading
+                  return const CircleAvatar(
+                    radius: 24,
+                    child: Icon(Icons.person),
+                  );
+                } else if (avatarBytes != null) {
+                  // We have the avatar
+                  return CircleAvatar(
+                    radius: 24,
+                    backgroundImage: MemoryImage(avatarBytes),
+                  );
+                } else {
+                  // If no avatar, show fallback
+                  return CircleAvatar(
+                    radius: 24,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    child: Text(
+                      chat.participantUsername.isNotEmpty
+                          ? chat.participantUsername[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(color: Colors.white, fontSize: 20),
+                    ),
+                  );
+                }
+              },
             ),
             title: Text(
               chat.participantUsername,
@@ -331,7 +383,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 fontSize: 16,
               ),
             ),
-            subtitle: latestMessage != null
+            subtitle: (latestMessage != null)
                 ? Text(
               latestMessage.content.length > 50
                   ? "${latestMessage.content.substring(0, 50)}..."
@@ -356,7 +408,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   Container(
                     margin: const EdgeInsets.only(top: 4.0),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0, vertical: 2.0),
+                      horizontal: 8.0,
+                      vertical: 2.0,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.redAccent,
                       borderRadius: BorderRadius.circular(12.0),
@@ -383,18 +437,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   String _getMonthAbbreviation(int month) {
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     return months[month - 1];
   }
