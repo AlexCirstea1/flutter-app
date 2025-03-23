@@ -22,7 +22,6 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _hasPin = false;
   Uint8List? _avatarBytes;
 
-
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
 
@@ -57,7 +56,6 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     }
   }
-
 
   Future<void> _fetchAvatar(String userId) async {
     final avatarService = AvatarService(_storageService);
@@ -134,10 +132,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           : null,
                       child: _avatarBytes == null
                           ? const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Colors.white,
-                      )
+                              Icons.person,
+                              size: 60,
+                              color: Colors.white,
+                            )
                           : null,
                     ),
                     const SizedBox(height: 20),
@@ -193,10 +191,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                   borderRadius: BorderRadius.circular(10.0),
                                 ),
                               ),
-                              icon: const Icon(Icons.logout, color: Colors.white),
+                              icon:
+                                  const Icon(Icons.logout, color: Colors.white),
                               label: const Text(
                                 'Logout',
-                                style: TextStyle(color: Colors.white, fontSize: 18),
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 18),
                               ),
                             ),
                           ),
@@ -218,7 +218,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                   color: Colors.white), // Add delete icon
                               label: const Text(
                                 'Delete Account',
-                                style: TextStyle(color: Colors.white, fontSize: 18), // Set text color to white
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18), // Set text color to white
                               ),
                             ),
                           ),

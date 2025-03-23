@@ -7,6 +7,7 @@ class StorageService {
   final String USERNAME = 'username';
   final String USER_PIN = 'user_pin';
   final String USER_ID = 'user_id';
+  final String MY_PRIVATE_KEY = 'MY_PRIVATE_KEY';
 
   // Save tokens and username
   Future<void> saveLoginDetails(String accessToken, String refreshToken,
@@ -34,6 +35,14 @@ class StorageService {
 
   Future<String?> getUserId() async {
     return await _secureStorage.read(key: USER_ID);
+  }
+
+  Future<String?> getPrivateKey() async {
+    return await _secureStorage.read(key: MY_PRIVATE_KEY);
+  }
+
+  Future<void> savePrivateKey(String privateKey) async {
+    await _secureStorage.write(key: MY_PRIVATE_KEY, value: privateKey);
   }
 
   // Clear all tokens and username

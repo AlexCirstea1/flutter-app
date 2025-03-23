@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:vaultx_app/config/logger_config.dart';
+import 'package:vaultx_app/services/storage_service.dart';
 
 import '../config/environment.dart';
 
@@ -191,5 +192,40 @@ class AuthService {
       LoggerService.logError('Error deleting account: $error');
     }
     return false;
+  }
+
+  // Save user data after successful authentication
+  Future<bool> saveUserData(
+      Map<String, dynamic> response, StorageService storageService) async {
+    try {
+      final accessToken = response['access_token'] as String?;
+      final refreshToken = response['refresh_token'] as String?;
+      final userData = response['user'] as Map<String, dynamic>?;
+
+      if (accessToken != null &&
+          refreshToken != null &&
+          userData != null &&
+          userData['username'] != null &&
+          userData['id'] != null &&
+          userData['hasPin'] != null) {
+        await storageService.saveLoginDetails(
+          accessToken,
+          refreshToken,
+          userData['username'] as String,
+          userData['id'] as String,
+        );
+
+        await storageService.saveHasPin(userData['hasPin'] == true);
+        return true;
+      } else {
+        LoggerService.logError(
+            'Missing fields in user data response', response);
+        return false;
+      }
+    } catch (error, stackTrace) {
+      LoggerService.logError(
+          'Error saving user data: $error', error, stackTrace);
+      return false;
+    }
   }
 }

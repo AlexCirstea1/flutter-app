@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+
 import 'message_dto.dart';
 
 part 'chat_history_dto.g.dart';

@@ -1,22 +1,23 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../config/logger_config.dart';
 import '../models/message_dto.dart';
+import '../services/chat_service.dart';
 import '../services/storage_service.dart';
 import '../services/websocket_service.dart';
-import '../services/chat_service.dart';
 
 class ChatPage extends StatefulWidget {
   final String chatUserId;
   final String chatUsername;
 
   const ChatPage({
-    super.key,
+    Key? key,
     required this.chatUserId,
     required this.chatUsername,
-  });
+  }) : super(key: key);
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -24,6 +25,7 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
+
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
@@ -44,8 +46,8 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _initializeChat() async {
     try {
-      final storageService = StorageService();
-      _currentUserId = await storageService.getUserId();
+      final storage = StorageService();
+      _currentUserId = await storage.getUserId();
       if (_currentUserId == null) {
         LoggerService.logError('Current user ID is null');
         if (mounted) {
@@ -58,18 +60,19 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
 
-      _chatService = ChatService(storageService: storageService);
+      _chatService = ChatService(storageService: storage);
       await _chatService!.fetchChatHistory(
         chatUserId: widget.chatUserId,
         onMessagesUpdated: _onMessagesUpdated,
       );
 
-      final webSocketService = WebSocketService();
-      if (!webSocketService.isConnected) {
-        await webSocketService.connect();
+      final ws = WebSocketService();
+      if (!ws.isConnected) {
+        await ws.connect();
       }
 
-      _messageSubscription = webSocketService.messages.listen((message) {
+      // Listen for real-time message updates
+      _messageSubscription = ws.messages.listen((message) {
         final type = message['type'] ?? '';
         switch (type) {
           case 'INCOMING_MESSAGE':
@@ -88,31 +91,27 @@ class _ChatPageState extends State<ChatPage> {
             );
             break;
           default:
-            LoggerService.logInfo('Ignoring unknown message type: $type');
+            LoggerService.logInfo('Ignoring unknown msg type: $type');
         }
       });
 
-      _connectionStatusSubscription =
-          webSocketService.connectionStatus.listen((connected) {
-        if (!connected) {
+      // Listen for connection changes
+      _connectionStatusSubscription = ws.connectionStatus.listen((ok) {
+        if (!ok) {
           LoggerService.logInfo('WebSocket disconnected');
         } else {
           LoggerService.logInfo('WebSocket reconnected');
         }
       });
-    } catch (e) {
-      LoggerService.logError('Error initializing chat', e);
+    } catch (err) {
+      LoggerService.logError('Error initializing chat', err);
     } finally {
-      if (mounted) {
-        setState(() => _isInitializing = false);
-      }
+      if (mounted) setState(() => _isInitializing = false);
     }
   }
 
   void _onMessagesUpdated() {
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -123,32 +122,30 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  bool get _isFetchingHistory => _chatService?.isFetchingHistory ?? true;
+  bool get _isFetchingHistory => _chatService?.isFetchingHistory ?? false;
   List<MessageDTO> get _messages => _chatService?.messages ?? [];
 
-  void _sendMessage() async {
-    final content = _messageController.text.trim();
-    if (content.isEmpty || _chatService == null || _currentUserId == null)
-      return;
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _chatService == null || _currentUserId == null) return;
 
     _messageController.clear();
 
-    final webSocketService = WebSocketService();
+    final ws = WebSocketService();
     await _chatService!.sendMessage(
       currentUserId: _currentUserId!,
       chatUserId: widget.chatUserId,
-      content: content,
+      content: text,
       onEphemeralAdded: (MessageDTO ephemeral) {
-        if (mounted) {
-          setState(() {
-            _chatService!.messages.add(ephemeral);
-            _chatService!.messages
-                .sort((a, b) => a.timestamp.compareTo(b.timestamp));
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          // ephemeral plaintext message
+          _messages.add(ephemeral);
+          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        });
       },
-      stompSend: (msgMap) {
-        webSocketService.sendMessage('/app/sendPrivateMessage', msgMap);
+      stompSend: (map) {
+        ws.sendMessage('/app/sendPrivateMessage', map);
       },
     );
   }
@@ -156,7 +153,7 @@ class _ChatPageState extends State<ChatPage> {
   String _formatTime(DateTime dt) {
     final hh = dt.hour.toString().padLeft(2, '0');
     final mm = dt.minute.toString().padLeft(2, '0');
-    return "$hh:$mm";
+    return '$hh:$mm';
   }
 
   @override
@@ -170,56 +167,48 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: _isInitializing || _isFetchingHistory
                 ? const Center(child: CircularProgressIndicator())
-                : _buildMessageList(),
+                : _buildMessagesList(),
           ),
-          SafeArea(
-            child: _buildMessageInput(),
-          ),
+          SafeArea(child: _buildTextInput()),
         ],
       ),
     );
   }
 
-  Widget _buildMessageList() {
+  Widget _buildMessagesList() {
     return ScrollablePositionedList.builder(
       itemScrollController: _itemScrollController,
       itemPositionsListener: _itemPositionsListener,
       initialScrollIndex: _messages.isEmpty ? 0 : _messages.length - 1,
       itemCount: _messages.length,
-      itemBuilder: (context, index) {
-        final msg = _messages[index];
-        final isSender = (msg.sender == _currentUserId);
-        return _buildMessageBubble(msg, isSender);
+      itemBuilder: (ctx, i) {
+        final msg = _messages[i];
+        final isMine = (msg.sender == _currentUserId);
+        return _buildBubble(msg, isMine);
       },
     );
   }
 
-  Widget _buildMessageInput() {
+  Widget _buildTextInput() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade300,
-            blurRadius: 5.0,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.grey.shade300, blurRadius: 5.0)],
       ),
       child: Row(
         children: [
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(25.0),
+                borderRadius: BorderRadius.circular(25),
               ),
               child: TextField(
                 controller: _messageController,
                 decoration: const InputDecoration(
-                  hintText: 'Type your message here...',
+                  hintText: 'Type your message...',
                   border: InputBorder.none,
                 ),
                 textCapitalization: TextCapitalization.sentences,
@@ -227,7 +216,7 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
           ),
-          const SizedBox(width: 8.0),
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: _sendMessage,
             child: Container(
@@ -235,67 +224,68 @@ class _ChatPageState extends State<ChatPage> {
                 color: Colors.blue,
                 shape: BoxShape.circle,
               ),
-              padding: const EdgeInsets.all(12.0),
-              child: const Icon(
-                Icons.send,
-                color: Colors.white,
-                size: 20,
-              ),
+              padding: const EdgeInsets.all(12),
+              child: const Icon(Icons.send, color: Colors.white, size: 20),
             ),
-          ),
+          )
         ],
       ),
     );
   }
 
-  Widget _buildMessageBubble(MessageDTO msg, bool isSender) {
+  Widget _buildBubble(MessageDTO msg, bool isMine) {
+    // If the ChatService has ephemeral-decrypted text, it's in `msg.plaintext`.
+    // If not, fallback to `ciphertext` or some placeholder.
+    final displayText = msg.plaintext!.isNotEmpty
+        ? msg.plaintext
+        : (msg.ciphertext.isNotEmpty ? '[Encrypted]' : '[No content]');
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Align(
-        alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.7,
-          ),
+          constraints:
+              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
             decoration: BoxDecoration(
-              color: isSender ? Colors.blue : Colors.grey[300],
+              color: isMine ? Colors.blue : Colors.grey[300],
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(12),
                 topRight: const Radius.circular(12),
-                bottomLeft: isSender ? const Radius.circular(12) : Radius.zero,
-                bottomRight: isSender ? Radius.zero : const Radius.circular(12),
+                bottomLeft: isMine ? const Radius.circular(12) : Radius.zero,
+                bottomRight: isMine ? Radius.zero : const Radius.circular(12),
               ),
             ),
             child: Column(
               crossAxisAlignment:
-                  isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Text(
-                  msg.content,
+                  displayText!,
                   style: TextStyle(
-                    color: isSender ? Colors.white : Colors.black,
+                    color: isMine ? Colors.white : Colors.black,
                     fontSize: 16,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       _formatTime(msg.timestamp),
                       style: TextStyle(
-                        color: isSender ? Colors.white70 : Colors.black54,
+                        color: isMine ? Colors.white70 : Colors.black54,
                         fontSize: 12,
                       ),
                     ),
                     const SizedBox(width: 5),
-                    if (isSender)
+                    if (isMine)
                       Icon(
                         msg.isRead ? Icons.done_all : Icons.done,
                         size: 16,
-                        color: msg.isRead ? Colors.white70 : Colors.white70,
+                        color: Colors.white70,
                       ),
                   ],
                 ),

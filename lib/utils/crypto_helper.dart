@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:encrypt/encrypt.dart' show RSAKeyParser;
 import 'package:pointycastle/asymmetric/api.dart';
@@ -26,7 +25,8 @@ class CryptoHelper {
   /// Decrypt a base64 ciphertext with an RSA private key in PEM format
   static String rsaDecrypt(String base64Cipher, String privateKeyPem) {
     final parser = RSAKeyParser();
-    final RSAPrivateKey privateKey = parser.parse(privateKeyPem) as RSAPrivateKey;
+    final RSAPrivateKey privateKey =
+        parser.parse(privateKeyPem) as RSAPrivateKey;
 
     final encrypter = encrypt.Encrypter(
       encrypt.RSA(

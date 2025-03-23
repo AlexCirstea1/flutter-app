@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:vaultx_app/config/logger_config.dart';
 
+import '../config/environment.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import '../utils/key_cert_helper.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -137,45 +140,30 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final response =
           await _authService.loginUser(user.username, user.password);
-      LoggerService.logInfo(
-          'Login Response: $response'); // Log the entire response
+      LoggerService.logInfo('Login Response: $response');
 
       if (response != null) {
-        final accessToken = response['access_token'] as String?;
-        final refreshToken = response['refresh_token'] as String?;
-        final userData = response['user'] as Map<String, dynamic>?;
+        final success =
+            await _authService.saveUserData(response, _storageService);
+        if (success) {
+          // Now we have an accessToken in secure storage. We can generate
+          // local keys & upload the public key to the backend.
 
-        if (accessToken != null &&
-            refreshToken != null &&
-            userData != null &&
-            userData['username'] != null &&
-            userData['id'] != null &&
-            userData['hasPin'] != null) {
-          await _storageService.saveLoginDetails(
-            accessToken,
-            refreshToken,
-            userData['username'] as String,
-            userData['id'] as String,
-          );
+          await _generateAndUploadKeys();
 
-          await _storageService.saveHasPin(userData['hasPin'] == true);
-
+          // Finally, navigate to home
           if (mounted) {
             Navigator.pushNamed(context, '/home');
           }
-        } else {
-          // Handle missing fields in the response
-          LoggerService.logError('Missing fields in login response', response);
+        } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid response from server')),
           );
         }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login failed')),
-          );
-        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login failed')),
+        );
       }
     } catch (error, stackTrace) {
       LoggerService.logError('Error during login: $error', error, stackTrace);
@@ -185,9 +173,59 @@ class _RegisterPageState extends State<RegisterPage> {
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// After we have an access token, generate RSA keys, store the private key,
+  /// and POST the public key to the server.
+  Future<void> _generateAndUploadKeys() async {
+    try {
+      // 1) Generate a self-signed cert or just raw keys
+      final (privatePem, certPem, publicPem) =
+          await KeyCertHelper.generateSelfSignedCert(
+        dn: {'CN': 'VaultXUser'}, // or user-specific info
+        keySize: 2048,
+        daysValid: 365,
+      );
+
+      // 2) Save private key in secure storage
+      await _storageService.savePrivateKey(privatePem);
+
+      // 3) Send the public key to backend
+      final accessToken = await _storageService.getAccessToken();
+      if (accessToken == null) {
+        LoggerService.logError(
+            'No access token found. Cannot upload public key.');
+        return;
+      }
+
+      await _uploadPublicKey(publicPem, accessToken);
+      LoggerService.logInfo('Public key uploaded successfully!');
+    } catch (e) {
+      LoggerService.logError('Key generation/upload failed: $e');
+    }
+  }
+
+  Future<void> _uploadPublicKey(String publicKeyPem, String accessToken) async {
+    final url = Uri.parse('${Environment.apiBaseUrl}/user/publicKey');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'text/plain',
+        'Authorization': 'Bearer $accessToken',
+      },
+      body: publicKeyPem, // raw PEM text
+    );
+    if (response.statusCode == 200) {
+      LoggerService.logInfo('Public key posted to /user/publicKey');
+    } else {
+      LoggerService.logError(
+          'Failed to upload public key. Status: ${response.statusCode}, body: ${response.body}');
     }
   }
 

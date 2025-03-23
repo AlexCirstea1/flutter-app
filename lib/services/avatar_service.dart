@@ -1,11 +1,12 @@
 // avatar_service.dart
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 
 import '../config/environment.dart';
-import '../services/storage_service.dart';
 import '../config/logger_config.dart';
+import '../services/storage_service.dart';
 
 class AvatarService {
   final StorageService _storageService;

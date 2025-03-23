@@ -46,7 +46,7 @@ class WebSocketService {
         url: Environment.webSocketUrl, // e.g. "ws://<host>:<port>/ws"
         onConnect: _onConnect,
         beforeConnect: () async {
-          LoggerService.logInfo('Attempting to connect to WebSocket...');
+          // LoggerService.logInfo('Attempting to connect to WebSocket...');
           await Future.delayed(const Duration(milliseconds: 200));
         },
         stompConnectHeaders: {
@@ -72,7 +72,7 @@ class WebSocketService {
   }
 
   void _onConnect(StompFrame frame) {
-    LoggerService.logInfo('WebSocket connected');
+    // LoggerService.logInfo('WebSocket connected');
     _connectionStatusController.add(true);
 
     // 1) Incoming private messages for the recipient

@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:basic_utils/basic_utils.dart';
-import 'package:pointycastle/api.dart'
-    show AsymmetricKeyPair, RSAPrivateKey, RSAPublicKey;
 
 /// A helper class to generate an RSA key pair, produce a self-signed certificate,
 /// and optionally extract the public key from the cert for usage.
@@ -28,14 +25,14 @@ class KeyCertHelper {
   ///
   /// Returns a tuple of `(privateKeyPem, certificatePem, publicKeyPem)`.
   ///
-  /// The [distinguishedName] is a `Map<String,String>` describing
+  /// The [dn] is a `Map<String,String>` describing
   /// the certificate subject (e.g. `{"CN": "MySelfSigned", "O": "MyOrg"}`).
   ///
   /// [daysValid] is how many days the self-signed cert is valid.
   static Future<
           (String privateKeyPem, String certificatePem, String publicKeyPem)>
-      generateSelfSignedCertificate({
-    required Map<String, String> distinguishedName,
+      generateSelfSignedCert({
+    required Map<String, String> dn,
     int keySize = 2048,
     int daysValid = 365,
   }) async {
@@ -47,45 +44,25 @@ class KeyCertHelper {
     // 2) Encode the private key as PEM
     final privateKeyPem = CryptoUtils.encodeRSAPrivateKeyToPem(privateKey);
 
-    // 3) Generate a CSR from the key pair
+    // 3) Encode the public key directly as PEM
+    final publicKeyPem = CryptoUtils.encodeRSAPublicKeyToPem(publicKey);
+
+    // 4) Generate a CSR from the key pair
     final csrPem = X509Utils.generateRsaCsrPem(
-      distinguishedName, // e.g. {"CN":"MySelfSigned","O":"MyOrg"}
+      dn, // e.g. {"CN":"MySelfSigned","O":"MyOrg"}
       privateKey,
       publicKey,
       signingAlgorithm: 'SHA-256',
-      // If you want SubjectAltName: e.g. san: ['127.0.0.1', 'localhost']
     );
 
-    // 4) Create a self-signed certificate from that CSR
+    // 5) Create a self-signed certificate from that CSR
     final certificatePem = X509Utils.generateSelfSignedCertificate(
       privateKey,
       csrPem,
       daysValid,
-      // sans: [...], // optional SANs
     );
 
-    // 5) Extract the RSA public key from the certificate as PEM
-    final publicKeyPem = _extractPublicKeyFromCertificate(certificatePem);
-
+    // Return values directly without trying to extract the public key from the certificate
     return (privateKeyPem, certificatePem, publicKeyPem);
-  }
-
-  /// Extracts the RSA public key from a PEM-encoded X.509 certificate,
-  /// returning it as a PEM-encoded public key.
-  static String _extractPublicKeyFromCertificate(String certificatePem) {
-    // 1) Parse the certificate
-    final certData = X509Utils.x509CertificateFromPem(certificatePem);
-    final publicKeyData = certData.publicKeyData;
-    if (publicKeyData == null || publicKeyData.bytes == null) {
-      throw StateError('Certificate does not contain public key data.');
-    }
-
-    // 2) Convert the DER bytes to an RSAPublicKey
-    //    (basic_utils stores the raw DER in `publicKeyData.bytes` as base64)
-    final derBytes = base64Decode(publicKeyData.bytes!);
-    final rsaPublicKey = CryptoUtils.rsaPublicKeyFromDERBytes(derBytes);
-
-    // 3) Encode as PEM
-    return CryptoUtils.encodeRSAPublicKeyToPem(rsaPublicKey);
   }
 }

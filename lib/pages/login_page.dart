@@ -83,45 +83,22 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final response =
           await _authService.loginUser(user.username, user.password);
-      LoggerService.logInfo(
-          'Login Response: $response'); // Log the entire response
+      LoggerService.logInfo('Login Response: $response');
 
       if (response != null) {
-        final accessToken = response['access_token'] as String?;
-        final refreshToken = response['refresh_token'] as String?;
-        final userData = response['user'] as Map<String, dynamic>?;
-
-        if (accessToken != null &&
-            refreshToken != null &&
-            userData != null &&
-            userData['username'] != null &&
-            userData['id'] != null &&
-            userData['hasPin'] != null) {
-          await _storageService.saveLoginDetails(
-            accessToken,
-            refreshToken,
-            userData['username'] as String,
-            userData['id'] as String,
-          );
-
-          await _storageService.saveHasPin(userData['hasPin'] == true);
-
-          if (mounted) {
-            Navigator.pushNamed(context, '/home');
-          }
-        } else {
-          // Handle missing fields in the response
-          LoggerService.logError('Missing fields in login response', response);
+        final success =
+            await _authService.saveUserData(response, _storageService);
+        if (success && mounted) {
+          Navigator.pushNamed(context, '/home');
+        } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid response from server')),
           );
         }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login failed')),
-          );
-        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login failed')),
+        );
       }
     } catch (error, stackTrace) {
       LoggerService.logError('Error during login: $error', error, stackTrace);
@@ -131,9 +108,11 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

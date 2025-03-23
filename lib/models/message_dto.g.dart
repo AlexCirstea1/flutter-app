@@ -10,7 +10,10 @@ MessageDTO _$MessageDTOFromJson(Map<String, dynamic> json) => MessageDTO(
       id: json['id'] as String,
       sender: json['sender'] as String,
       recipient: json['recipient'] as String,
-      content: json['content'] as String,
+      ciphertext: json['ciphertext'] as String,
+      iv: json['iv'] as String,
+      encryptedKeyForSender: json['encryptedKeyForSender'] as String,
+      encryptedKeyForRecipient: json['encryptedKeyForRecipient'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
       isRead: json['isRead'] as bool? ?? false,
       readTimestamp: json['readTimestamp'] == null
@@ -21,6 +24,7 @@ MessageDTO _$MessageDTOFromJson(Map<String, dynamic> json) => MessageDTO(
           ? null
           : DateTime.parse(json['deliveredTimestamp'] as String),
       clientTempId: json['clientTempId'] as String?,
+      type: json['type'] as String?,
     );
 
 Map<String, dynamic> _$MessageDTOToJson(MessageDTO instance) =>
@@ -28,11 +32,15 @@ Map<String, dynamic> _$MessageDTOToJson(MessageDTO instance) =>
       'id': instance.id,
       'sender': instance.sender,
       'recipient': instance.recipient,
-      'content': instance.content,
+      'ciphertext': instance.ciphertext,
+      'iv': instance.iv,
+      'encryptedKeyForSender': instance.encryptedKeyForSender,
+      'encryptedKeyForRecipient': instance.encryptedKeyForRecipient,
       'timestamp': instance.timestamp.toIso8601String(),
       'isRead': instance.isRead,
       'readTimestamp': instance.readTimestamp?.toIso8601String(),
       'isDelivered': instance.isDelivered,
       'deliveredTimestamp': instance.deliveredTimestamp?.toIso8601String(),
       'clientTempId': instance.clientTempId,
+      'type': instance.type,
     };
