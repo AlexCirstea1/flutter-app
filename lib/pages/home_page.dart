@@ -22,7 +22,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  StreamSubscription? _messageSubscription;
+  StreamSubscription<Map<String, dynamic>>? _messageSubscription;
   final StorageService _storageService = StorageService();
   final AuthService _authService = AuthService();
   final WebSocketService _webSocketService = WebSocketService();
@@ -42,7 +42,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _avatarService = AvatarService(_storageService);
-    _chatService   = ChatService(storageService: _storageService);
+    _chatService = ChatService(storageService: _storageService);
 
     _loadUsername();
     _initializeUserId().then((_) {
@@ -52,7 +52,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _loadUsername() async {
-    String? stored = await _storageService.getUsername();
+    final stored = await _storageService.getUsername();
     setState(() {
       _username = stored ?? _usernamePlaceholder;
     });
@@ -65,6 +65,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _initializeWebSocket() async {
     await _webSocketService.connect();
 
+    // Listen for all incoming WebSocket messages
     _messageSubscription = _webSocketService.messages.listen((message) {
       final type = message['type'] ?? '';
       switch (type) {
@@ -76,7 +77,7 @@ class _MyHomePageState extends State<MyHomePage> {
           _handleReadReceipt(message);
           break;
         case 'USER_SEARCH_RESULTS':
-        // Not used on home
+          // Not used on home screen
           break;
         default:
           LoggerService.logInfo('Unknown WS message type: $type');
@@ -85,17 +86,40 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _handleNewOrUpdatedMessage(Map<String, dynamic> rawMsg) {
+    // If user ID is not loaded or widget is gone, skip
     if (_currentUserId == null || !mounted) return;
+
+    // Let ChatService handle ephemeral decryption and updating the chat list
     _chatService.handleNewOrUpdatedMessage(
       msg: rawMsg,
       currentUserId: _currentUserId!,
       chatHistory: _chatHistory,
     );
+
+    // Rebuild UI
     setState(() {});
   }
+  void _markAllAsReadStomp() {
+    final unread = _chatService!.messages
+        .where((m) => m.recipient == _currentUserId && !m.isRead)
+        .toList();
+    if (unread.isEmpty) return;
+
+    final messageIds = unread.map((m) => m.id).toList();
+
+    final payload = {
+      'messageIds': messageIds,
+    };
+
+    // Use your WebSocketService or STOMP client to send to /app/markAsRead
+    final webSocketService = WebSocketService();
+    webSocketService.sendMessage('/app/markAsRead', payload);
+  }
+
 
   void _handleReadReceipt(Map<String, dynamic> data) {
     if (!mounted) return;
+
     final readerId = data['readerId'] ?? '';
     final List<dynamic> msgIds = data['messageIds'] ?? [];
     final tsStr = data['readTimestamp'] ?? '';
@@ -103,6 +127,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final readAt = DateTime.parse(tsStr);
     setState(() {
+      // Mark the relevant messages as read
       for (var chat in _chatHistory) {
         if (chat.participant == readerId) {
           for (var m in chat.messages) {
@@ -112,11 +137,12 @@ class _MyHomePageState extends State<MyHomePage> {
             }
           }
         }
+        // Recalculate unread
         chat.unreadCount = chat.messages
             .where((m) =>
-        m.recipient == _currentUserId &&
-            m.sender == chat.participant &&
-            !m.isRead)
+                m.recipient == _currentUserId &&
+                m.sender == chat.participant &&
+                !m.isRead)
             .length;
       }
     });
@@ -150,7 +176,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _navigateToSelectUser() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (ctx) => const SelectUserPage()),
+      MaterialPageRoute(builder: (_) => const SelectUserPage()),
     );
   }
 
@@ -158,7 +184,7 @@ class _MyHomePageState extends State<MyHomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (ctx) => ChatPage(
+        builder: (_) => ChatPage(
           chatUserId: chat.participant,
           chatUsername: chat.participantUsername,
         ),
@@ -183,13 +209,12 @@ class _MyHomePageState extends State<MyHomePage> {
     if (_chatHistory.isEmpty) {
       return const Center(child: Text('No conversations found'));
     }
+
     return ListView.builder(
       itemCount: _chatHistory.length,
       itemBuilder: (ctx, i) {
         final chat = _chatHistory[i];
-        final lastMsg = chat.messages.isNotEmpty
-            ? chat.messages.last
-            : null;
+        final lastMsg = chat.messages.isNotEmpty ? chat.messages.last : null;
 
         return ListTile(
           leading: FutureBuilder<Uint8List?>(
@@ -198,9 +223,11 @@ class _MyHomePageState extends State<MyHomePage> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const CircleAvatar(child: CircularProgressIndicator());
               }
-              final avatar = snapshot.data;
-              if (avatar == null) return const CircleAvatar(child: Icon(Icons.person));
-              return CircleAvatar(backgroundImage: MemoryImage(avatar));
+              final avatarBytes = snapshot.data;
+              if (avatarBytes == null) {
+                return const CircleAvatar(child: Icon(Icons.person));
+              }
+              return CircleAvatar(backgroundImage: MemoryImage(avatarBytes));
             },
           ),
           title: Text(
@@ -210,25 +237,25 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           subtitle: (lastMsg != null)
               ? Text(
-            // If ephemeral decryption happened, it's in `plaintext`.
-            // Fallback to ciphertext if no plaintext is set
-            // In _buildChatList() function where the lastMsg's plaintext is displayed
-            lastMsg.plaintext?.isNotEmpty ?? false
-                ? lastMsg.plaintext ?? ''
-                : '[Encrypted]',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          )
+                  // If ephemeral decryption happened in ChatService,
+                  // we have `lastMsg.plaintext` as the final text.
+                  // Fallback to `[Encrypted]` if no plaintext is present.
+                  (lastMsg.plaintext?.isNotEmpty ?? false)
+                      ? lastMsg.plaintext!
+                      : '[Encrypted]',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
               : const Text('No messages yet'),
           trailing: (chat.unreadCount > 0)
               ? CircleAvatar(
-            backgroundColor: Colors.red,
-            radius: 10,
-            child: Text(
-              chat.unreadCount.toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          )
+                  backgroundColor: Colors.red,
+                  radius: 10,
+                  child: Text(
+                    chat.unreadCount.toString(),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                )
               : null,
           onTap: () => _navigateToChat(chat),
         );

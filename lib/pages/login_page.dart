@@ -32,7 +32,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Image.asset('assets/images/VaultX-Wide-Wide-Dark.png'),
+            Image.asset('assets/images/response_transparent_logo.png'),
             const SizedBox(height: 50),
             TextField(
               controller: _usernameController,

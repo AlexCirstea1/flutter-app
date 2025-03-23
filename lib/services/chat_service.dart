@@ -590,6 +590,7 @@ class ChatService {
           final plain = encr.decrypt(encrypt.Encrypted(ciph), iv: ivObj);
 
           newMsg.plaintext = plain;
+          LoggerService.logInfo('Successfully decrypted message: ${plain.substring(0, min(30, plain.length))}');
         } catch (e) {
           LoggerService.logError('Ephemeral decrypt fail: $e');
         }
@@ -611,7 +612,7 @@ class ChatService {
       // Check for temp ID replacement
       if (type == 'SENT_MESSAGE' && newMsg.clientTempId != null) {
         final tempId = newMsg.clientTempId!;
-        final msgIndex = chatHistory[chatIndex].messages.indexWhere((m) => m.id == tempId);
+        final msgIndex = chatHistory[chatIndex].messages.indexWhere((m) => m.id == tempId || m.id == newMsg.id);
         if (msgIndex >= 0) {
           chatHistory[chatIndex].messages[msgIndex] = newMsg;
         } else {

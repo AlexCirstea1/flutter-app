@@ -19,72 +19,64 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Define the color palette
-    const Color mainColor = Color(0xFF1B4A36); // Main 60%
-    const Color secondaryColor = Color(0xFFF4FBF8); // Secondary 30%
-    const Color accentColor = Color(0xFF112D10); // Accent 10%
+    const primaryColor = Color(0xFF0A0E1A);
+    const secondaryColor = Color(0xFF192233);
+    const accentColor = Color(0xFF00B5FF); // Matching logo color (blue)
+    const errorColor = Color(0xFFFF5555);
+    const surfaceColor = Color(0xFF121924);
 
     return MaterialApp(
-      title: 'VaultX App',
+      title: 'Response',
       theme: ThemeData(
-        colorScheme: const ColorScheme(
-          primary: mainColor, // Main color
-          secondary: secondaryColor, // Secondary color
-          surface: secondaryColor,
-          error: Colors.red,
-          onPrimary: Colors.white, // Text color on primary
-          onSecondary: accentColor, // Text color on secondary
-          onSurface: mainColor,
+        brightness: Brightness.dark,
+        colorScheme: const ColorScheme.dark(
+          primary: primaryColor,
+          secondary: secondaryColor,
+          surface: surfaceColor,
+          error: errorColor,
+          onPrimary: Colors.white,
+          onSecondary: Colors.white,
+          onSurface: Colors.white70,
           onError: Colors.white,
-          brightness: Brightness.light, // Light theme
         ),
-        scaffoldBackgroundColor: secondaryColor, // Background color
+        scaffoldBackgroundColor: primaryColor,
         appBarTheme: const AppBarTheme(
-          backgroundColor: mainColor, // App bar color
-          foregroundColor: Colors.white, // App bar text/icon color
+          backgroundColor: secondaryColor,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          centerTitle: true,
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: mainColor, // Button color
-            foregroundColor: Colors.white, // Text color
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.0), // Rounded buttons
-            ),
+        textTheme: const TextTheme(
+          titleLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          bodyMedium: TextStyle(fontSize: 16, color: Colors.white70),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: surfaceColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
         ),
-        useMaterial3: true, // Use Material 3 features
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: const ColorScheme(
-          primary: mainColor,
-          secondary: secondaryColor,
-          surface: accentColor,
-          error: Colors.red,
-          onPrimary: Colors.white,
-          onSecondary: Colors.black,
-          onSurface: Colors.white,
-          onError: Colors.black,
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: accentColor,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: mainColor,
-          foregroundColor: Colors.white,
-        ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: mainColor,
+            backgroundColor: accentColor,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: BorderRadius.circular(12),
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            textStyle: const TextStyle(fontWeight: FontWeight.bold),
           ),
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: accentColor,
+          foregroundColor: Colors.white,
         ),
         useMaterial3: true,
       ),
-      themeMode: ThemeMode.system, // Use system theme mode (light or dark)
-      initialRoute: '/', // Start with the splash screen
+      themeMode: ThemeMode.dark,
+      initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginPage(),
