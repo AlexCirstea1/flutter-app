@@ -15,6 +15,8 @@ MessageDTO _$MessageDTOFromJson(Map<String, dynamic> json) => MessageDTO(
       encryptedKeyForSender: json['encryptedKeyForSender'] as String,
       encryptedKeyForRecipient: json['encryptedKeyForRecipient'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      senderKeyVersion: json['senderKeyVersion'] as String,
+      recipientKeyVersion: json['recipientKeyVersion'] as String,
       isRead: json['isRead'] as bool? ?? false,
       readTimestamp: json['readTimestamp'] == null
           ? null
@@ -36,6 +38,8 @@ Map<String, dynamic> _$MessageDTOToJson(MessageDTO instance) =>
       'iv': instance.iv,
       'encryptedKeyForSender': instance.encryptedKeyForSender,
       'encryptedKeyForRecipient': instance.encryptedKeyForRecipient,
+      'senderKeyVersion': instance.senderKeyVersion,
+      'recipientKeyVersion': instance.recipientKeyVersion,
       'timestamp': instance.timestamp.toIso8601String(),
       'isRead': instance.isRead,
       'readTimestamp': instance.readTimestamp?.toIso8601String(),

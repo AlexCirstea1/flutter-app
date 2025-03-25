@@ -32,6 +32,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final String _usernamePlaceholder = 'User';
   String _username = '';
+  Uint8List? _userAvatar;
   int _selectedIndex = 0;
 
   List<ChatHistoryDTO> _chatHistory = [];
@@ -48,6 +49,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _initializeUserId().then((_) {
       _fetchChatHistory();
       _initializeWebSocket();
+      _loadUserAvatar();
     });
   }
 
@@ -202,16 +204,41 @@ class _MyHomePageState extends State<MyHomePage> {
     return _avatarService.getAvatar(userId);
   }
 
+  Future<void> _loadUserAvatar() async {
+    if (_currentUserId == null) return;
+    final avatar = await _avatarService.getAvatar(_currentUserId!);
+    setState(() {
+      _userAvatar = avatar;
+    });
+  }
+
+  Widget _buildUserAvatar() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16.0),
+      child: _userAvatar != null
+          ? CircleAvatar(backgroundImage: MemoryImage(_userAvatar!))
+          : const CircleAvatar(child: Icon(Icons.person, color: Colors.white70)),
+    );
+  }
+
   Widget _buildChatList() {
     if (_isLoadingHistory) {
       return const Center(child: CircularProgressIndicator());
     }
+
     if (_chatHistory.isEmpty) {
-      return const Center(child: Text('No conversations found'));
+      return const Center(
+        child: Text(
+          'No conversations yet.',
+          style: TextStyle(fontSize: 16, color: Colors.white54),
+        ),
+      );
     }
 
-    return ListView.builder(
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _chatHistory.length,
+      separatorBuilder: (_, __) => const Divider(color: Colors.white12, indent: 72, height: 1),
       itemBuilder: (ctx, i) {
         final chat = _chatHistory[i];
         final lastMsg = chat.messages.isNotEmpty ? chat.messages.last : null;
@@ -219,44 +246,42 @@ class _MyHomePageState extends State<MyHomePage> {
         return ListTile(
           leading: FutureBuilder<Uint8List?>(
             future: _fetchAvatar(chat.participant),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const CircleAvatar(child: CircularProgressIndicator());
-              }
-              final avatarBytes = snapshot.data;
-              if (avatarBytes == null) {
-                return const CircleAvatar(child: Icon(Icons.person));
-              }
-              return CircleAvatar(backgroundImage: MemoryImage(avatarBytes));
+            builder: (_, snap) {
+              return snap.connectionState == ConnectionState.waiting
+                  ? const CircleAvatar(child: CircularProgressIndicator(strokeWidth: 2))
+                  : CircleAvatar(
+                backgroundImage: snap.hasData ? MemoryImage(snap.data!) : null,
+                child: snap.hasData ? null : const Icon(Icons.person, color: Colors.white70),
+              );
             },
           ),
           title: Text(
             chat.participantUsername.isNotEmpty
                 ? chat.participantUsername
                 : 'User ${chat.participant}',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
           ),
-          subtitle: (lastMsg != null)
-              ? Text(
-                  // If ephemeral decryption happened in ChatService,
-                  // we have `lastMsg.plaintext` as the final text.
-                  // Fallback to `[Encrypted]` if no plaintext is present.
-                  (lastMsg.plaintext?.isNotEmpty ?? false)
-                      ? lastMsg.plaintext!
-                      : '[Encrypted]',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                )
-              : const Text('No messages yet'),
-          trailing: (chat.unreadCount > 0)
-              ? CircleAvatar(
-                  backgroundColor: Colors.red,
-                  radius: 10,
-                  child: Text(
-                    chat.unreadCount.toString(),
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                )
-              : null,
+          subtitle: Text(
+            (lastMsg?.plaintext?.isNotEmpty ?? false)
+                ? lastMsg!.plaintext!
+                : '[Encrypted message]',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white60),
+          ),
+          trailing: chat.unreadCount > 0
+              ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.blueAccent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${chat.unreadCount}',
+              style: const TextStyle(fontSize: 12, color: Colors.white),
+            ),
+          )
+              : const SizedBox.shrink(),
           onTap: () => _navigateToChat(chat),
         );
       },
@@ -266,26 +291,31 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: Text('Hello, $_username'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        elevation: 2,
+        leading: _buildUserAvatar(),
+        title: Text('Hello, $_username', style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
+            icon: const Icon(Icons.search, color: Colors.white),
             onPressed: _navigateToSelectUser,
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: _logout,
           ),
         ],
       ),
-      body: _buildChatList(),
+      body: SafeArea(child: _buildChatList()),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
       ),
     );
   }
+
 
   @override
   void dispose() {

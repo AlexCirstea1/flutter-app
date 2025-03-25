@@ -37,12 +37,24 @@ class StorageService {
     return await _secureStorage.read(key: USER_ID);
   }
 
-  Future<String?> getPrivateKey() async {
-    return await _secureStorage.read(key: MY_PRIVATE_KEY);
+  // In StorageService class
+  Future<void> savePrivateKey(String version, String privateKey) async {
+    // Save the current key version
+    await _secureStorage.write(key: 'CURRENT_KEY_VERSION', value: version);
+
+    // Save the private key with its version
+    await _secureStorage.write(key: '${MY_PRIVATE_KEY}_$version', value: privateKey);
   }
 
-  Future<void> savePrivateKey(String privateKey) async {
-    await _secureStorage.write(key: MY_PRIVATE_KEY, value: privateKey);
+  Future<String?> getPrivateKey([String? version]) async {
+    if (version == null) {
+      // Get the current version
+      version = await _secureStorage.read(key: 'CURRENT_KEY_VERSION');
+      if (version == null) return null;
+    }
+
+    // Get the private key for the specific version
+    return await _secureStorage.read(key: '${MY_PRIVATE_KEY}_$version');
   }
 
   // Clear all tokens and username

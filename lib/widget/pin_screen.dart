@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vaultx_app/services/auth_service.dart';
-
 import '../services/storage_service.dart';
+import '../services/biometric_auth_service.dart';
 
 class PinScreen extends StatefulWidget {
   const PinScreen({super.key});
@@ -10,30 +10,43 @@ class PinScreen extends StatefulWidget {
   State<PinScreen> createState() => _PinScreenState();
 }
 
-class _PinScreenState extends State<PinScreen>
-    with SingleTickerProviderStateMixin {
+class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
-  String _inputPin = ""; // Store the user's input PIN
-  bool _showDeleteButton = false; // Control the visibility of the delete button
-  String _currentlyPressed = ""; // Track which button is being pressed
-  String? _errorMessage; // To display an error message if PIN is incorrect
+  String _inputPin = "";
+  String? _errorMessage;
+  bool _showDeleteButton = false;
+  String _currentlyPressed = "";
 
-  // Animation controller and tween for smooth wiggle effect
-  late AnimationController _controller;
+  late AnimationController _wiggleController;
   late Animation<double> _wiggleAnimation;
+
+  late AnimationController _glowController;
+  late Animation<double> _glowAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+
+    _wiggleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500), // Slightly slower duration
+      duration: const Duration(milliseconds: 300),
     );
-    _wiggleAnimation = Tween<double>(begin: -8, end: 8)
-        .chain(
-            CurveTween(curve: Curves.elasticOut)) // Smooth and elastic effect
-        .animate(_controller);
+
+    _wiggleAnimation = Tween<double>(begin: 0, end: 16)
+        .chain(CurveTween(curve: Curves.elasticInOut))
+        .animate(_wiggleController);
+
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+
+    _glowAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+
+    _tryBiometricAuth();
   }
 
   void _onNumberPress(String number) {
@@ -41,7 +54,7 @@ class _PinScreenState extends State<PinScreen>
       setState(() {
         _inputPin += number;
         _showDeleteButton = _inputPin.isNotEmpty;
-        _errorMessage = null; // Reset error message on new input
+        _errorMessage = null;
       });
 
       if (_inputPin.length == 6) {
@@ -50,16 +63,26 @@ class _PinScreenState extends State<PinScreen>
     }
   }
 
+  Future<void> _tryBiometricAuth() async {
+    final biometricAuth = BiometricAuthService();
+    final available = await biometricAuth.isBiometricAvailable();
+
+    if (available) {
+      final authenticated = await biometricAuth.authenticateWithBiometrics();
+      if (authenticated && mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    }
+  }
+
   Future<void> _validatePin() async {
-    String? accessToken = await _storageService.getAccessToken();
-    bool isValid = await _authService.validatePin(_inputPin, accessToken!);
+    final token = await _storageService.getAccessToken();
+    final isValid = await _authService.validatePin(_inputPin, token!);
 
     if (isValid) {
-      // Navigate to the home screen if the PIN is correct
       Navigator.pushReplacementNamed(context, '/home');
     } else {
-      // Start the wiggle animation and display error message for incorrect PIN
-      _controller.forward(from: 0);
+      _wiggleController.forward(from: 0);
       setState(() {
         _errorMessage = "Incorrect PIN";
         _inputPin = "";
@@ -79,150 +102,150 @@ class _PinScreenState extends State<PinScreen>
 
   @override
   void dispose() {
-    _controller.dispose();
+    _wiggleController.dispose();
+    _glowController.dispose();
     super.dispose();
+  }
+
+  Widget _buildNumberRow(List<String> numbers) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: numbers.map((number) {
+        return GestureDetector(
+          onTapDown: (_) => setState(() => _currentlyPressed = number),
+          onTapUp: (_) {
+            setState(() => _currentlyPressed = "");
+            number == "⌫" ? _deletePin() : _onNumberPress(number);
+          },
+          onTapCancel: () => setState(() => _currentlyPressed = ""),
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 100),
+            scale: _currentlyPressed == number ? 0.9 : 1.0,
+            child: Container(
+              width: 70,
+              height: 70,
+              margin: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  number,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Enter PIN'),
-        automaticallyImplyLeading: false, // Disable back button
+        backgroundColor: Colors.transparent,
+        title: const Text('Enter your PIN'),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween, // Even spacing
-          children: <Widget>[
-            // Extra space above the PIN input
-            const SizedBox(height: 80),
-            // Display the PIN as dots with smooth animations and wiggle effect
-            Column(
-              children: [
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Transform.translate(
-                      offset: Offset(_wiggleAnimation.value, 0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(6, (index) {
-                          return Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Icon(
-                              index < _inputPin.length
-                                  ? Icons.circle
-                                  : Icons.circle_outlined,
-                              size: 24,
-                              color: Colors.black26,
-                            ),
-                          );
-                        }),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                // Reserve space for the error message to avoid shifting layout
-                SizedBox(
-                  height: 20, // Fixed height for error message space
-                  child: _errorMessage != null
-                      ? Text(
-                          _errorMessage!,
-                          style:
-                              const TextStyle(color: Colors.red, fontSize: 16),
-                        )
-                      : const SizedBox
-                          .shrink(), // Invisible when there's no error
-                ),
-              ],
-            ),
-            // Custom keypad for numbers with animated press effect
-            Expanded(
-              child: Column(
-                children: [
-                  _buildNumberRow(["1", "2", "3"]),
-                  _buildNumberRow(["4", "5", "6"]),
-                  _buildNumberRow(["7", "8", "9"]),
-                  _buildNumberRow(["", "0", _showDeleteButton ? "⌫" : ""]),
-                ],
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                // Add functionality for "Forgot your passcode?" button
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Passcode recovery not implemented yet')),
+          children: [
+            const SizedBox(height: 60),
+            AnimatedBuilder(
+              animation: _wiggleController,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(_wiggleAnimation.value * (_wiggleController.status == AnimationStatus.forward ? 1 : 0), 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(6, (index) {
+                      final filled = index < _inputPin.length;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: AnimatedBuilder(
+                          animation: _glowController,
+                          builder: (context, _) {
+                            return Transform.scale(
+                              scale: filled ? _glowAnimation.value : 1.0,
+                              child: Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: filled ? Colors.white70 : Colors.transparent,
+                                  border: Border.all(color: Colors.white30),
+                                  shape: BoxShape.circle,
+                                  boxShadow: filled
+                                      ? [
+                                    BoxShadow(
+                                      color: Colors.blueAccent.withOpacity(0.4),
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                      : [],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    }),
+                  ),
                 );
               },
-              child: const Text('Forgot your passcode?'),
+            ),
+            const SizedBox(height: 12),
+            AnimatedOpacity(
+              opacity: _errorMessage != null ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              child: Text(
+                _errorMessage ?? '',
+                style: const TextStyle(color: Colors.redAccent),
+              ),
+            ),
+            const Spacer(),
+            Column(
+              children: [
+                _buildNumberRow(["1", "2", "3"]),
+                _buildNumberRow(["4", "5", "6"]),
+                _buildNumberRow(["7", "8", "9"]),
+                _buildNumberRow(["", "0",  "⌫" ]),
+              ],
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('PIN recovery not implemented')),
+                );
+              },
+              child: const Text(
+                'Forgot your PIN?',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // Builds a row of number buttons with translucent circular styling
-  Widget _buildNumberRow(List<String> numbers) {
-    return Expanded(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: numbers.map((number) {
-          return Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: number.isEmpty
-                  ? const SizedBox.shrink() // Empty space for the first row
-                  : GestureDetector(
-                      onTapDown: (_) => setState(() {
-                        _currentlyPressed = number; // Track the pressed button
-                      }),
-                      onTapUp: (_) => setState(() {
-                        _currentlyPressed = ""; // Reset after press
-                        if (number == "⌫") {
-                          _deletePin();
-                        } else {
-                          _onNumberPress(number);
-                        }
-                      }),
-                      onTapCancel: () => setState(() {
-                        _currentlyPressed = ""; // Handle cancel state
-                      }),
-                      child: AnimatedScale(
-                        duration: const Duration(milliseconds: 100),
-                        scale: _currentlyPressed == number
-                            ? 0.9
-                            : 1.0, // Button scales down when pressed
-                        child: ElevatedButton(
-                          onPressed:
-                              null, // Disable button press as we use GestureDetector
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.all(20.0),
-                            backgroundColor: Colors.black
-                                .withOpacity(0.1), // Translucent background
-                            shape: const CircleBorder(),
-                            elevation: 5,
-                            shadowColor:
-                                Colors.black.withOpacity(0.2), // Soft shadow
-                          ),
-                          child: Text(
-                            number,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  Colors.white, // White text color like in iOS
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }

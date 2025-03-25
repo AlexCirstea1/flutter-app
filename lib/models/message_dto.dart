@@ -20,6 +20,12 @@ class MessageDTO {
   /// The RSA-encrypted AES key, base64-encoded, for the **recipient** to decrypt.
   final String encryptedKeyForRecipient;
 
+  /// The key version used for sender-side encryption (e.g., "v1", "v2").
+  final String senderKeyVersion;
+
+  /// The key version used for recipient-side encryption.
+  final String recipientKeyVersion;
+
   /// Timestamp of the message.
   final DateTime timestamp;
 
@@ -49,6 +55,8 @@ class MessageDTO {
     required this.encryptedKeyForSender,
     required this.encryptedKeyForRecipient,
     required this.timestamp,
+    required this.senderKeyVersion,
+    required this.recipientKeyVersion,
     this.isRead = false,
     this.readTimestamp,
     this.isDelivered = false,

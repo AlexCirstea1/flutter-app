@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:vaultx_app/pages/about_page.dart';
 import 'package:vaultx_app/pages/home_page.dart';
 import 'package:vaultx_app/pages/login_page.dart';
 import 'package:vaultx_app/pages/profile_page.dart';
@@ -86,6 +87,7 @@ class MyApp extends StatelessWidget {
         '/settings': (context) => const SettingsPage(),
         '/pin': (context) => const PinScreen(),
         '/set-pin': (context) => const SetPinPage(),
+        '/about': (context) => const AboutPage(),
       },
     );
   }

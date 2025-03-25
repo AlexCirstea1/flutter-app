@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:vaultx_app/config/logger_config.dart';
-
+import '../config/logger_config.dart';
 import '../config/environment.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
@@ -30,70 +29,72 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
+        // title: const Text('Create Account'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 2,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 40),
+            Text(
+              'Register to Response',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 40),
             TextField(
               controller: _usernameController,
               decoration: const InputDecoration(
                 labelText: 'Username',
-                hintText: 'Enter your username',
+                prefixIcon: Icon(Icons.person),
               ),
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: _emailController,
               decoration: const InputDecoration(
                 labelText: 'Email',
-                hintText: 'Enter your email',
+                prefixIcon: Icon(Icons.email),
               ),
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: _passwordController,
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Password',
-                hintText: 'Enter your password',
+                prefixIcon: Icon(Icons.lock),
               ),
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: _confirmPasswordController,
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Confirm Password',
-                hintText: 'Confirm your password',
+                prefixIcon: Icon(Icons.lock_outline),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
             _isLoading
-                ? const CircularProgressIndicator()
+                ? const Center(child: CircularProgressIndicator())
                 : ElevatedButton(
-                    onPressed: () {
-                      if (_passwordController.text ==
-                          _confirmPasswordController.text) {
-                        User newUser = User(
-                          username: _usernameController.text,
-                          email: _emailController.text,
-                          password: _passwordController.text,
-                        );
-                        _registerUser(newUser);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Passwords do not match')),
-                        );
-                      }
-                    },
-                    child: const Text('Register'),
-                  ),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: _register,
+              child: const Text('Register'),
+            ),
+            const SizedBox(height: 16),
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Already have an account? Login here'),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Already have an account? Log in'),
             ),
           ],
         ),
@@ -101,131 +102,82 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  void _register() {
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match!')),
+      );
+      return;
+    }
+
+    final newUser = User(
+      username: _usernameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    _registerUser(newUser);
+  }
+
   Future<void> _registerUser(User user) async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      bool isRegistered = await _authService.registerUser(
-          user.username, user.email, user.password);
-      if (isRegistered) {
-        _loginUser(user); // Automatically login after successful registration
+      bool success = await _authService.registerUser(user.username, user.email, user.password);
+      if (success) {
+        await _loginUser(user);
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration failed')),
-          );
-        }
+        _showError('Registration failed. Please try again.');
       }
-    } catch (error) {
-      LoggerService.logError('Error: $error');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An error occurred')),
-        );
-      }
+    } catch (e) {
+      LoggerService.logError('Registration error: $e');
+      _showError('An error occurred during registration.');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _loginUser(User user) async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
-      final response =
-          await _authService.loginUser(user.username, user.password);
-      LoggerService.logInfo('Login Response: $response');
-
-      if (response != null) {
-        final success =
-            await _authService.saveUserData(response, _storageService);
-        if (success) {
-          // Now we have an accessToken in secure storage. We can generate
-          // local keys & upload the public key to the backend.
-
-          await _generateAndUploadKeys();
-
-          // Finally, navigate to home
-          if (mounted) {
-            Navigator.pushNamed(context, '/home');
-          }
-        } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid response from server')),
-          );
-        }
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login failed')),
-        );
+      final response = await _authService.loginUser(user.username, user.password);
+      if (response != null && await _authService.saveUserData(response, _storageService)) {
+        await _generateAndUploadKeys();
+        if (mounted) Navigator.pushNamed(context, '/home');
+      } else {
+        _showError('Login failed after registration.');
       }
-    } catch (error, stackTrace) {
-      LoggerService.logError('Error during login: $error', error, stackTrace);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An error occurred during login')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  /// After we have an access token, generate RSA keys, store the private key,
-  /// and POST the public key to the server.
-  Future<void> _generateAndUploadKeys() async {
-    try {
-      // 1) Generate a self-signed cert or just raw keys
-      final (privatePem, certPem, publicPem) =
-          await KeyCertHelper.generateSelfSignedCert(
-        dn: {'CN': 'VaultXUser'}, // or user-specific info
-        keySize: 2048,
-        daysValid: 365,
-      );
-
-      // 2) Save private key in secure storage
-      await _storageService.savePrivateKey(privatePem);
-
-      // 3) Send the public key to backend
-      final accessToken = await _storageService.getAccessToken();
-      if (accessToken == null) {
-        LoggerService.logError(
-            'No access token found. Cannot upload public key.');
-        return;
-      }
-
-      await _uploadPublicKey(publicPem, accessToken);
-      LoggerService.logInfo('Public key uploaded successfully!');
     } catch (e) {
-      LoggerService.logError('Key generation/upload failed: $e');
+      LoggerService.logError('Login after registration error: $e');
+      _showError('An error occurred during login.');
     }
   }
 
-  Future<void> _uploadPublicKey(String publicKeyPem, String accessToken) async {
-    final url = Uri.parse('${Environment.apiBaseUrl}/user/publicKey');
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'text/plain',
-        'Authorization': 'Bearer $accessToken',
-      },
-      body: publicKeyPem, // raw PEM text
+  Future<void> _generateAndUploadKeys() async {
+    final (privatePem, _, publicPem) = await KeyCertHelper.generateSelfSignedCert(
+      dn: {'CN': _usernameController.text.trim()},
+      keySize: 2048,
+      daysValid: 365,
     );
+
+    final token = await _storageService.getAccessToken();
+    final response = await http.post(
+      Uri.parse('${Environment.apiBaseUrl}/user/publicKey'),
+      headers: {'Content-Type': 'text/plain', 'Authorization': 'Bearer $token'},
+      body: publicPem,
+    );
+
     if (response.statusCode == 200) {
-      LoggerService.logInfo('Public key posted to /user/publicKey');
-    } else {
-      LoggerService.logError(
-          'Failed to upload public key. Status: ${response.statusCode}, body: ${response.body}');
+      // Extract the key version from the response
+      final keyVersion = response.body;
+
+      // Save private key with version
+      await _storageService.savePrivateKey(keyVersion, privatePem);
+    }
+  }
+
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 

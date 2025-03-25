@@ -60,6 +60,24 @@ class AuthService {
     return false;
   }
 
+  // Register user
+  Future<bool> registerDummyUser(String password) async {
+    final url = Uri.parse('${Environment.apiBaseUrl}/auth/register/default');
+    try {
+      final response = await http.post(
+        url,
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: password
+      );
+      return response.statusCode == 200;
+    } catch (error) {
+      LoggerService.logError('Register error: $error');
+    }
+    return false;
+  }
+
   // Verify token
   Future<bool> verifyToken(String accessToken) async {
     final url = Uri.parse('${Environment.apiBaseUrl}/auth/verify');

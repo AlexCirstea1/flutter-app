@@ -156,25 +156,6 @@ class _ChatPageState extends State<ChatPage> {
     return '$hh:$mm';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Chat with ${widget.chatUsername}'),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _isInitializing || _isFetchingHistory
-                ? const Center(child: CircularProgressIndicator())
-                : _buildMessagesList(),
-          ),
-          SafeArea(child: _buildTextInput()),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMessagesList() {
     return ScrollablePositionedList.builder(
       itemScrollController: _itemScrollController,
@@ -189,111 +170,90 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildTextInput() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.grey.shade300, blurRadius: 5.0)],
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        title: Text('Chat with ${widget.chatUsername}'),
       ),
-      child: Row(
+      body: Column(
         children: [
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: TextField(
-                controller: _messageController,
-                decoration: const InputDecoration(
-                  hintText: 'Type your message...',
-                  border: InputBorder.none,
-                ),
-                textCapitalization: TextCapitalization.sentences,
-                onSubmitted: (_) => _sendMessage(),
-              ),
-            ),
+            child: _isInitializing || _isFetchingHistory
+                ? const Center(child: CircularProgressIndicator())
+                : _buildMessagesList(),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.blue,
-                shape: BoxShape.circle,
-              ),
-              padding: const EdgeInsets.all(12),
-              child: const Icon(Icons.send, color: Colors.white, size: 20),
-            ),
-          )
+          _buildTextInput(),
         ],
       ),
     );
   }
 
-  Widget _buildBubble(MessageDTO msg, bool isMine) {
-    // If the ChatService has ephemeral-decrypted text, it's in `msg.plaintext`.
-    // If not, fallback to `ciphertext` or some placeholder.
-    final displayText = msg.plaintext!.isNotEmpty
-        ? msg.plaintext
-        : (msg.ciphertext.isNotEmpty ? '[Encrypted]' : '[No content]');
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      child: Align(
-        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints:
-              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-            decoration: BoxDecoration(
-              color: isMine ? Colors.blue : Colors.grey[300],
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(12),
-                topRight: const Radius.circular(12),
-                bottomLeft: isMine ? const Radius.circular(12) : Radius.zero,
-                bottomRight: isMine ? Radius.zero : const Radius.circular(12),
+  Widget _buildTextInput() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Type your message...',
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  filled: true,
+                  fillColor: Colors.white12,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                ),
               ),
             ),
-            child: Column(
-              crossAxisAlignment:
-                  isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayText!,
-                  style: TextStyle(
-                    color: isMine ? Colors.white : Colors.black,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _formatTime(msg.timestamp),
-                      style: TextStyle(
-                        color: isMine ? Colors.white70 : Colors.black54,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    if (isMine)
-                      Icon(
-                        msg.isRead ? Icons.done_all : Icons.done,
-                        size: 16,
-                        color: Colors.white70,
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+            const SizedBox(width: 8),
+            CircleAvatar(
+              backgroundColor: Colors.blueAccent,
+              child: IconButton(
+                icon: const Icon(Icons.send, color: Colors.white),
+                onPressed: _sendMessage,
+              ),
+            )
+          ],
         ),
       ),
     );
   }
+
+  Widget _buildBubble(MessageDTO msg, bool isMine) {
+    final displayText = msg.plaintext ?? '[Encrypted]';
+    return Align(
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isMine ? Colors.blueAccent : Colors.white10,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(displayText, style: TextStyle(color: isMine ? Colors.white : Colors.white70, fontSize: 16)),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_formatTime(msg.timestamp), style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                if (isMine) ...[
+                  const SizedBox(width: 4),
+                  Icon(msg.isRead ? Icons.done_all : Icons.done, size: 16, color: Colors.white38),
+                ]
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 }

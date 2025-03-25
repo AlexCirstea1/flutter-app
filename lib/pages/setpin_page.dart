@@ -23,58 +23,102 @@ class _SetPinPageState extends State<SetPinPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Set Your PIN'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            TextField(
-              controller: _pinController,
-              obscureText: true,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                labelText: 'PIN',
-                hintText: 'Enter your desired PIN',
-              ),
-            ),
-            TextField(
-              controller: _confirmPinController,
-              obscureText: true,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                labelText: 'Confirm PIN',
-                hintText: 'Re-enter your PIN',
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (_errorMessage != null)
-              Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            const SizedBox(height: 10),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : Column(
-                    children: [
-                      ElevatedButton(
-                        onPressed: _savePin,
-                        child: const Text('Save PIN'),
-                      ),
-                    ],
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                _buildStyledTextField(
+                  controller: _pinController,
+                  label: 'PIN',
+                  hint: 'Enter a 6-digit PIN',
+                ),
+                const SizedBox(height: 16),
+                _buildStyledTextField(
+                  controller: _confirmPinController,
+                  label: 'Confirm PIN',
+                  hint: 'Re-enter your PIN',
+                ),
+                const SizedBox(height: 24),
+                if (_errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.redAccent),
+                    ),
                   ),
-          ],
+                _isLoading
+                    ? const CircularProgressIndicator()
+                    : SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _savePin,
+                          icon: const Icon(Icons.lock),
+                          label: const Text('Save PIN'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 16, horizontal: 24),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
+  Widget _buildStyledTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: true,
+      maxLength: 6,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white38),
+        counterText: '',
+        enabledBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: Colors.white24),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: Colors.white70),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        fillColor: Colors.white10,
+        filled: true,
+      ),
+    );
+  }
+
   Future<void> _savePin() async {
-    // Ensure that the PIN is exactly 6 digits
     if (_pinController.text.length != 6 ||
         _confirmPinController.text.length != 6) {
       setState(() {
@@ -83,7 +127,6 @@ class _SetPinPageState extends State<SetPinPage> {
       return;
     }
 
-    // Check if both PINs match
     if (_pinController.text != _confirmPinController.text) {
       setState(() {
         _errorMessage = 'Pins do not match!';
@@ -93,7 +136,7 @@ class _SetPinPageState extends State<SetPinPage> {
 
     setState(() {
       _isLoading = true;
-      _errorMessage = null; // Reset error message
+      _errorMessage = null;
     });
 
     try {
@@ -117,7 +160,7 @@ class _SetPinPageState extends State<SetPinPage> {
     } catch (error) {
       LoggerService.logError('Error saving PIN: $error');
       setState(() {
-        _errorMessage = 'An error occurred. Please try again later.';
+        _errorMessage = 'An error occurred. Please try again.';
       });
     } finally {
       setState(() {
