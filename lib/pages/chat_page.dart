@@ -9,6 +9,24 @@ import '../services/chat_service.dart';
 import '../services/storage_service.dart';
 import '../services/websocket_service.dart';
 
+/// We'll define an internal enum to label whether an item is a date header or a normal message.
+enum ChatItemType { dateHeader, message }
+
+/// We'll define a small data class so our list can hold either a date or a message.
+class _ChatListItem {
+  final ChatItemType type;
+  final String? dateLabel;       // used if type = dateHeader
+  final MessageDTO? message;     // used if type = message
+
+  _ChatListItem.dateHeader(this.dateLabel)
+      : type = ChatItemType.dateHeader,
+        message = null;
+
+  _ChatListItem.message(this.message)
+      : type = ChatItemType.message,
+        dateLabel = null;
+}
+
 class ChatPage extends StatefulWidget {
   final String chatUserId;
   final String chatUsername;
@@ -28,7 +46,7 @@ class _ChatPageState extends State<ChatPage> {
 
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
-      ItemPositionsListener.create();
+  ItemPositionsListener.create();
 
   ChatService? _chatService;
   bool _isInitializing = true;
@@ -52,8 +70,7 @@ class _ChatPageState extends State<ChatPage> {
         LoggerService.logError('Current user ID is null');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Unable to retrieve user information')),
+            const SnackBar(content: Text('Unable to retrieve user information')),
           );
           Navigator.pop(context);
         }
@@ -139,7 +156,6 @@ class _ChatPageState extends State<ChatPage> {
       onEphemeralAdded: (MessageDTO ephemeral) {
         if (!mounted) return;
         setState(() {
-          // ephemeral plaintext message
           _messages.add(ephemeral);
           _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
         });
@@ -150,42 +166,193 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  /// A helper to decide how to label a date header
+  String _formatDateHeader(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final msgDay = DateTime(dt.year, dt.month, dt.day);
+    final diff = msgDay.difference(today).inDays;
+
+    if (diff == 0) {
+      return 'Today';
+    } else if (diff == -1) {
+      return 'Yesterday';
+    } else {
+      // fallback to a more general format, e.g. "Oct 5, 2025"
+      // Or your own style
+      return "${_monthName(dt.month)} ${dt.day}, ${dt.year}";
+    }
+  }
+
+  String _monthName(int month) {
+    switch (month) {
+      case 1:
+        return "Jan";
+      case 2:
+        return "Feb";
+      case 3:
+        return "Mar";
+      case 4:
+        return "Apr";
+      case 5:
+        return "May";
+      case 6:
+        return "Jun";
+      case 7:
+        return "Jul";
+      case 8:
+        return "Aug";
+      case 9:
+        return "Sep";
+      case 10:
+        return "Oct";
+      case 11:
+        return "Nov";
+      case 12:
+        return "Dec";
+      default:
+        return "$month";
+    }
+  }
+
+  /// Build a combined list of items: day separator (header) + messages
+  List<_ChatListItem> _buildChatItems() {
+    final items = <_ChatListItem>[];
+    DateTime? lastDay; // we track the last day we inserted
+
+    for (var i = 0; i < _messages.length; i++) {
+      final m = _messages[i];
+      // 'Day' is year-month-day only
+      final msgDay = DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
+
+      // If day changed (or first message), we insert a date-header item
+      if (lastDay == null ||
+          msgDay.year != lastDay.year ||
+          msgDay.month != lastDay.month ||
+          msgDay.day != lastDay.day) {
+        items.add(_ChatListItem.dateHeader(_formatDateHeader(m.timestamp)));
+        lastDay = msgDay;
+      }
+
+      // Then the message item
+      items.add(_ChatListItem.message(m));
+    }
+
+    return items;
+  }
+
+  Widget _buildMessagesList() {
+    final chatItems = _buildChatItems();
+
+    return ScrollablePositionedList.builder(
+      itemScrollController: _itemScrollController,
+      itemPositionsListener: _itemPositionsListener,
+      // Jump to last item
+      initialScrollIndex: chatItems.isEmpty ? 0 : chatItems.length - 1,
+      itemCount: chatItems.length,
+      itemBuilder: (ctx, i) {
+        final item = chatItems[i];
+        if (item.type == ChatItemType.dateHeader) {
+          // Return a 'date divider' row
+          return _buildDateDivider(item.dateLabel ?? '');
+        } else {
+          // Return the actual message bubble
+          final msg = item.message!;
+          final isMine = (msg.sender == _currentUserId);
+          return _buildBubble(msg, isMine);
+        }
+      },
+    );
+  }
+
+  Widget _buildDateDivider(String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Horizontal line on left
+            Expanded(
+              child: Container(
+                height: 1,
+                color: Colors.white24,
+                margin: const EdgeInsets.only(right: 8),
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            // Horizontal line on right
+            Expanded(
+              child: Container(
+                height: 1,
+                color: Colors.white24,
+                margin: const EdgeInsets.only(left: 8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  /// Utility to format hours/minutes
   String _formatTime(DateTime dt) {
     final hh = dt.hour.toString().padLeft(2, '0');
     final mm = dt.minute.toString().padLeft(2, '0');
     return '$hh:$mm';
   }
 
-  Widget _buildMessagesList() {
-    return ScrollablePositionedList.builder(
-      itemScrollController: _itemScrollController,
-      itemPositionsListener: _itemPositionsListener,
-      initialScrollIndex: _messages.isEmpty ? 0 : _messages.length - 1,
-      itemCount: _messages.length,
-      itemBuilder: (ctx, i) {
-        final msg = _messages[i];
-        final isMine = (msg.sender == _currentUserId);
-        return _buildBubble(msg, isMine);
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.secondary,
-        title: Text('Chat with ${widget.chatUsername}'),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _isInitializing || _isFetchingHistory
-                ? const Center(child: CircularProgressIndicator())
-                : _buildMessagesList(),
-          ),
-          _buildTextInput(),
-        ],
+  Widget _buildBubble(MessageDTO msg, bool isMine) {
+    final displayText = msg.plaintext ?? '[Encrypted]';
+    return Align(
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isMine ? Colors.blueAccent : Colors.white10,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              displayText,
+              style: TextStyle(
+                color: isMine ? Colors.white : Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatTime(msg.timestamp),
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+                if (isMine) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    msg.isRead ? Icons.done_all : Icons.done,
+                    size: 16,
+                    color: Colors.white38,
+                  ),
+                ]
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -205,7 +372,10 @@ class _ChatPageState extends State<ChatPage> {
                   hintStyle: const TextStyle(color: Colors.white38),
                   filled: true,
                   fillColor: Colors.white12,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
             ),
@@ -223,37 +393,24 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildBubble(MessageDTO msg, bool isMine) {
-    final displayText = msg.plaintext ?? '[Encrypted]';
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isMine ? Colors.blueAccent : Colors.white10,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(displayText, style: TextStyle(color: isMine ? Colors.white : Colors.white70, fontSize: 16)),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(_formatTime(msg.timestamp), style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                if (isMine) ...[
-                  const SizedBox(width: 4),
-                  Icon(msg.isRead ? Icons.done_all : Icons.done, size: 16, color: Colors.white38),
-                ]
-              ],
-            ),
-          ],
-        ),
+  @override
+  Widget build(BuildContext context) {
+    final isBusy = _isInitializing || _isFetchingHistory;
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        title: Text('Chat with ${widget.chatUsername}'),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: isBusy
+                ? const Center(child: CircularProgressIndicator())
+                : _buildMessagesList(),
+          ),
+          _buildTextInput(),
+        ],
       ),
     );
   }
-
 }

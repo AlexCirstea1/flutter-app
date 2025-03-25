@@ -60,8 +60,7 @@ class AuthService {
     return false;
   }
 
-  // Register user
-  Future<bool> registerDummyUser(String password) async {
+  Future<Map<String, dynamic>?> registerDummyUser(String password) async {
     final url = Uri.parse('${Environment.apiBaseUrl}/auth/register/default');
     try {
       final response = await http.post(
@@ -69,13 +68,18 @@ class AuthService {
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
-        body: password
+        body: password,
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        LoggerService.logError(
+            'Register error: status code ${response.statusCode}');
+      }
     } catch (error) {
       LoggerService.logError('Register error: $error');
     }
-    return false;
+    return null;
   }
 
   // Verify token

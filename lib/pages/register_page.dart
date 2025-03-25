@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../config/logger_config.dart';
@@ -92,8 +95,20 @@ class _RegisterPageState extends State<RegisterPage> {
               child: const Text('Register'),
             ),
             const SizedBox(height: 16),
+            // Dummy registration button
+            TextButton(
+              onPressed: _registerDummyUser,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.greenAccent,
+              ),
+              child: const Text('Register as Anonymous'),
+            ),
+            const SizedBox(height: 1),
             TextButton(
               onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white70,
+              ),
               child: const Text('Already have an account? Log in'),
             ),
           ],
@@ -123,7 +138,8 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = true);
 
     try {
-      bool success = await _authService.registerUser(user.username, user.email, user.password);
+      bool success = await _authService.registerUser(
+          user.username, user.email, user.password);
       if (success) {
         await _loginUser(user);
       } else {
@@ -139,8 +155,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> _loginUser(User user) async {
     try {
-      final response = await _authService.loginUser(user.username, user.password);
-      if (response != null && await _authService.saveUserData(response, _storageService)) {
+      final response =
+      await _authService.loginUser(user.username, user.password);
+      if (response != null &&
+          await _authService.saveUserData(response, _storageService)) {
         await _generateAndUploadKeys();
         if (mounted) Navigator.pushNamed(context, '/home');
       } else {
@@ -162,7 +180,10 @@ class _RegisterPageState extends State<RegisterPage> {
     final token = await _storageService.getAccessToken();
     final response = await http.post(
       Uri.parse('${Environment.apiBaseUrl}/user/publicKey'),
-      headers: {'Content-Type': 'text/plain', 'Authorization': 'Bearer $token'},
+      headers: {
+        'Content-Type': 'text/plain',
+        'Authorization': 'Bearer $token'
+      },
       body: publicPem,
     );
 
@@ -175,9 +196,50 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  // New method for dummy registration
+  Future<void> _registerDummyUser() async {
+    // Generate a random password (adjust length as desired)
+    final dummyPassword = _generateRandomPassword(12);
+    setState(() => _isLoading = true);
+
+    try {
+      // Call the dummy registration endpoint.
+      // Here we assume that registerDummyUser returns the parsed JSON as Map<String, dynamic>
+      final Map<String, dynamic>? userJson =
+      await _authService.registerDummyUser(dummyPassword);
+      if (userJson != null) {
+        // Build a dummy user using the returned username and email,
+        // and the dummy password we generated.
+        final dummyUser = User(
+          username: userJson['username'] as String,
+          email: userJson['email'] as String,
+          password: dummyPassword,
+        );
+        await _loginUser(dummyUser);
+      } else {
+        _showError('Dummy registration failed.');
+      }
+    } catch (e) {
+      LoggerService.logError('Dummy registration error: $e');
+      _showError('An error occurred during dummy registration.');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // Helper to generate a random password
+  String _generateRandomPassword(int length) {
+    const charset =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
+        .join();
+  }
+
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     }
   }
 

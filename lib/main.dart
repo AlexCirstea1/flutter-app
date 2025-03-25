@@ -9,7 +9,7 @@ import 'package:vaultx_app/pages/settings_page.dart';
 import 'package:vaultx_app/pages/splash_screen.dart';
 import 'package:vaultx_app/widget/pin_screen.dart';
 
-// Splash screen to check token state
+final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 
 void main() {
   runApp(const MyApp());
@@ -78,6 +78,7 @@ class MyApp extends StatelessWidget {
       ),
       themeMode: ThemeMode.dark,
       initialRoute: '/',
+      navigatorObservers: [routeObserver],
       routes: {
         '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginPage(),

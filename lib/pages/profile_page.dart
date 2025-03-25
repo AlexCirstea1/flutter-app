@@ -142,11 +142,25 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 ElevatedButton.icon(
                   onPressed: () => Navigator.pushNamed(context, '/set-pin'),
-                  icon: Icon(_hasPin ? Icons.refresh : Icons.lock),
+                  icon: Icon(_hasPin ? Icons.refresh : Icons.pin),
                   label: Text(_hasPin ? 'Reset PIN' : 'Set PIN'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.primary,
-                    foregroundColor: theme.onPrimary,
+                    backgroundColor: theme.secondary,
+                    foregroundColor: theme.onSecondary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _rotateKeys,
+                  icon: const Icon(Icons.key),
+                  label: const Text('Rotate Encryption Keys'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.secondary,
+                    foregroundColor: theme.onSecondary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -161,20 +175,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueGrey,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _rotateKeys,
-                  icon: const Icon(Icons.security_update),
-                  label: const Text('Rotate Encryption Keys'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.secondary,
-                    foregroundColor: theme.onSecondary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),

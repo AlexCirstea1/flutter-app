@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../config/logger_config.dart';
+import '../main.dart';
 import '../models/chat_history_dto.dart';
 import '../pages/chat_page.dart';
 import '../pages/select_user_page.dart';
@@ -14,14 +15,14 @@ import '../services/storage_service.dart';
 import '../services/websocket_service.dart';
 import '../widget/bottom_nav_bar.dart';
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatefulWidget{
   const MyHomePage({Key? key}) : super(key: key);
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with RouteAware {
   StreamSubscription<Map<String, dynamic>>? _messageSubscription;
   final StorageService _storageService = StorageService();
   final AuthService _authService = AuthService();
@@ -51,6 +52,27 @@ class _MyHomePageState extends State<MyHomePage> {
       _initializeWebSocket();
       _loadUserAvatar();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe to route changes
+    routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    _messageSubscription?.cancel();
+    super.dispose();
+  }
+
+  // Called when coming back to this page
+  @override
+  void didPopNext() {
+    // When the user navigates back to the home page, refresh the chat history.
+    _fetchChatHistory();
   }
 
   Future<void> _loadUsername() async {
@@ -243,6 +265,22 @@ class _MyHomePageState extends State<MyHomePage> {
         final chat = _chatHistory[i];
         final lastMsg = chat.messages.isNotEmpty ? chat.messages.last : null;
 
+        // Format timestamp
+        String timeString = '';
+        if (lastMsg?.timestamp != null) {
+          final now = DateTime.now();
+          final timestamp = lastMsg!.timestamp!;
+          final difference = now.difference(timestamp);
+
+          if (difference.inDays > 0) {
+            // Show date for older messages
+            timeString = '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+          } else {
+            // Show time for today's messages
+            timeString = '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+          }
+        }
+
         return ListTile(
           leading: FutureBuilder<Uint8List?>(
             future: _fetchAvatar(chat.participant),
@@ -261,13 +299,27 @@ class _MyHomePageState extends State<MyHomePage> {
                 : 'User ${chat.participant}',
             style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
           ),
-          subtitle: Text(
-            (lastMsg?.plaintext?.isNotEmpty ?? false)
-                ? lastMsg!.plaintext!
-                : '[Encrypted message]',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white60),
+          subtitle: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  (lastMsg?.plaintext?.isNotEmpty ?? false)
+                      ? lastMsg!.plaintext!
+                      : '[Encrypted message]',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white60),
+                ),
+              ),
+              if (timeString.isNotEmpty)
+                Text(
+                  timeString,
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 12,
+                  ),
+                ),
+            ],
           ),
           trailing: chat.unreadCount > 0
               ? Container(
@@ -296,7 +348,7 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 2,
         leading: _buildUserAvatar(),
-        title: Text('Hello, $_username', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('Hello, $_username', style: const TextStyle(fontWeight: FontWeight.w400)),
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
@@ -314,12 +366,5 @@ class _MyHomePageState extends State<MyHomePage> {
         onTap: _onItemTapped,
       ),
     );
-  }
-
-
-  @override
-  void dispose() {
-    _messageSubscription?.cancel();
-    super.dispose();
   }
 }

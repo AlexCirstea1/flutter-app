@@ -111,16 +111,20 @@ class WebSocketService {
   void _handleIncomingFrame(StompFrame frame, {required String tag}) {
     if (frame.body == null) return;
     LoggerService.logInfo("Received [$tag]: ${frame.body}");
-
     try {
-      final Map<String, dynamic> data = jsonDecode(frame.body!);
-      // Insert a 'type' or 'tag' so the UI knows how to handle it
-      data['type'] = tag;
+      final data = jsonDecode(frame.body!);
+
+      // Instead of forcing data['type'] = tag,
+      // we only set it if it's missing. That way your Java code
+      // (which sets "INCOMING_MESSAGE" or "SENT_MESSAGE") remains intact:
+      data['type'] ??= tag;
+
       _messageController.add(data);
     } catch (e) {
       LoggerService.logError('Error parsing STOMP frame ($tag)', e);
     }
   }
+
 
   /// Send a generic JSON-encodable message to a STOMP destination
   void sendMessage(String destination, Map<String, dynamic> message) {
