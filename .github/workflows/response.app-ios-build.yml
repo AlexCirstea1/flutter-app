@@ -1,0 +1,72 @@
+name: ResponseApp iOS Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version'
+        required: true
+        default: '1.0.0'
+      release_notes:
+        description: 'Release notes'
+        required: false
+        default: 'New app release'
+
+env:
+  APP_NAME: ResponseApp
+  BUILD_TYPE: release
+
+jobs:
+  build-ios:
+    name: 📱 iOS Build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          architecture: x64
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Setup CocoaPods cache
+        uses: actions/cache@v3
+        with:
+          path: ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Update CocoaPods repo
+        run: pod repo update
+        working-directory: ios
+
+      - name: Build iOS app
+        run: flutter build ios --${{ env.BUILD_TYPE }} --no-codesign
+
+      - name: Create Payload directory
+        run: mkdir Payload
+        working-directory: build/ios/iphoneos
+
+      - name: Move app to Payload directory
+        run: mv Runner.app/ Payload
+        working-directory: build/ios/iphoneos
+
+      - name: Create IPA file
+        run: zip -qq -r -9 ${{ env.APP_NAME }}_${{ github.event.inputs.version }}.ipa Payload
+        working-directory: build/ios/iphoneos
+
+      - name: Upload IPA to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/ios/iphoneos/${{ env.APP_NAME }}_${{ github.event.inputs.version }}.ipa
+          tag: v${{ github.event.inputs.version }}
+          overwrite: true
+          release_name: "${{ env.APP_NAME }} v${{ github.event.inputs.version }}"
+          body: "${{ github.event.inputs.release_notes }}"
