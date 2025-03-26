@@ -9,6 +9,8 @@ import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../utils/key_cert_helper.dart';
+import '../widget/consent_dialog.dart';
+import 'learn_more_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -46,8 +48,8 @@ class _RegisterPageState extends State<RegisterPage> {
             Text(
               'Register to Response',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
@@ -88,12 +90,12 @@ class _RegisterPageState extends State<RegisterPage> {
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              onPressed: _register,
-              child: const Text('Register'),
-            ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: _register,
+                    child: const Text('Register'),
+                  ),
             const SizedBox(height: 16),
             // Dummy registration button
             TextButton(
@@ -156,11 +158,42 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _loginUser(User user) async {
     try {
       final response =
-      await _authService.loginUser(user.username, user.password);
+          await _authService.loginUser(user.username, user.password);
       if (response != null &&
           await _authService.saveUserData(response, _storageService)) {
         await _generateAndUploadKeys();
-        if (mounted) Navigator.pushNamed(context, '/home');
+
+        // Show the consent dialog after registration is complete.
+        final consentGiven = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false, // Force the user to decide.
+          builder: (context) => ConsentDialog(
+            onConsentGiven: () {
+              Navigator.of(context).pop(true);
+            },
+            onConsentDenied: () {
+              Navigator.of(context).pop(false);
+            },
+            onLearnMore: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LearnMorePage()),
+              );
+            },
+          ),
+        );
+
+        // Default to false if the dialog is dismissed unexpectedly.
+        final bool consent = consentGiven ?? false;
+
+        // Send the consent decision to the backend.
+        await _updateBlockchainConsent(consent);
+
+        // Save the decision locally (for example, for later use in the app).
+        await _storageService.saveInStorage(
+            'blockchainConsent', consent ? 'true' : 'false');
+
+        // Proceed to home page.
+        Navigator.pushNamed(context, '/home');
       } else {
         _showError('Login failed after registration.');
       }
@@ -170,8 +203,31 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  /// Sends the blockchain consent decision to the backend.
+  Future<void> _updateBlockchainConsent(bool consent) async {
+    final token = await _storageService.getAccessToken();
+    if (token == null) {
+      throw Exception('Authentication required');
+    }
+
+    final url = Uri.parse(
+        '${Environment.apiBaseUrl}/user/blockchain-consent?consent=$consent');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Failed to update consent status: ${response.statusCode}');
+    }
+  }
+
   Future<void> _generateAndUploadKeys() async {
-    final (privatePem, _, publicPem) = await KeyCertHelper.generateSelfSignedCert(
+    final (privatePem, _, publicPem) =
+        await KeyCertHelper.generateSelfSignedCert(
       dn: {'CN': _usernameController.text.trim()},
       keySize: 2048,
       daysValid: 365,
@@ -180,10 +236,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final token = await _storageService.getAccessToken();
     final response = await http.post(
       Uri.parse('${Environment.apiBaseUrl}/user/publicKey'),
-      headers: {
-        'Content-Type': 'text/plain',
-        'Authorization': 'Bearer $token'
-      },
+      headers: {'Content-Type': 'text/plain', 'Authorization': 'Bearer $token'},
       body: publicPem,
     );
 
@@ -206,7 +259,7 @@ class _RegisterPageState extends State<RegisterPage> {
       // Call the dummy registration endpoint.
       // Here we assume that registerDummyUser returns the parsed JSON as Map<String, dynamic>
       final Map<String, dynamic>? userJson =
-      await _authService.registerDummyUser(dummyPassword);
+          await _authService.registerDummyUser(dummyPassword);
       if (userJson != null) {
         // Build a dummy user using the returned username and email,
         // and the dummy password we generated.

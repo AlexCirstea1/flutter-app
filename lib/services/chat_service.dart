@@ -227,15 +227,16 @@ class ChatService {
   /// If you keep an in-memory [messages] list for the current chat, use this method
   /// to handle a newly arrived or updated message from your WebSocket/stomp subscription.
   void handleIncomingOrSentMessage(
-      Map<String, dynamic> rawMsg,
-      String currentUserId,
-      VoidCallback onMessagesUpdated,
-      ) async {
+    Map<String, dynamic> rawMsg,
+    String currentUserId,
+    VoidCallback onMessagesUpdated,
+  ) async {
     final type = rawMsg['type'] ?? '';
     final sender = rawMsg['sender'] ?? '';
     final recipient = rawMsg['recipient'] ?? '';
 
-    LoggerService.logInfo("Processing message type=$type, sender=$sender, recipient=$recipient");
+    LoggerService.logInfo(
+        "Processing message type=$type, sender=$sender, recipient=$recipient");
 
     // If the message doesn't involve me at all, skip
     if (![sender, recipient].contains(currentUserId)) {
@@ -270,18 +271,21 @@ class ChatService {
     final bool isRecipient = (newMsg.recipient == currentUserId);
     final bool isSender = (newMsg.sender == currentUserId);
 
-    LoggerService.logInfo("Message processing - isRecipient=$isRecipient, isSender=$isSender, hasClientTempId=${newMsg.clientTempId != null}");
+    LoggerService.logInfo(
+        "Message processing - isRecipient=$isRecipient, isSender=$isSender, hasClientTempId=${newMsg.clientTempId != null}");
 
     // For sender messages with a temp ID, try to find the ephemeral message first
     if (isSender && newMsg.clientTempId != null) {
       final idx = messages.indexWhere((m) => m.id == newMsg.clientTempId);
       if (idx >= 0) {
-        LoggerService.logInfo("Found ephemeral message at index $idx with plaintext: ${messages[idx].plaintext}");
+        LoggerService.logInfo(
+            "Found ephemeral message at index $idx with plaintext: ${messages[idx].plaintext}");
         // Preserve the plaintext from our ephemeral message
         final existingPlaintext = messages[idx].plaintext;
         messages[idx] = newMsg;
         messages[idx].plaintext = existingPlaintext; // Keep ephemeral plaintext
-        LoggerService.logInfo("Updated ephemeral message with plaintext: ${messages[idx].plaintext}");
+        LoggerService.logInfo(
+            "Updated ephemeral message with plaintext: ${messages[idx].plaintext}");
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
         onMessagesUpdated();
         return;
@@ -290,10 +294,11 @@ class ChatService {
 
     // Decrypt the message if needed
     final versionToUse =
-    isRecipient ? newMsg.recipientKeyVersion : newMsg.senderKeyVersion;
+        isRecipient ? newMsg.recipientKeyVersion : newMsg.senderKeyVersion;
     final myPrivateKey = await storageService.getPrivateKey(versionToUse);
 
-    LoggerService.logInfo("Attempting decryption with keyVersion=$versionToUse, hasPrivateKey=${myPrivateKey != null}, hasCiphertext=${newMsg.ciphertext.isNotEmpty}, hasIV=${newMsg.iv.isNotEmpty}");
+    LoggerService.logInfo(
+        "Attempting decryption with keyVersion=$versionToUse, hasPrivateKey=${myPrivateKey != null}, hasCiphertext=${newMsg.ciphertext.isNotEmpty}, hasIV=${newMsg.iv.isNotEmpty}");
 
     if (myPrivateKey != null &&
         newMsg.ciphertext.isNotEmpty &&
@@ -306,7 +311,8 @@ class ChatService {
             "Decrypting ephemeralKeyEnc => $ephemeralKeyEnc, version=$versionToUse, length=${ephemeralKeyEnc.length}");
 
         if (ephemeralKeyEnc.isNotEmpty) {
-          final aesKeyB64 = CryptoHelper.rsaDecrypt(ephemeralKeyEnc, myPrivateKey);
+          final aesKeyB64 =
+              CryptoHelper.rsaDecrypt(ephemeralKeyEnc, myPrivateKey);
           final aesKeyBytes = base64.decode(aesKeyB64);
 
           final ivBytes = base64.decode(newMsg.iv);
@@ -315,14 +321,15 @@ class ChatService {
           final keyObj = encrypt.Key(aesKeyBytes);
           final ivObj = encrypt.IV(ivBytes);
           final encrypter =
-          encrypt.Encrypter(encrypt.AES(keyObj, mode: encrypt.AESMode.cbc));
+              encrypt.Encrypter(encrypt.AES(keyObj, mode: encrypt.AESMode.cbc));
           final plain = encrypter.decrypt(
             encrypt.Encrypted(cipherBytes),
             iv: ivObj,
           );
           newMsg.plaintext = plain;
 
-          LoggerService.logInfo("After decryption attempt, plaintext=${newMsg.plaintext}");
+          LoggerService.logInfo(
+              "After decryption attempt, plaintext=${newMsg.plaintext}");
         } else {
           LoggerService.logError("Empty ephemeralKeyEnc, cannot decrypt");
         }
@@ -336,16 +343,19 @@ class ChatService {
     // Normal add/update logic
     final existIdx = messages.indexWhere((m) => m.id == newMsg.id);
     if (existIdx >= 0) {
-      LoggerService.logInfo("Updating existing message at index $existIdx, existing plaintext=${messages[existIdx].plaintext}");
+      LoggerService.logInfo(
+          "Updating existing message at index $existIdx, existing plaintext=${messages[existIdx].plaintext}");
       // Don't overwrite plaintext if we already have it
       final existingPlaintext = messages[existIdx].plaintext;
       if (existingPlaintext != null && existingPlaintext.isNotEmpty) {
         newMsg.plaintext = existingPlaintext;
       }
       messages[existIdx] = newMsg;
-      LoggerService.logInfo("After update, message plaintext=${messages[existIdx].plaintext}");
+      LoggerService.logInfo(
+          "After update, message plaintext=${messages[existIdx].plaintext}");
     } else {
-      LoggerService.logInfo("Adding new message with plaintext=${newMsg.plaintext}");
+      LoggerService.logInfo(
+          "Adding new message with plaintext=${newMsg.plaintext}");
       messages.add(newMsg);
     }
 

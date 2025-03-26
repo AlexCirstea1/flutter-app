@@ -125,7 +125,6 @@ class WebSocketService {
     }
   }
 
-
   /// Send a generic JSON-encodable message to a STOMP destination
   void sendMessage(String destination, Map<String, dynamic> message) {
     if (_stompClient != null && _stompClient!.connected) {

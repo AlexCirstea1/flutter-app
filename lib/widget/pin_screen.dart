@@ -174,7 +174,12 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
               animation: _wiggleController,
               builder: (context, child) {
                 return Transform.translate(
-                  offset: Offset(_wiggleAnimation.value * (_wiggleController.status == AnimationStatus.forward ? 1 : 0), 0),
+                  offset: Offset(
+                      _wiggleAnimation.value *
+                          (_wiggleController.status == AnimationStatus.forward
+                              ? 1
+                              : 0),
+                      0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(6, (index) {
@@ -191,17 +196,20 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
                                 width: 16,
                                 height: 16,
                                 decoration: BoxDecoration(
-                                  color: filled ? Colors.white70 : Colors.transparent,
+                                  color: filled
+                                      ? Colors.white70
+                                      : Colors.transparent,
                                   border: Border.all(color: Colors.white30),
                                   shape: BoxShape.circle,
                                   boxShadow: filled
                                       ? [
-                                    BoxShadow(
-                                      color: Colors.blueAccent.withOpacity(0.4),
-                                      blurRadius: 8,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
+                                          BoxShadow(
+                                            color: Colors.blueAccent
+                                                .withOpacity(0.4),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
                                       : [],
                                 ),
                               ),
@@ -229,7 +237,7 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
                 _buildNumberRow(["1", "2", "3"]),
                 _buildNumberRow(["4", "5", "6"]),
                 _buildNumberRow(["7", "8", "9"]),
-                _buildNumberRow(["", "0",  "⌫" ]),
+                _buildNumberRow(["", "0", "⌫"]),
               ],
             ),
             const Spacer(),

@@ -15,7 +15,7 @@ import '../services/storage_service.dart';
 import '../services/websocket_service.dart';
 import '../widget/bottom_nav_bar.dart';
 
-class MyHomePage extends StatefulWidget{
+class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key}) : super(key: key);
 
   @override
@@ -123,6 +123,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     // Rebuild UI
     setState(() {});
   }
+
   void _markAllAsReadStomp() {
     final unread = _chatService!.messages
         .where((m) => m.recipient == _currentUserId && !m.isRead)
@@ -139,7 +140,6 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     final webSocketService = WebSocketService();
     webSocketService.sendMessage('/app/markAsRead', payload);
   }
-
 
   void _handleReadReceipt(Map<String, dynamic> data) {
     if (!mounted) return;
@@ -239,7 +239,8 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
       padding: const EdgeInsets.only(left: 16.0),
       child: _userAvatar != null
           ? CircleAvatar(backgroundImage: MemoryImage(_userAvatar!))
-          : const CircleAvatar(child: Icon(Icons.person, color: Colors.white70)),
+          : const CircleAvatar(
+              child: Icon(Icons.person, color: Colors.white70)),
     );
   }
 
@@ -260,7 +261,8 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _chatHistory.length,
-      separatorBuilder: (_, __) => const Divider(color: Colors.white12, indent: 72, height: 1),
+      separatorBuilder: (_, __) =>
+          const Divider(color: Colors.white12, indent: 72, height: 1),
       itemBuilder: (ctx, i) {
         final chat = _chatHistory[i];
         final lastMsg = chat.messages.isNotEmpty ? chat.messages.last : null;
@@ -274,10 +276,12 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
 
           if (difference.inDays > 0) {
             // Show date for older messages
-            timeString = '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+            timeString =
+                '${timestamp.day}/${timestamp.month}/${timestamp.year}';
           } else {
             // Show time for today's messages
-            timeString = '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+            timeString =
+                '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
           }
         }
 
@@ -286,18 +290,23 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
             future: _fetchAvatar(chat.participant),
             builder: (_, snap) {
               return snap.connectionState == ConnectionState.waiting
-                  ? const CircleAvatar(child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const CircleAvatar(
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : CircleAvatar(
-                backgroundImage: snap.hasData ? MemoryImage(snap.data!) : null,
-                child: snap.hasData ? null : const Icon(Icons.person, color: Colors.white70),
-              );
+                      backgroundImage:
+                          snap.hasData ? MemoryImage(snap.data!) : null,
+                      child: snap.hasData
+                          ? null
+                          : const Icon(Icons.person, color: Colors.white70),
+                    );
             },
           ),
           title: Text(
             chat.participantUsername.isNotEmpty
                 ? chat.participantUsername
                 : 'User ${chat.participant}',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.white),
           ),
           subtitle: Row(
             children: [
@@ -323,16 +332,17 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
           ),
           trailing: chat.unreadCount > 0
               ? Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.blueAccent,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '${chat.unreadCount}',
-              style: const TextStyle(fontSize: 12, color: Colors.white),
-            ),
-          )
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.blueAccent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${chat.unreadCount}',
+                    style: const TextStyle(fontSize: 12, color: Colors.white),
+                  ),
+                )
               : const SizedBox.shrink(),
           onTap: () => _navigateToChat(chat),
         );
@@ -348,7 +358,8 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
         backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 2,
         leading: _buildUserAvatar(),
-        title: Text('Hello, $_username', style: const TextStyle(fontWeight: FontWeight.w400)),
+        title: Text('Hello, $_username',
+            style: const TextStyle(fontWeight: FontWeight.w400)),
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),

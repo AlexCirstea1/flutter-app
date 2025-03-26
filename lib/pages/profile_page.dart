@@ -107,115 +107,118 @@ class _ProfilePageState extends State<ProfilePage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 55,
-              backgroundColor: theme.primary,
-              backgroundImage: _avatarBytes != null ? MemoryImage(_avatarBytes!) : null,
-              child: _avatarBytes == null
-                  ? const Icon(Icons.person, size: 55, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _username,
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: theme.onSurface,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 55,
+                    backgroundColor: theme.primary,
+                    backgroundImage: _avatarBytes != null
+                        ? MemoryImage(_avatarBytes!)
+                        : null,
+                    child: _avatarBytes == null
+                        ? const Icon(Icons.person,
+                            size: 55, color: Colors.white)
+                        : null,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    _username,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: theme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _email,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: theme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/set-pin'),
+                        icon: Icon(_hasPin ? Icons.refresh : Icons.pin),
+                        label: Text(_hasPin ? 'Reset PIN' : 'Set PIN'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.secondary,
+                          foregroundColor: theme.onSecondary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _rotateKeys,
+                        icon: const Icon(Icons.key),
+                        label: const Text('Rotate Encryption Keys'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.secondary,
+                          foregroundColor: theme.onSecondary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _logout,
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Logout'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => _confirmDelete(context),
+                        icon: const Icon(Icons.delete),
+                        label: const Text('Delete Account'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 52),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pushNamed(context, '/about');
+                      },
+                      child: const Text(
+                        'About this app',
+                        style: TextStyle(
+                          color: Color(0xB5D8FFFF),
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              _email,
-              style: TextStyle(
-                fontSize: 16,
-                color: theme.onSurface.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 40),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, '/set-pin'),
-                  icon: Icon(_hasPin ? Icons.refresh : Icons.pin),
-                  label: Text(_hasPin ? 'Reset PIN' : 'Set PIN'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.secondary,
-                    foregroundColor: theme.onSecondary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _rotateKeys,
-                  icon: const Icon(Icons.key),
-                  label: const Text('Rotate Encryption Keys'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.secondary,
-                    foregroundColor: theme.onSecondary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _logout,
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Logout'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueGrey,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _confirmDelete(context),
-                  icon: const Icon(Icons.delete),
-                  label: const Text('Delete Account'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 52),
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, '/about');
-                },
-                child: const Text(
-                  'About this app',
-                  style: TextStyle(
-                    color: Color(0xB5D8FFFF),
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-            ),
-
-          ],
-        ),
-      ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -229,7 +232,8 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete Account?'),
-        content: const Text('This action is irreversible. Do you wish to proceed?'),
+        content:
+            const Text('This action is irreversible. Do you wish to proceed?'),
         actions: [
           TextButton(
             child: const Text('Cancel'),
@@ -250,7 +254,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _rotateKeys() async {
     setState(() => _isLoading = true);
     try {
-      final (privatePem, _, publicPem) = await KeyCertHelper.generateSelfSignedCert(
+      final (privatePem, _, publicPem) =
+          await KeyCertHelper.generateSelfSignedCert(
         dn: {'CN': _username},
         keySize: 2048,
         daysValid: 365,
@@ -261,7 +266,10 @@ class _ProfilePageState extends State<ProfilePage> {
       if (token != null) {
         final response = await http.post(
           Uri.parse('${Environment.apiBaseUrl}/user/publicKey'),
-          headers: {'Content-Type': 'text/plain', 'Authorization': 'Bearer $token'},
+          headers: {
+            'Content-Type': 'text/plain',
+            'Authorization': 'Bearer $token'
+          },
           body: publicPem,
         );
 
@@ -273,7 +281,8 @@ class _ProfilePageState extends State<ProfilePage> {
           await _storageService.savePrivateKey(keyVersion, privatePem);
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Encryption keys rotated successfully')),
+            const SnackBar(
+                content: Text('Encryption keys rotated successfully')),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

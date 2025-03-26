@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:vaultx_app/pages/profile_view_page.dart';
 
+import '../config/environment.dart';
 import '../config/logger_config.dart';
 import '../models/message_dto.dart';
 import '../services/chat_service.dart';
@@ -15,8 +19,8 @@ enum ChatItemType { dateHeader, message }
 /// We'll define a small data class so our list can hold either a date or a message.
 class _ChatListItem {
   final ChatItemType type;
-  final String? dateLabel;       // used if type = dateHeader
-  final MessageDTO? message;     // used if type = message
+  final String? dateLabel; // used if type = dateHeader
+  final MessageDTO? message; // used if type = message
 
   _ChatListItem.dateHeader(this.dateLabel)
       : type = ChatItemType.dateHeader,
@@ -42,11 +46,14 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
+  bool _isBlocked = false;
+  bool _amIBlocked = false;
   final TextEditingController _messageController = TextEditingController();
 
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
-  ItemPositionsListener.create();
+      ItemPositionsListener.create();
+  final StorageService _storageService = StorageService();
 
   ChatService? _chatService;
   bool _isInitializing = true;
@@ -60,6 +67,41 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _initializeChat();
+    _checkBlockStatus();
+  }
+
+  Future<void> _checkBlockStatus() async {
+    try {
+      final token = await _storageService.getAccessToken();
+      if (token == null) throw Exception('Authentication required');
+
+      // Check if the current user has blocked the chat partner.
+      final iBlockedUrl = Uri.parse(
+          '${Environment.apiBaseUrl}/user/block/${widget.chatUserId}/status');
+      final iBlockedResponse = await http.get(
+        iBlockedUrl,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      // Check if the chat partner has blocked the current user.
+      final blockedMeUrl = Uri.parse(
+          '${Environment.apiBaseUrl}/user/blockedBy/$_currentUserId/status');
+      final blockedMeResponse = await http.get(
+        blockedMeUrl,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (mounted) {
+        setState(() {
+          _isBlocked = iBlockedResponse.statusCode == 200 &&
+              jsonDecode(iBlockedResponse.body) == true;
+          _amIBlocked = blockedMeResponse.statusCode == 200 &&
+              jsonDecode(blockedMeResponse.body) == true;
+        });
+      }
+    } catch (e) {
+      LoggerService.logError('Error checking block status', e);
+    }
   }
 
   Future<void> _initializeChat() async {
@@ -70,7 +112,8 @@ class _ChatPageState extends State<ChatPage> {
         LoggerService.logError('Current user ID is null');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to retrieve user information')),
+            const SnackBar(
+                content: Text('Unable to retrieve user information')),
           );
           Navigator.pop(context);
         }
@@ -223,7 +266,8 @@ class _ChatPageState extends State<ChatPage> {
     for (var i = 0; i < _messages.length; i++) {
       final m = _messages[i];
       // 'Day' is year-month-day only
-      final msgDay = DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
+      final msgDay =
+          DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
 
       // If day changed (or first message), we insert a date-header item
       if (lastDay == null ||
@@ -303,7 +347,6 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-
   /// Utility to format hours/minutes
   String _formatTime(DateTime dt) {
     final hh = dt.hour.toString().padLeft(2, '0');
@@ -358,6 +401,21 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildTextInput() {
+    if (_isBlocked || _amIBlocked) {
+      return SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.black12,
+          child: Text(
+            _isBlocked
+                ? 'You have blocked this user. Unblock them to send messages.'
+                : 'You cannot send messages to this user.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -400,6 +458,39 @@ class _ChatPageState extends State<ChatPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.secondary,
         title: Text('Chat with ${widget.chatUsername}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () async {
+              // Navigate to the ProfilePage and wait for result
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProfileViewPage(
+                    userId: widget.chatUserId,
+                    username: widget.chatUsername,
+                  ),
+                ),
+              );
+
+              // If action was taken, return to home page
+              if (result == 'deleted' || result == 'reported') {
+                // Pop this page to return to home page
+                Navigator.pop(context);
+              }
+
+              // Handle block/unblock status change
+              if (result == 'blocked' || result == 'unblocked') {
+                _checkBlockStatus(); // Refresh the block status
+              }
+
+              // If action was taken, return to home page
+              if (result == 'deleted' || result == 'reported') {
+                Navigator.pop(context);
+              }
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [

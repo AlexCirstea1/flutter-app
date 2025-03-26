@@ -43,7 +43,8 @@ class StorageService {
     await _secureStorage.write(key: 'CURRENT_KEY_VERSION', value: version);
 
     // Save the private key with its version
-    await _secureStorage.write(key: '${MY_PRIVATE_KEY}_$version', value: privateKey);
+    await _secureStorage.write(
+        key: '${MY_PRIVATE_KEY}_$version', value: privateKey);
   }
 
   Future<String?> getPrivateKey([String? version]) async {

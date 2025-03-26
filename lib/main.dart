@@ -9,7 +9,8 @@ import 'package:vaultx_app/pages/settings_page.dart';
 import 'package:vaultx_app/pages/splash_screen.dart';
 import 'package:vaultx_app/widget/pin_screen.dart';
 
-final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +18,6 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFF0A0E1A);
@@ -48,7 +48,8 @@ class MyApp extends StatelessWidget {
           centerTitle: true,
         ),
         textTheme: const TextTheme(
-          titleLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          titleLarge: TextStyle(
+              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
           bodyMedium: TextStyle(fontSize: 16, color: Colors.white70),
         ),
         inputDecorationTheme: InputDecorationTheme(
