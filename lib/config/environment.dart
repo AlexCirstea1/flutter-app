@@ -1,5 +1,4 @@
 import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 enum Flavor {
@@ -9,46 +8,50 @@ enum Flavor {
 }
 
 class Environment {
-  // Set the flavor here
-  static Flavor appFlavor = Flavor.LOCAL; // Change as needed
+  // Define base host values for each flavor.
+  static const String _localHost = 'localhost:8081';
+  static const String _testHost = 'api.vaultx.server-alex.cloud';
+  static const String _prodHost = 'api.productionserver.com';
 
-  // API Base URL
+  // Set the app flavor here
+  static Flavor appFlavor = Flavor.TEST; // Change as needed
+
+  // Returns the base API URL (with /api appended)
   static String get apiBaseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8081/api'; // Web environment
+      return 'http://$_localHost/api'; // Web environment (assumes local for testing)
     } else {
       switch (appFlavor) {
         case Flavor.TEST:
-          return 'https://api.testserver.com';
+          return 'https://$_testHost/api';
         case Flavor.PRODUCTION:
-          return 'https://api.productionserver.com';
+          return 'https://$_prodHost/api';
         case Flavor.LOCAL:
-        default:
+        // For local testing, use emulator-specific IPs when needed.
           if (Platform.isAndroid) {
             return 'http://10.0.2.2:8081/api'; // Android emulator
           } else {
-            return 'http://localhost:8081/api'; // iOS simulator or others
+            return 'http://$_localHost/api'; // iOS simulator or others
           }
       }
     }
   }
 
-  // WebSocket URL
+  // Returns the WebSocket URL (with /ws appended)
   static String get webSocketUrl {
     if (kIsWeb) {
-      return 'ws://localhost:8081/ws'; // Web environment
+      return 'ws://$_localHost/ws'; // Web environment
     } else {
       switch (appFlavor) {
         case Flavor.TEST:
-          return 'wss://ws.test-server.com/ws';
+          return 'wss://$_testHost/ws'; // Adjust host if needed
         case Flavor.PRODUCTION:
-          return 'wss://ws.production server.com/ws';
+          return 'wss:/$_prodHost/ws'; // Adjust host if needed
         case Flavor.LOCAL:
-        default:
-          if (Platform.isAndroid) {
+        if (Platform.isAndroid) {
             return 'ws://10.0.2.2:8081/ws'; // Android emulator
           } else {
-            return 'ws://localhost:8081/ws'; // iOS simulator or others
+            return 'ws://$_localHost/ws'; // iOS simulator or others
           }
       }
     }
