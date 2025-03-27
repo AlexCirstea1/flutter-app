@@ -27,7 +27,7 @@ class Environment {
         case Flavor.PRODUCTION:
           return 'https://$_prodHost/api';
         case Flavor.LOCAL:
-        // For local testing, use emulator-specific IPs when needed.
+          // For local testing, use emulator-specific IPs when needed.
           if (Platform.isAndroid) {
             return 'http://10.0.2.2:8081/api'; // Android emulator
           } else {
@@ -48,7 +48,7 @@ class Environment {
         case Flavor.PRODUCTION:
           return 'wss:/$_prodHost/ws'; // Adjust host if needed
         case Flavor.LOCAL:
-        if (Platform.isAndroid) {
+          if (Platform.isAndroid) {
             return 'ws://10.0.2.2:8081/ws'; // Android emulator
           } else {
             return 'ws://$_localHost/ws'; // iOS simulator or others

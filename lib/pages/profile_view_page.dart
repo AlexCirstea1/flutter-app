@@ -28,6 +28,7 @@ class _ProfilePageState extends State<ProfileViewPage> {
   bool _isLoading = false;
   bool _isBlocked = false;
   bool _amIBlocked = false;
+  bool _blockchainConsent = false;
   final StorageService _storageService = StorageService();
   late AvatarService _avatarService;
 
@@ -41,7 +42,38 @@ class _ProfilePageState extends State<ProfileViewPage> {
 
   Future<void> _fetchUserProfile() async {
     setState(() => _isLoading = true);
-    setState(() => _isLoading = false);
+
+    try {
+      final userData = await _fetchUserData(widget.userId);
+      if (userData != null && mounted) {
+        setState(() {
+          _blockchainConsent = userData['blockchainConsent'] as bool? ?? false;
+        });
+      }
+    } catch (e) {
+      LoggerService.logError('Error fetching user profile', e);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchUserData(String userId) async {
+    try {
+      final url = Uri.parse('${Environment.apiBaseUrl}/user/public/$userId');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        LoggerService.logError(
+            'Error fetching user data: ${response.statusCode}', null);
+      }
+    } catch (e) {
+      LoggerService.logError('Error fetching user data by ID $userId', e);
+    }
+    return null;
   }
 
   Future<void> _reportUser() async {
@@ -355,6 +387,7 @@ class _ProfilePageState extends State<ProfileViewPage> {
             widget.username,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
+          _buildBlockchainConsentIndicator(),
           UserRoleChip(userId: widget.userId),
           const SizedBox(height: 8),
           const Divider(height: 32),
@@ -374,6 +407,30 @@ class _ProfilePageState extends State<ProfileViewPage> {
             leading: const Icon(Icons.delete),
             title: const Text('Delete Conversation'),
             onTap: _deleteConversation,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBlockchainConsentIndicator() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _blockchainConsent ? Icons.link : Icons.link_off,
+            size: 20,
+            color: _blockchainConsent ? Colors.green : Colors.grey,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _blockchainConsent ? 'Blockchain Enabled' : 'No Blockchain',
+            style: TextStyle(
+              color: _blockchainConsent ? Colors.green : Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

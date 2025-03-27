@@ -56,39 +56,35 @@ class _RegisterPageState extends State<RegisterPage> {
             TextField(
               controller: _usernameController,
               decoration: const InputDecoration(
-                labelText: 'Username',
-                prefixIcon: Icon(Icons.person),
-                labelStyle: TextStyle(color: Colors.white70)
-              ),
+                  labelText: 'Username',
+                  prefixIcon: Icon(Icons.person),
+                  labelStyle: TextStyle(color: Colors.white70)),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _emailController,
               decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
-                labelStyle: TextStyle(color: Colors.white70)
-              ),
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email),
+                  labelStyle: TextStyle(color: Colors.white70)),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _passwordController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'Password',
-                prefixIcon: Icon(Icons.lock),
-                labelStyle: TextStyle(color: Colors.white70)
-              ),
+                  labelText: 'Password',
+                  prefixIcon: Icon(Icons.lock),
+                  labelStyle: TextStyle(color: Colors.white70)),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _confirmPasswordController,
               obscureText: true,
               decoration: const InputDecoration(
-                labelText: 'Confirm Password',
-                prefixIcon: Icon(Icons.lock_outline),
-                labelStyle: TextStyle(color: Colors.white70)
-              ),
+                  labelText: 'Confirm Password',
+                  prefixIcon: Icon(Icons.lock_outline),
+                  labelStyle: TextStyle(color: Colors.white70)),
             ),
             const SizedBox(height: 30),
             _isLoading
@@ -166,6 +162,11 @@ class _RegisterPageState extends State<RegisterPage> {
       if (response != null &&
           await _authService.saveUserData(response, _storageService)) {
         await _generateAndUploadKeys();
+
+        final userId = response['user']?['id'] as String?;
+        if (userId != null) {
+          await _storageService.addRecentAccount(userId);
+        }
 
         // Show the consent dialog after registration is complete.
         final consentGiven = await showDialog<bool>(

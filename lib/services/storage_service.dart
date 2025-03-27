@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class StorageService {
@@ -8,6 +10,7 @@ class StorageService {
   final String USER_PIN = 'user_pin';
   final String USER_ID = 'user_id';
   final String MY_PRIVATE_KEY = 'MY_PRIVATE_KEY';
+  static const RECENT_ACCOUNTS = 'recent_accounts';
 
   // Save tokens and username
   Future<void> saveLoginDetails(String accessToken, String refreshToken,
@@ -85,5 +88,50 @@ class StorageService {
   Future<bool> getHasPin() async {
     String? hasPin = await _secureStorage.read(key: USER_PIN);
     return hasPin == 'true';
+  }
+
+  /// Add a userId to the "recent accounts" list in secure storage
+  /// We'll store up to 5 most recent IDs, last used at the front
+  Future<void> addRecentAccount(String userId) async {
+    final existing = await _secureStorage.read(key: RECENT_ACCOUNTS);
+    List<String> list = [];
+    if (existing != null) {
+      list = List<String>.from(jsonDecode(existing));
+    }
+
+    // If userId already exists, remove it so we can re-insert at front
+    list.remove(userId);
+
+    // Insert userId at front
+    list.insert(0, userId);
+
+    // Limit to 5
+    if (list.length > 5) {
+      list = list.sublist(0, 5);
+    }
+
+    // Save updated list
+    await _secureStorage.write(key: RECENT_ACCOUNTS, value: jsonEncode(list));
+  }
+
+  /// Get the list of recent account IDs
+  Future<List<String>> getRecentAccounts() async {
+    print("DEBUG: Reading recent accounts from secure storage");
+    final existing = await _secureStorage.read(key: RECENT_ACCOUNTS);
+    print("DEBUG: Raw recent accounts from storage: $existing");
+
+    if (existing == null) {
+      print("DEBUG: No recent accounts found in storage");
+      return [];
+    }
+
+    try {
+      final list = List<String>.from(jsonDecode(existing));
+      print("DEBUG: Parsed recent accounts: $list");
+      return list;
+    } catch (e) {
+      print("DEBUG: Error parsing recent accounts: $e");
+      return [];
+    }
   }
 }

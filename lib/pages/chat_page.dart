@@ -81,10 +81,9 @@ class _ChatPageState extends State<ChatPage> {
       // Check current user roles
       if (_currentUserId != null) {
         final currentUserUrl =
-            Uri.parse('${Environment.apiBaseUrl}/user/$_currentUserId/roles');
+            Uri.parse('${Environment.apiBaseUrl}/user/public/$_currentUserId/roles');
         final currentUserResponse = await http.get(
-          currentUserUrl,
-          headers: {'Authorization': 'Bearer $token'},
+          currentUserUrl
         );
 
         if (currentUserResponse.statusCode == 200) {
@@ -96,10 +95,9 @@ class _ChatPageState extends State<ChatPage> {
 
       // Check chat partner roles
       final chatPartnerUrl = Uri.parse(
-          '${Environment.apiBaseUrl}/user/${widget.chatUserId}/roles');
+          '${Environment.apiBaseUrl}/user/public/${widget.chatUserId}/roles');
       final chatPartnerResponse = await http.get(
-        chatPartnerUrl,
-        headers: {'Authorization': 'Bearer $token'},
+        chatPartnerUrl
       );
 
       if (chatPartnerResponse.statusCode == 200) {

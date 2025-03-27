@@ -9,11 +9,13 @@ import '../services/storage_service.dart';
 class UserRoleChip extends StatefulWidget {
   final List<String>? roles;
   final String? userId;
+  final bool isCompact;
 
   const UserRoleChip({
     super.key,
     this.roles,
     this.userId,
+    this.isCompact = false,
   }) : assert(roles != null || userId != null,
             'Either roles or userId must be provided');
 
@@ -40,14 +42,14 @@ class _UserRoleChipState extends State<UserRoleChip> {
     setState(() => _isLoading = true);
 
     try {
-      final token = await _storageService.getAccessToken();
-      if (token == null) throw Exception('Authentication required');
+      // final token = await _storageService.getAccessToken();
+      // if (token == null) throw Exception('Authentication required');
 
-      final url =
-          Uri.parse('${Environment.apiBaseUrl}/user/${widget.userId}/roles');
+      final url = Uri.parse(
+          '${Environment.apiBaseUrl}/user/public/${widget.userId}/roles');
       final response = await http.get(
         url,
-        headers: {'Authorization': 'Bearer $token'},
+        // headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
@@ -68,10 +70,12 @@ class _UserRoleChipState extends State<UserRoleChip> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const SizedBox(
-        height: 32,
-        width: 32,
-        child: CircularProgressIndicator(strokeWidth: 2),
+      return SizedBox(
+        height: widget.isCompact ? 20 : 32,
+        width: widget.isCompact ? 20 : 32,
+        child: CircularProgressIndicator(
+          strokeWidth: widget.isCompact ? 1.5 : 2,
+        ),
       );
     }
 
@@ -113,14 +117,36 @@ class _UserRoleChipState extends State<UserRoleChip> {
       icon = Icons.help_outline;
     }
 
+    // For compact mode, only show the icon
+    if (widget.isCompact) {
+      return Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          size: 14,
+          color: textColor,
+        ),
+      );
+    }
+
+    // Regular mode: Show full chip with text
     return Chip(
       avatar: icon != null ? Icon(icon, size: 16, color: textColor) : null,
       label: Text(
         label,
-        style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: textColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
       ),
       backgroundColor: backgroundColor,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      materialTapTargetSize: MaterialTapTargetSize.padded,
     );
   }
 

@@ -22,18 +22,17 @@ class AvatarService {
       return _avatarCache[userId];
     }
 
-    final accessToken = await _storageService.getAccessToken();
-    if (accessToken == null) {
-      LoggerService.logError('No access token found for avatar fetch');
-      return null;
-    }
+    // final accessToken = await _storageService.getAccessToken();
+    // if (accessToken == null) {
+    //   LoggerService.logError('No access token found for avatar fetch');
+    //   return null;
+    // }
 
     // This endpoint returns a base64 string
-    final url = Uri.parse('${Environment.apiBaseUrl}/user/avatar/$userId');
+    final url =
+        Uri.parse('${Environment.apiBaseUrl}/user/public/avatar/$userId');
     try {
-      final response = await http.get(url, headers: {
-        'Authorization': 'Bearer $accessToken',
-      });
+      final response = await http.get(url);
       if (response.statusCode == 200) {
         final base64String = response.body; // It's text
         // Decode to raw PNG bytes
