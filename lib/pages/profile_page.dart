@@ -10,6 +10,7 @@ import '../services/avatar_service.dart';
 import '../services/storage_service.dart';
 import '../utils/key_cert_helper.dart';
 import '../widget/bottom_nav_bar.dart';
+import '../widget/user_role_chip.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -25,6 +26,7 @@ class _ProfilePageState extends State<ProfilePage> {
   String _email = '';
   bool _hasPin = false;
   Uint8List? _avatarBytes;
+  String? _userId;
 
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
@@ -41,10 +43,14 @@ class _ProfilePageState extends State<ProfilePage> {
       if (accessToken != null) {
         final userData = await _authService.getUserData(accessToken);
         if (userData != null) {
+          // Get the userId and store it
+          final userId = await _storageService.getUserId();
+
           setState(() {
             _username = userData['username'] ?? 'N/A';
             _email = userData['email'] ?? 'N/A';
             _hasPin = userData['hasPin'] ?? false;
+            _userId = userId; // Store the userId
             _isLoading = false;
           });
 
@@ -131,6 +137,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       color: theme.onSurface,
                     ),
                   ),
+                  UserRoleChip(userId: _userId),
                   const SizedBox(height: 8),
                   Text(
                     _email,

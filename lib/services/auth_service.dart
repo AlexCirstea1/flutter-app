@@ -194,7 +194,7 @@ class AuthService {
   }
 
   Future<bool> deleteAccount(String accessToken) async {
-    final url = Uri.parse('${Environment.apiBaseUrl}/user/delete');
+    final url = Uri.parse('${Environment.apiBaseUrl}/user');
     try {
       final response = await http.delete(
         url,

@@ -8,6 +8,7 @@ import '../config/environment.dart';
 import '../config/logger_config.dart';
 import '../services/avatar_service.dart';
 import '../services/storage_service.dart';
+import '../widget/user_role_chip.dart';
 
 class ProfileViewPage extends StatefulWidget {
   final String userId;
@@ -354,6 +355,7 @@ class _ProfilePageState extends State<ProfileViewPage> {
             widget.username,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
+          UserRoleChip(userId: widget.userId),
           const SizedBox(height: 8),
           const Divider(height: 32),
 

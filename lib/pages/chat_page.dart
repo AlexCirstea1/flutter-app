@@ -48,6 +48,8 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   bool _isBlocked = false;
   bool _amIBlocked = false;
+  bool _isCurrentUserAdmin = false;
+  bool _isChatPartnerAdmin = false;
   final TextEditingController _messageController = TextEditingController();
 
   final ItemScrollController _itemScrollController = ItemScrollController();
@@ -68,6 +70,117 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
     _initializeChat();
     _checkBlockStatus();
+    _checkAdminStatus();
+  }
+
+  Future<void> _checkAdminStatus() async {
+    try {
+      final token = await _storageService.getAccessToken();
+      if (token == null) throw Exception('Authentication required');
+
+      // Check current user roles
+      if (_currentUserId != null) {
+        final currentUserUrl =
+            Uri.parse('${Environment.apiBaseUrl}/user/$_currentUserId/roles');
+        final currentUserResponse = await http.get(
+          currentUserUrl,
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (currentUserResponse.statusCode == 200) {
+          final List<dynamic> roles = jsonDecode(currentUserResponse.body);
+          _isCurrentUserAdmin =
+              roles.any((r) => r.toString().toUpperCase().contains("ADMIN"));
+        }
+      }
+
+      // Check chat partner roles
+      final chatPartnerUrl = Uri.parse(
+          '${Environment.apiBaseUrl}/user/${widget.chatUserId}/roles');
+      final chatPartnerResponse = await http.get(
+        chatPartnerUrl,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (chatPartnerResponse.statusCode == 200) {
+        final List<dynamic> roles = jsonDecode(chatPartnerResponse.body);
+        _isChatPartnerAdmin =
+            roles.any((r) => r.toString().toUpperCase().contains("ADMIN"));
+      }
+
+      if (mounted) setState(() {});
+    } catch (e) {
+      LoggerService.logError('Error checking admin status', e);
+    }
+  }
+
+  // Update the _buildTextInput method
+  Widget _buildTextInput() {
+    if (_isBlocked || _amIBlocked) {
+      return SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.black12,
+          child: Text(
+            _isBlocked
+                ? 'You have blocked this user. Unblock them to send messages.'
+                : 'You cannot send messages to this user.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    // Add this condition for admin users
+    if (_isCurrentUserAdmin || _isChatPartnerAdmin) {
+      return SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.black12,
+          child: const Text(
+            'Messaging is disabled for admin accounts.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    // Original input field for non-admin users
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Type your message...',
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  filled: true,
+                  fillColor: Colors.white12,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            CircleAvatar(
+              backgroundColor: Colors.blueAccent,
+              child: IconButton(
+                icon: const Icon(Icons.send, color: Colors.white),
+                onPressed: _sendMessage,
+              ),
+            )
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _checkBlockStatus() async {
@@ -394,57 +507,6 @@ class _ChatPageState extends State<ChatPage> {
                 ]
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextInput() {
-    if (_isBlocked || _amIBlocked) {
-      return SafeArea(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.black12,
-          child: Text(
-            _isBlocked
-                ? 'You have blocked this user. Unblock them to send messages.'
-                : 'You cannot send messages to this user.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70),
-          ),
-        ),
-      );
-    }
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Type your message...',
-                  hintStyle: const TextStyle(color: Colors.white38),
-                  filled: true,
-                  fillColor: Colors.white12,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            CircleAvatar(
-              backgroundColor: Colors.blueAccent,
-              child: IconButton(
-                icon: const Icon(Icons.send, color: Colors.white),
-                onPressed: _sendMessage,
-              ),
-            )
           ],
         ),
       ),

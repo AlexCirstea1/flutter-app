@@ -58,6 +58,7 @@ class _RegisterPageState extends State<RegisterPage> {
               decoration: const InputDecoration(
                 labelText: 'Username',
                 prefixIcon: Icon(Icons.person),
+                labelStyle: TextStyle(color: Colors.white70)
               ),
             ),
             const SizedBox(height: 16),
@@ -66,6 +67,7 @@ class _RegisterPageState extends State<RegisterPage> {
               decoration: const InputDecoration(
                 labelText: 'Email',
                 prefixIcon: Icon(Icons.email),
+                labelStyle: TextStyle(color: Colors.white70)
               ),
             ),
             const SizedBox(height: 16),
@@ -75,6 +77,7 @@ class _RegisterPageState extends State<RegisterPage> {
               decoration: const InputDecoration(
                 labelText: 'Password',
                 prefixIcon: Icon(Icons.lock),
+                labelStyle: TextStyle(color: Colors.white70)
               ),
             ),
             const SizedBox(height: 16),
@@ -84,6 +87,7 @@ class _RegisterPageState extends State<RegisterPage> {
               decoration: const InputDecoration(
                 labelText: 'Confirm Password',
                 prefixIcon: Icon(Icons.lock_outline),
+                labelStyle: TextStyle(color: Colors.white70)
               ),
             ),
             const SizedBox(height: 30),
