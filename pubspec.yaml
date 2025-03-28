@@ -50,6 +50,9 @@ dependencies:
   basic_utils: ^5.5.4
   flutter_launcher_icons: ^0.14.3
   rxdart: ^0.27.7
+  icons_flutter: ^0.0.5
+  x509: ^0.2.4+3
+  get_it: ^7.6.0
 
 
 dev_dependencies:

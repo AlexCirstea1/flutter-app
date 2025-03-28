@@ -24,42 +24,51 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkLoginStatus() async {
     String? accessToken = await _storageService.getAccessToken();
     String? refreshToken = await _storageService.getRefreshToken();
-    bool savedPin = await _storageService.getHasPin(); // Check if a PIN is set
+
+    // Check if we have a valid user profile
+    final userProfile = await _storageService.getUserProfile();
 
     if (accessToken != null) {
       bool isTokenValid = await _authService.verifyToken(accessToken);
 
       if (isTokenValid) {
-        // Check if the user has a PIN set
-        if (savedPin) {
-          // If a PIN is set, navigate to the PIN screen for security check
+        // Use the hasPin from the UserProfile if available, otherwise fall back to the stored value
+        final hasPin = userProfile?.hasPin ?? await _storageService.getHasPin();
+
+        if (hasPin) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const PinScreen()),
           );
         } else {
-          // No PIN set, directly navigate to home
           Navigator.pushReplacementNamed(context, '/home');
         }
       } else if (refreshToken != null) {
+        // Try to refresh the token
         String? newAccessToken = await _authService.refreshToken(refreshToken);
-        if (newAccessToken != null) {
-          await _storageService.saveLoginDetails(
-              newAccessToken, refreshToken, '', '');
 
-          // Check if the user has a PIN set after refreshing token
-          if (savedPin) {
-            // If a PIN is set, navigate to the PIN screen for security check
+        if (newAccessToken != null && userProfile != null) {
+          // If we have user data, construct and save a proper auth response
+          final authResponse = {
+            'access_token': newAccessToken,
+            'refresh_token': refreshToken,
+            'user': userProfile.toJson(),
+          };
+
+          // Save the complete updated auth data
+          await _storageService.saveAuthData(authResponse);
+
+          // Navigate based on PIN status
+          if (userProfile.hasPin) {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const PinScreen()),
             );
           } else {
-            // No PIN set, directly navigate to home
             Navigator.pushReplacementNamed(context, '/home');
           }
         } else {
-          // Token refresh failed, redirect to login
+          // Token refresh failed or no user profile, redirect to login
           Navigator.pushReplacementNamed(context, '/login');
         }
       } else {

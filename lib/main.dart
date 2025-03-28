@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vaultx_app/pages/about_page.dart';
+import 'package:vaultx_app/pages/activity_page.dart';
+import 'package:vaultx_app/pages/blockchain_page.dart';
 import 'package:vaultx_app/pages/home_page.dart';
 import 'package:vaultx_app/pages/login_page.dart';
 import 'package:vaultx_app/pages/profile_page.dart';
@@ -7,12 +9,17 @@ import 'package:vaultx_app/pages/register_page.dart';
 import 'package:vaultx_app/pages/setpin_page.dart';
 import 'package:vaultx_app/pages/settings_page.dart';
 import 'package:vaultx_app/pages/splash_screen.dart';
+import 'package:vaultx_app/services/service_locator.dart';
 import 'package:vaultx_app/widget/pin_screen.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  setupServiceLocator();
   runApp(const MyApp());
 }
 
@@ -28,6 +35,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'Response',
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: const ColorScheme.dark(
@@ -90,6 +98,8 @@ class MyApp extends StatelessWidget {
         '/pin': (context) => const PinScreen(),
         '/set-pin': (context) => const SetPinPage(),
         '/about': (context) => const AboutPage(),
+        '/activity': (context) => const ActivityPage(),
+        '/blockchain': (context) => const BlockchainPage(),
       },
     );
   }

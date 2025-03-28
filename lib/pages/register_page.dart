@@ -231,12 +231,8 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _generateAndUploadKeys() async {
-    final (privatePem, _, publicPem) =
-        await KeyCertHelper.generateSelfSignedCert(
-      dn: {'CN': _usernameController.text.trim()},
-      keySize: 2048,
-      daysValid: 365,
-    );
+    final (privatePem, certificatePem, publicPem) =
+        await KeyCertHelper.generateSelfSignedCert();
 
     final token = await _storageService.getAccessToken();
     final response = await http.post(
@@ -251,6 +247,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
       // Save private key with version
       await _storageService.savePrivateKey(keyVersion, privatePem);
+
+      // Save certificate with the same version
+      await _storageService.saveCertificate(keyVersion, certificatePem);
+
     }
   }
 

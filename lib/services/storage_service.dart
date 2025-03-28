@@ -3,23 +3,56 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vaultx_app/config/logger_config.dart';
 
+import '../models/user_profile.dart';
+
 class StorageService {
   final _secureStorage = const FlutterSecureStorage();
+
+  // Constants for secure storage keys
   final String ACCESS_TOKEN = 'access_token';
   final String REFRESH_TOKEN = 'refresh_token';
-  final String USERNAME = 'username';
-  final String USER_PIN = 'user_pin';
-  final String USER_ID = 'user_id';
-  final String MY_PRIVATE_KEY = 'MY_PRIVATE_KEY';
+  final String USER_PROFILE = 'user_profile';
   static const RECENT_ACCOUNTS = 'recent_accounts';
+  final String MY_PRIVATE_KEY = 'MY_PRIVATE_KEY';
 
-  // Save tokens and username
-  Future<void> saveLoginDetails(String accessToken, String refreshToken,
-      String username, String userId) async {
+  Future<void> saveAuthData(Map<String, dynamic> authResponse) async {
+    // Extract tokens
+    final accessToken = authResponse['access_token'] as String?;
+    final refreshToken = authResponse['refresh_token'] as String?;
+
+    // Extract and convert user data
+    final userData = authResponse['user'] as Map<String, dynamic>?;
+
+    if (accessToken == null || refreshToken == null || userData == null) {
+      throw Exception('Invalid auth response: Missing required fields');
+    }
+
+    // Create user profile from the response
+    final userProfile = UserProfile.fromJson(userData);
+
+    // Save tokens
     await _secureStorage.write(key: ACCESS_TOKEN, value: accessToken);
     await _secureStorage.write(key: REFRESH_TOKEN, value: refreshToken);
-    await _secureStorage.write(key: USERNAME, value: username);
-    await _secureStorage.write(key: USER_ID, value: userId);
+
+    // Save complete profile as JSON
+    await _secureStorage.write(
+        key: USER_PROFILE, value: jsonEncode(userProfile.toJson()));
+
+    // Add to recent accounts
+    await addRecentAccount(userProfile.id);
+  }
+
+  Future<UserProfile?> getUserProfile() async {
+    final profileJson = await _secureStorage.read(key: USER_PROFILE);
+    if (profileJson == null) return null;
+
+    try {
+      final Map<String, dynamic> data = jsonDecode(profileJson);
+      return UserProfile.fromJson(data);
+    } catch (e) {
+      LoggerService.logError('Error parsing user profile', e);
+      return null;
+    }
   }
 
   // Get access token
@@ -32,17 +65,66 @@ class StorageService {
     return await _secureStorage.read(key: REFRESH_TOKEN);
   }
 
-  // Get username
+  // Get username from user profile
   Future<String?> getUsername() async {
-    return await _secureStorage.read(key: USERNAME);
+    final profile = await getUserProfile();
+    return profile?.username;
   }
 
+  // Get email from user profile
+  Future<String?> getEmail() async {
+    final profile = await getUserProfile();
+    return profile?.email;
+  }
+
+  // Get user ID from user profile
   Future<String?> getUserId() async {
-    return await _secureStorage.read(key: USER_ID);
+    final profile = await getUserProfile();
+    return profile?.id;
   }
 
-  Future<void> savePrivateKey(String version, String privateKey,
-      [String? userId]) async {
+  // Clear all tokens and username
+  Future<void> clearLoginDetails() async {
+    await _secureStorage.delete(key: ACCESS_TOKEN);
+    await _secureStorage.delete(key: REFRESH_TOKEN);
+    await _secureStorage.delete(key: USER_PROFILE);
+  }
+
+  // Generic save
+  Future<void> saveInStorage(String key, String value) async {
+    await _secureStorage.write(key: key, value: value);
+  }
+
+  // Generic get
+  Future<String?> getFromStorage(String key) async {
+    return await _secureStorage.read(key: key);
+  }
+
+  // Save hasPin
+  Future<void> saveHasPin(bool hasPin) async {
+    final profile = await getUserProfile();
+    if (profile == null) return;
+
+    final updatedProfile = UserProfile(
+      id: profile.id,
+      username: profile.username,
+      email: profile.email,
+      hasPin: hasPin,
+      blockchainConsent: profile.blockchainConsent,
+      additionalData: profile.additionalData,
+    );
+
+    await _secureStorage.write(
+        key: USER_PROFILE, value: jsonEncode(updatedProfile.toJson()));
+  }
+
+  // Check if hasPin is set
+  Future<bool> getHasPin() async {
+    final profile = await getUserProfile();
+    return profile?.hasPin ?? false;
+  }
+
+  Future<void> savePrivateKey(String version, String privateKey, [String? userId]) async {
     // If userId is not provided, try to get it from storage
     userId = userId ?? await getUserId();
     if (userId == null) {
@@ -89,56 +171,23 @@ class StorageService {
     return privateKey;
   }
 
-  // Clear all tokens and username
-  Future<void> clearLoginDetails() async {
-    await _secureStorage.delete(key: ACCESS_TOKEN);
-    await _secureStorage.delete(key: REFRESH_TOKEN);
-    await _secureStorage.delete(key: USERNAME);
-    await _secureStorage.delete(key: USER_PIN);
-  }
-
-  // Generic save
-  Future<void> saveInStorage(String key, String value) async {
-    await _secureStorage.write(key: key, value: value);
-  }
-
-  // Generic get
-  Future<String?> getFromStorage(String key) async {
-    return await _secureStorage.read(key: key);
-  }
-
-  // Save hasPin
-  Future<void> saveHasPin(bool hasPin) async {
-    await _secureStorage.write(key: USER_PIN, value: hasPin.toString());
-  }
-
-  // Check if hasPin is set
-  Future<bool> getHasPin() async {
-    String? hasPin = await _secureStorage.read(key: USER_PIN);
-    return hasPin == 'true';
-  }
-
   /// Add a userId to the "recent accounts" list in secure storage
   /// We'll store up to 5 most recent IDs, last used at the front
   Future<void> addRecentAccount(String userId) async {
     final existing = await _secureStorage.read(key: RECENT_ACCOUNTS);
     List<String> list = [];
+
     if (existing != null) {
       list = List<String>.from(jsonDecode(existing));
     }
 
-    // If userId already exists, remove it so we can re-insert at front
     list.remove(userId);
-
-    // Insert userId at front
     list.insert(0, userId);
 
-    // Limit to 5
     if (list.length > 5) {
       list = list.sublist(0, 5);
     }
 
-    // Save updated list
     await _secureStorage.write(key: RECENT_ACCOUNTS, value: jsonEncode(list));
   }
 
@@ -158,24 +207,52 @@ class StorageService {
     }
   }
 
+  /// Remove the list of recent account IDs
   Future<void> removeRecentAccount(String userId) async {
     final existing = await _secureStorage.read(key: RECENT_ACCOUNTS);
-
     if (existing == null) {
-      return; // Nothing to remove
+      return;
     }
 
     try {
       List<String> list = List<String>.from(jsonDecode(existing));
-
-      // Remove the userId if it exists
       list.remove(userId);
 
-      // Save the updated list
       await _secureStorage.write(key: RECENT_ACCOUNTS, value: jsonEncode(list));
-      LoggerService.logInfo('Removed account $userId from recent accounts list');
     } catch (e) {
       LoggerService.logError('Error removing recent account', e);
     }
+  }
+
+  Future<void> saveCertificate(String version, String certificatePem, [String? userId]) async {
+    userId = userId ?? await getUserId();
+    if (userId == null) {
+      throw Exception('Cannot save certificate: No user ID available');
+    }
+
+    // Save the certificate with its version and user ID
+    final certificateKey = 'X509_CERTIFICATE_${userId}_$version';
+    await _secureStorage.write(key: certificateKey, value: certificatePem);
+  }
+
+  Future<String?> getCertificate([String? version, String? userId]) async {
+    userId = userId ?? await getUserId();
+    if (userId == null) {
+      return null;
+    }
+
+    if (version == null) {
+      // Get the current version for this specific user
+      final versionKey = 'CURRENT_KEY_VERSION_$userId';
+      version = await _secureStorage.read(key: versionKey);
+
+      if (version == null) {
+        return null;
+      }
+    }
+
+    // Get the certificate for the specific version and user
+    final certificateKey = 'X509_CERTIFICATE_${userId}_$version';
+    return await _secureStorage.read(key: certificateKey);
   }
 }

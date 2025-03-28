@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:icons_flutter/icons_flutter.dart';
 import 'package:vaultx_app/pages/home_page.dart';
 import 'package:vaultx_app/pages/profile_page.dart';
 import 'package:vaultx_app/pages/settings_page.dart';
+
+import '../pages/activity_page.dart';
+import '../pages/blockchain_page.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -29,12 +33,20 @@ class BottomNavBar extends StatelessWidget {
       elevation: 8,
       items: const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          label: 'Home',
+          icon: Icon(Ionicons.ios_chatbubbles),
+          label: 'Chat',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person_outline),
           label: 'Profile',
+        ),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.link),
+            label: 'Blockchain'
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.history_outlined),
+          label: 'Activity',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.settings_outlined),
@@ -58,6 +70,12 @@ class BottomNavBar extends StatelessWidget {
         destination = const ProfilePage();
         break;
       case 2:
+        destination = const BlockchainPage();
+        break;
+      case 3:
+        destination = const ActivityPage();
+        break;
+      case 4:
         destination = const SettingsPage();
         break;
       default:

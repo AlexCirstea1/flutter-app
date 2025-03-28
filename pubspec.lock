@@ -198,6 +198,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.6"
+  crypto_keys:
+    dependency: transitive
+    description:
+      name: crypto_keys
+      sha256: acc19abf34623d990a0e8aec69463d74a824c31f137128f42e2810befc509ad0
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.0+1"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -357,6 +365,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.0"
+  get_it:
+    dependency: "direct main"
+    description:
+      name: get_it
+      sha256: d85128a5dae4ea777324730dc65edd9c9f43155c109d5cc0a69cab74139fbac1
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.7.0"
   glob:
     dependency: transitive
     description:
@@ -397,6 +413,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.2"
+  icons_flutter:
+    dependency: "direct main"
+    description:
+      name: icons_flutter
+      sha256: "51e9a1b4a1952c952ccba0c50e338f8b3a542e10535a856fe10bf378971114a6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.5"
   image:
     dependency: transitive
     description:
@@ -717,6 +741,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.0"
+  quiver:
+    dependency: transitive
+    description:
+      name: quiver
+      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.2"
   rxdart:
     dependency: "direct main"
     description:
@@ -906,6 +938,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.10.1"
+  x509:
+    dependency: "direct main"
+    description:
+      name: x509
+      sha256: cbd1a63846884afd273cda247b0365284c8d85a365ca98e110413f93d105b935
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.4+3"
   xdg_directories:
     dependency: transitive
     description:

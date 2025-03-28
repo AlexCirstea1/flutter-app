@@ -64,7 +64,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Example method to call GET /api/auth/user/{id}
   Future<Map<String, dynamic>?> _fetchUserDataById(String userId) async {
     try {
       final url = Uri.parse('${Environment.apiBaseUrl}/user/public/$userId');

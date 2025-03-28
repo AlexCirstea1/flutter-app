@@ -112,75 +112,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  // Update the _buildTextInput method
-  Widget _buildTextInput() {
-    if (_isBlocked || _amIBlocked) {
-      return SafeArea(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.black12,
-          child: Text(
-            _isBlocked
-                ? 'You have blocked this user. Unblock them to send messages.'
-                : 'You cannot send messages to this user.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70),
-          ),
-        ),
-      );
-    }
-
-    // Add this condition for admin users
-    if (_isCurrentUserAdmin || _isChatPartnerAdmin) {
-      return SafeArea(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.black12,
-          child: const Text(
-            'Messaging is disabled for admin accounts.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70),
-          ),
-        ),
-      );
-    }
-
-    // Original input field for non-admin users
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Type your message...',
-                  hintStyle: const TextStyle(color: Colors.white38),
-                  filled: true,
-                  fillColor: Colors.white12,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            CircleAvatar(
-              backgroundColor: Colors.blueAccent,
-              child: IconButton(
-                icon: const Icon(Icons.send, color: Colors.white),
-                onPressed: _sendMessage,
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _checkBlockStatus() async {
     try {
       final token = await _storageService.getAccessToken();
@@ -465,64 +396,37 @@ class _ChatPageState extends State<ChatPage> {
     return '$hh:$mm';
   }
 
-  Widget _buildBubble(MessageDTO msg, bool isMine) {
-    final displayText = msg.plaintext ?? '[Encrypted]';
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isMine ? Colors.blueAccent : Colors.white10,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: theme.surface,
+      appBar: AppBar(
+        backgroundColor: theme.secondary,
+        title: Row(
           children: [
-            Text(
-              displayText,
-              style: TextStyle(
-                color: isMine ? Colors.white : Colors.white70,
-                fontSize: 16,
+            CircleAvatar(
+              backgroundColor: Colors.white10,
+              child: Text(
+                widget.chatUsername[0].toUpperCase(),
+                style: TextStyle(
+                  color: theme.onSecondary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _formatTime(msg.timestamp),
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
-                ),
-                if (isMine) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    msg.isRead ? Icons.done_all : Icons.done,
-                    size: 16,
-                    color: Colors.white38,
-                  ),
-                ]
-              ],
+            const SizedBox(width: 12),
+            Text(
+              widget.chatUsername,
+              style: TextStyle(color: theme.onSecondary),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isBusy = _isInitializing || _isFetchingHistory;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.secondary,
-        title: Text('Chat with ${widget.chatUsername}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () async {
-              // Navigate to the ProfilePage and wait for result
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -533,20 +437,12 @@ class _ChatPageState extends State<ChatPage> {
                 ),
               );
 
-              // If action was taken, return to home page
               if (result == 'deleted' || result == 'reported') {
-                // Pop this page to return to home page
                 Navigator.pop(context);
               }
 
-              // Handle block/unblock status change
               if (result == 'blocked' || result == 'unblocked') {
-                _checkBlockStatus(); // Refresh the block status
-              }
-
-              // If action was taken, return to home page
-              if (result == 'deleted' || result == 'reported') {
-                Navigator.pop(context);
+                _checkBlockStatus();
               }
             },
           ),
@@ -555,12 +451,120 @@ class _ChatPageState extends State<ChatPage> {
       body: Column(
         children: [
           Expanded(
-            child: isBusy
+            child: _isInitializing || _isFetchingHistory
                 ? const Center(child: CircularProgressIndicator())
                 : _buildMessagesList(),
           ),
+          Divider(height: 1, color: Colors.white24),
           _buildTextInput(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTextInput() {
+    if (_isBlocked || _amIBlocked || _isCurrentUserAdmin || _isChatPartnerAdmin) {
+      final message = _isCurrentUserAdmin || _isChatPartnerAdmin
+          ? 'Messaging disabled for admin accounts.'
+          : (_isBlocked
+          ? 'Unblock to send messages.'
+          : 'You cannot send messages.');
+
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white60, fontSize: 14),
+          ),
+        ),
+      );
+    }
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Message...',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white12,
+                  contentPadding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onSubmitted: (_) => _sendMessage(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: IconButton(
+                icon: const Icon(Icons.send, color: Colors.white),
+                onPressed: _sendMessage,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBubble(MessageDTO msg, bool isMine) {
+    return Align(
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isMine ? Colors.blueAccent.withOpacity(0.8) : Colors.white12,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomLeft: Radius.circular(isMine ? 18 : 0),
+            bottomRight: Radius.circular(isMine ? 0 : 18),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              msg.plaintext ?? '[Encrypted]',
+              style: TextStyle(
+                color: isMine ? Colors.white : Colors.white70,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatTime(msg.timestamp),
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                ),
+                if (isMine)
+                  Icon(
+                    msg.isRead ? Icons.done_all : Icons.done,
+                    size: 16,
+                    color: Colors.white38,
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

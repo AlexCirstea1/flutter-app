@@ -18,7 +18,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  int _selectedIndex = 2; // Suppose "Settings" is index 3
+  int _selectedIndex = 4;
   bool _isLoading = false;
   bool _hasPin = false;
   String? _userId;
@@ -60,15 +60,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _rotateKeys() async {
     setState(() => _isLoading = true);
     try {
-      // Suppose you have the username. If needed, fetch from secure storage or pass in from profile
-      final username = (await _storageService.getUsername()) ?? 'User';
-
-      final (privatePem, _, publicPem) =
-          await KeyCertHelper.generateSelfSignedCert(
-        dn: {'CN': username},
-        keySize: 2048,
-        daysValid: 365,
-      );
+      final (privatePem, certificatePem, publicPem) =
+          await KeyCertHelper.generateSelfSignedCert();
 
       final token = await _storageService.getAccessToken();
       if (token != null) {
@@ -84,6 +77,7 @@ class _SettingsPageState extends State<SettingsPage> {
         if (response.statusCode == 200) {
           final keyVersion = response.body;
           await _storageService.savePrivateKey(keyVersion, privatePem);
+          await _storageService.saveCertificate(keyVersion, certificatePem);
           _showSnackBar('Encryption keys rotated successfully');
         } else {
           _showSnackBar('Failed to upload new public key');
@@ -190,10 +184,50 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  //region: Example new toggles or settings
+                  Text(
+                    'App Preferences',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: theme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  SwitchListTile(
+                    title: const Text('Dark Mode'),
+                    value: _darkMode,
+                    onChanged: _toggleDarkMode,
+                  ),
+                  SwitchListTile(
+                    title: const Text('Notifications'),
+                    value: _notificationsEnabled,
+                    onChanged: _toggleNotifications,
+                  ),
+                  //endregion
+
+                  //endregion
+                  const SizedBox(height: 20),
+                  const Divider(
+                    thickness: 1,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Security & Account',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: theme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  //region: Existing security actions
+
                   //region: Existing security actions
                   ElevatedButton.icon(
-                    onPressed: () =>
-                        Navigator.pushNamed(context, '/set-pin'),
+                    onPressed: () => Navigator.pushNamed(context, '/set-pin'),
                     icon: Icon(_hasPin ? Icons.refresh : Icons.pin),
                     label: Text(_hasPin ? 'Reset PIN' : 'Set PIN'),
                     style: ElevatedButton.styleFrom(
@@ -249,31 +283,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                  ),
-                  //endregion
-
-                  const SizedBox(height: 40),
-
-                  //region: Example new toggles or settings
-                  Text(
-                    'App Preferences',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: theme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  SwitchListTile(
-                    title: const Text('Dark Mode'),
-                    value: _darkMode,
-                    onChanged: _toggleDarkMode,
-                  ),
-                  SwitchListTile(
-                    title: const Text('Notifications'),
-                    value: _notificationsEnabled,
-                    onChanged: _toggleNotifications,
                   ),
                   //endregion
 
