@@ -1,10 +1,12 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/environment.dart';
 import '../config/logger_config.dart';
 import '../services/auth_service.dart';
+import '../services/service_locator.dart';
 import '../services/storage_service.dart';
 import '../utils/key_cert_helper.dart';
 import '../widget/bottom_nav_bar.dart';
@@ -27,7 +29,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _darkMode = false;
   bool _notificationsEnabled = true;
 
-  final AuthService _authService = AuthService();
+  final AuthService _authService = serviceLocator<AuthService>();
   final StorageService _storageService = StorageService();
 
   @override

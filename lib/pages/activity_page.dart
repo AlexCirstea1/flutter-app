@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/environment.dart';
+
 import '../services/api_service.dart';
 import '../services/service_locator.dart';
-import '../services/storage_service.dart';
 import '../widget/bottom_nav_bar.dart';
 
 class ActivityPage extends StatefulWidget {
@@ -39,7 +36,7 @@ class _ActivityPageState extends State<ActivityPage> {
 
       final data = await _apiService.get(endpoint);
       final List<ActivityLog> activities =
-      (data as List).map((item) => ActivityLog.fromJson(item)).toList();
+          (data as List).map((item) => ActivityLog.fromJson(item)).toList();
 
       setState(() {
         _activities = activities;
@@ -85,9 +82,12 @@ class _ActivityPageState extends State<ActivityPage> {
               const PopupMenuItem(value: 'Login', child: Text('Logins')),
               const PopupMenuItem(value: 'Key', child: Text('Key Rotations')),
               const PopupMenuItem(value: 'Pin', child: Text('PIN Changes')),
-              const PopupMenuItem(value: 'Consent', child: Text('Consent Changes')),
-              const PopupMenuItem(value: 'Blockchain', child: Text('Blockchain Transactions')),
-              const PopupMenuItem(value: 'User_action', child: Text('User Actions')),
+              const PopupMenuItem(
+                  value: 'Consent', child: Text('Consent Changes')),
+              const PopupMenuItem(
+                  value: 'Blockchain', child: Text('Blockchain Transactions')),
+              const PopupMenuItem(
+                  value: 'User_action', child: Text('User Actions')),
             ],
           ),
         ],
@@ -157,7 +157,8 @@ class ActivityLog {
       id: json['id'],
       type: json['type'],
       description: json['description'],
-      timestamp: DateTime.parse(json['timestamp']), // Backend uses Instant which parses fine
+      timestamp: DateTime.parse(
+          json['timestamp']), // Backend uses Instant which parses fine
       isUnusual: json['isUnusual'] ?? json['unusual'] ?? false,
       details: json['details'],
     );

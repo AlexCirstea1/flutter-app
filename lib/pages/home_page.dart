@@ -11,6 +11,7 @@ import '../pages/select_user_page.dart';
 import '../services/auth_service.dart';
 import '../services/avatar_service.dart';
 import '../services/chat_service.dart';
+import '../services/service_locator.dart';
 import '../services/storage_service.dart';
 import '../services/websocket_service.dart';
 import '../widget/bottom_nav_bar.dart';
@@ -25,7 +26,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> with RouteAware {
   StreamSubscription<Map<String, dynamic>>? _messageSubscription;
   final StorageService _storageService = StorageService();
-  final AuthService _authService = AuthService();
+  final AuthService _authService = serviceLocator<AuthService>();
   final WebSocketService _webSocketService = WebSocketService();
 
   late AvatarService _avatarService;

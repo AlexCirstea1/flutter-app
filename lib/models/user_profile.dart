@@ -22,8 +22,13 @@ class UserProfile {
 
     // Create a copy without known fields for additionalData
     final Map<String, dynamic> additionalData = Map.from(json);
-    additionalData.removeWhere((key, _) =>
-      ['id', 'username', 'email', 'hasPin', 'blockchainConsent'].contains(key));
+    additionalData.removeWhere((key, _) => [
+          'id',
+          'username',
+          'email',
+          'hasPin',
+          'blockchainConsent'
+        ].contains(key));
 
     return UserProfile(
       id: id,

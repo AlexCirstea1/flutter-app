@@ -1,13 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
-import '../config/environment.dart';
-import '../config/logger_config.dart';
 import '../models/certificate_info.dart';
 import '../services/auth_service.dart';
 import '../services/avatar_service.dart';
+import '../services/service_locator.dart';
 import '../services/storage_service.dart';
 import '../utils/key_cert_helper.dart';
 import '../widget/bottom_nav_bar.dart';
@@ -31,7 +29,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Uint8List? _avatarBytes;
   String? _userId;
 
-  final AuthService _authService = AuthService();
+  final AuthService _authService = serviceLocator<AuthService>();
   final StorageService _storageService = StorageService();
 
   @override
@@ -66,7 +64,8 @@ class _ProfilePageState extends State<ProfilePage> {
             _email = userData['email'] ?? 'N/A';
             _hasPin = userData['hasPin'] ?? false;
             _userId = userId; // Store the userId
-            _blockchainConsent = userData['blockchainConsent'] as bool? ?? false;
+            _blockchainConsent =
+                userData['blockchainConsent'] as bool? ?? false;
             _isLoading = false;
           });
 
@@ -117,15 +116,15 @@ class _ProfilePageState extends State<ProfilePage> {
             _buildCertInfoRow('Organization', dn.organization ?? 'N/A'),
             _buildCertInfoRow('Department', dn.organizationalUnit ?? 'N/A'),
             _buildCertInfoRow('State', dn.state ?? 'N/A'),
-            _buildCertInfoRow('RSA Key Size', '${_certificateInfo!.keySize} bits'),
+            _buildCertInfoRow(
+                'RSA Key Size', '${_certificateInfo!.keySize} bits'),
             _buildCertInfoRow(
               'Expires In',
               _certificateInfo!.isExpired
                   ? 'Expired'
                   : '${_certificateInfo!.daysRemaining} days',
-              textColor: _certificateInfo!.daysRemaining < 30
-                  ? Colors.red
-                  : null,
+              textColor:
+                  _certificateInfo!.daysRemaining < 30 ? Colors.red : null,
             ),
           ],
         ),
@@ -198,66 +197,66 @@ class _ProfilePageState extends State<ProfilePage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Container(
-        padding: const EdgeInsets.all(24),
-        width: double.infinity,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Top section with profile info
-            Column(
-              children: [
-                CircleAvatar(
-                  radius: 55,
-                  backgroundColor: theme.primary,
-                  backgroundImage: _avatarBytes != null
-                      ? MemoryImage(_avatarBytes!)
-                      : null,
-                  child: _avatarBytes == null
-                      ? const Icon(Icons.person,
-                      size: 55, color: Colors.white)
-                      : null,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  _username,
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: theme.onSurface,
+              padding: const EdgeInsets.all(24),
+              width: double.infinity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Top section with profile info
+                  Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 55,
+                        backgroundColor: theme.primary,
+                        backgroundImage: _avatarBytes != null
+                            ? MemoryImage(_avatarBytes!)
+                            : null,
+                        child: _avatarBytes == null
+                            ? const Icon(Icons.person,
+                                size: 55, color: Colors.white)
+                            : null,
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        _username,
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: theme.onSurface,
+                        ),
+                      ),
+                      UserRoleChip(userId: _userId),
+                      _buildBlockchainConsentIndicator(),
+                      const SizedBox(height: 8),
+                      Text(
+                        _email,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: theme.onSurface.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildCertificateInfo(),
+                      const SizedBox(height: 40),
+                    ],
                   ),
-                ),
-                UserRoleChip(userId: _userId),
-                _buildBlockchainConsentIndicator(),
-                const SizedBox(height: 8),
-                Text(
-                  _email,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: theme.onSurface.withOpacity(0.7),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _buildCertificateInfo(),
-                const SizedBox(height: 40),
-              ],
-            ),
 
-            // Bottom section with "About this app"
-            GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, '/about');
-              },
-              child: const Text(
-                'About this app',
-                style: TextStyle(
-                  color: Color(0xB5D8FFFF),
-                  decoration: TextDecoration.underline,
-                ),
+                  // Bottom section with "About this app"
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/about');
+                    },
+                    child: const Text(
+                      'About this app',
+                      style: TextStyle(
+                        color: Color(0xB5D8FFFF),
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,

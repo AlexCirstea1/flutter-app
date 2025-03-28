@@ -63,7 +63,8 @@ class _ProfilePageState extends State<ProfileViewPage> {
 
   Future<void> _checkIfUserIsAdmin() async {
     try {
-      final url = Uri.parse('${Environment.apiBaseUrl}/user/public/${widget.userId}/roles');
+      final url = Uri.parse(
+          '${Environment.apiBaseUrl}/user/public/${widget.userId}/roles');
       final token = await _storageService.getAccessToken();
       if (token == null) throw Exception('Authentication required');
 
@@ -76,7 +77,8 @@ class _ProfilePageState extends State<ProfileViewPage> {
         final roles = List<String>.from(jsonDecode(response.body));
         if (mounted) {
           setState(() {
-            _isAdmin = roles.any((role) => role.toUpperCase().contains('ADMIN'));
+            _isAdmin =
+                roles.any((role) => role.toUpperCase().contains('ADMIN'));
           });
         }
       }

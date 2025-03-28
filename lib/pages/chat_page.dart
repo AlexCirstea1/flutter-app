@@ -80,11 +80,9 @@ class _ChatPageState extends State<ChatPage> {
 
       // Check current user roles
       if (_currentUserId != null) {
-        final currentUserUrl =
-            Uri.parse('${Environment.apiBaseUrl}/user/public/$_currentUserId/roles');
-        final currentUserResponse = await http.get(
-          currentUserUrl
-        );
+        final currentUserUrl = Uri.parse(
+            '${Environment.apiBaseUrl}/user/public/$_currentUserId/roles');
+        final currentUserResponse = await http.get(currentUserUrl);
 
         if (currentUserResponse.statusCode == 200) {
           final List<dynamic> roles = jsonDecode(currentUserResponse.body);
@@ -96,9 +94,7 @@ class _ChatPageState extends State<ChatPage> {
       // Check chat partner roles
       final chatPartnerUrl = Uri.parse(
           '${Environment.apiBaseUrl}/user/public/${widget.chatUserId}/roles');
-      final chatPartnerResponse = await http.get(
-        chatPartnerUrl
-      );
+      final chatPartnerResponse = await http.get(chatPartnerUrl);
 
       if (chatPartnerResponse.statusCode == 200) {
         final List<dynamic> roles = jsonDecode(chatPartnerResponse.body);
@@ -463,12 +459,15 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildTextInput() {
-    if (_isBlocked || _amIBlocked || _isCurrentUserAdmin || _isChatPartnerAdmin) {
+    if (_isBlocked ||
+        _amIBlocked ||
+        _isCurrentUserAdmin ||
+        _isChatPartnerAdmin) {
       final message = _isCurrentUserAdmin || _isChatPartnerAdmin
           ? 'Messaging disabled for admin accounts.'
           : (_isBlocked
-          ? 'Unblock to send messages.'
-          : 'You cannot send messages.');
+              ? 'Unblock to send messages.'
+              : 'You cannot send messages.');
 
       return SafeArea(
         child: Padding(
@@ -497,7 +496,7 @@ class _ChatPageState extends State<ChatPage> {
                   filled: true,
                   fillColor: Colors.white12,
                   contentPadding:
-                  const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
                     borderSide: BorderSide.none,

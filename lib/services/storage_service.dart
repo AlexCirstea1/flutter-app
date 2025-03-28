@@ -124,7 +124,8 @@ class StorageService {
     return profile?.hasPin ?? false;
   }
 
-  Future<void> savePrivateKey(String version, String privateKey, [String? userId]) async {
+  Future<void> savePrivateKey(String version, String privateKey,
+      [String? userId]) async {
     // If userId is not provided, try to get it from storage
     userId = userId ?? await getUserId();
     if (userId == null) {
@@ -224,7 +225,8 @@ class StorageService {
     }
   }
 
-  Future<void> saveCertificate(String version, String certificatePem, [String? userId]) async {
+  Future<void> saveCertificate(String version, String certificatePem,
+      [String? userId]) async {
     userId = userId ?? await getUserId();
     if (userId == null) {
       throw Exception('Cannot save certificate: No user ID available');

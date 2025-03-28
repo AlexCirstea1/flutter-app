@@ -1,6 +1,8 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import '../config/environment.dart';
 import 'storage_service.dart';
 
@@ -30,7 +32,8 @@ class ApiService {
   }
 
   // POST request with auth handling
-  Future<dynamic> post(String endpoint, dynamic body, {Map<String, String>? headers}) async {
+  Future<dynamic> post(String endpoint, dynamic body,
+      {Map<String, String>? headers}) async {
     return _handleRequest(() async {
       final token = await _storageService.getAccessToken();
       final requestHeaders = {
@@ -96,7 +99,8 @@ class ApiService {
 
     // Still show a notification about the network issue
     ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-      const SnackBar(content: Text('Network error. Please check your connection.')),
+      const SnackBar(
+          content: Text('Network error. Please check your connection.')),
     );
   }
 
@@ -107,6 +111,7 @@ class ApiService {
 
   // Navigate to login screen
   void _navigateToLogin() {
-    navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (route) => false);
+    navigatorKey.currentState
+        ?.pushNamedAndRemoveUntil('/login', (route) => false);
   }
 }

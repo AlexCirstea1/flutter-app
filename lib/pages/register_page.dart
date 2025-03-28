@@ -1,12 +1,13 @@
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../config/logger_config.dart';
+
 import '../config/environment.dart';
+import '../config/logger_config.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/service_locator.dart';
 import '../services/storage_service.dart';
 import '../utils/key_cert_helper.dart';
 import '../widget/consent_dialog.dart';
@@ -27,7 +28,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isLoading = false;
 
-  final AuthService _authService = AuthService();
+  final AuthService _authService = serviceLocator<AuthService>();
   final StorageService _storageService = StorageService();
 
   @override
@@ -250,7 +251,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
       // Save certificate with the same version
       await _storageService.saveCertificate(keyVersion, certificatePem);
-
     }
   }
 

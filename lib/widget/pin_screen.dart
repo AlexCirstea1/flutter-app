@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:vaultx_app/services/auth_service.dart';
-import '../services/storage_service.dart';
+
 import '../services/biometric_auth_service.dart';
+import '../services/service_locator.dart';
+import '../services/storage_service.dart';
 
 class PinScreen extends StatefulWidget {
   const PinScreen({super.key});
@@ -11,7 +13,7 @@ class PinScreen extends StatefulWidget {
 }
 
 class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
-  final AuthService _authService = AuthService();
+  final AuthService _authService = serviceLocator<AuthService>();
   final StorageService _storageService = StorageService();
   String _inputPin = "";
   String? _errorMessage;

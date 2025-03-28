@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:vaultx_app/widget/user_role_chip.dart';
+
 import '../config/environment.dart';
 import '../config/logger_config.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/avatar_service.dart';
+import '../services/service_locator.dart';
 import '../services/storage_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -23,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
 
-  final AuthService _authService = AuthService();
+  final AuthService _authService = serviceLocator<AuthService>();
   final StorageService _storageService = StorageService();
   late final AvatarService _avatarService;
 
@@ -72,7 +75,7 @@ class _LoginPageState extends State<LoginPage> {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else if (response.statusCode == 404) {
         _storageService.removeRecentAccount(userId);
-      } else{
+      } else {
         debugPrint(
             'Error fetching user data for $userId: ${response.statusCode}');
       }

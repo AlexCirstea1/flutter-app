@@ -5,8 +5,12 @@ import 'package:vaultx_app/config/logger_config.dart';
 import 'package:vaultx_app/services/storage_service.dart';
 
 import '../config/environment.dart';
+import 'api_service.dart';
 
 class AuthService {
+  final ApiService _apiService;
+  AuthService(this._apiService);
+
   // Login user
   Future<Map<String, dynamic>?> loginUser(
       String username, String password) async {
@@ -84,136 +88,85 @@ class AuthService {
 
   // Verify token
   Future<bool> verifyToken(String accessToken) async {
-    final url = Uri.parse('${Environment.apiBaseUrl}/auth/verify');
     try {
-      final response = await http.get(
-        url,
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
-      return response.statusCode == 200;
+      await _apiService.get('/auth/verify');
+      return true;
     } catch (error) {
       LoggerService.logError('Token verification error: $error');
+      return false;
     }
-    return false;
   }
 
   // Refresh token
   Future<String?> refreshToken(String refreshToken) async {
-    final url = Uri.parse('${Environment.apiBaseUrl}/auth/refresh');
     try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $refreshToken',
-        },
-        body: jsonEncode({'refresh_token': refreshToken}),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['access_token'];
-      }
+      final data = await _apiService.post('/auth/refresh', {
+        'refresh_token': refreshToken
+      }, headers: {
+        'Authorization': 'Bearer $refreshToken',
+      });
+      return data['access_token'];
     } catch (error) {
       LoggerService.logError('Token refresh error: $error');
+      return null;
     }
-    return null;
   }
 
   // Logout
   Future<bool> logout(String accessToken) async {
-    final url = Uri.parse('${Environment.apiBaseUrl}/auth/logout');
     try {
-      final response = await http.post(
-        url,
-        headers: {'Authorization': 'Bearer $accessToken'},
-      );
-      return response.statusCode == 200;
+      await _apiService.post('/auth/logout', null);
+      return true;
     } catch (error) {
       LoggerService.logError('Logout error: $error');
+      return false;
     }
-    return false;
   }
 
   // Save PIN
   Future<bool> savePin(String pin, String accessToken) async {
-    print("Pin for resetting is: $pin");
-    final String apiUrl = '${Environment.apiBaseUrl}/auth/pin/save?pin=$pin';
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-        },
-      );
-      return response.statusCode == 200;
+      await _apiService.post('/auth/pin/save?pin=$pin', null);
+      return true;
     } catch (error) {
       LoggerService.logError('PIN saving error: $error');
+      return false;
     }
-    return false;
   }
 
   // Validate PIN
   Future<bool> validatePin(String pin, String accessToken) async {
-    final String apiUrl = '${Environment.apiBaseUrl}/auth/pin/verify?pin=$pin';
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-        },
-      );
-      return response.statusCode == 200; // True if pin is correct
+      await _apiService.post('/auth/pin/verify?pin=$pin', null);
+      return true;
     } catch (error) {
       LoggerService.logError('PIN validation error: $error');
+      return false;
     }
-    return false;
   }
 
   // Fetch user data from /user endpoint
   Future<Map<String, dynamic>?> getUserData(String accessToken) async {
-    final url = Uri.parse('${Environment.apiBaseUrl}/user');
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        LoggerService.logError(
-            'Failed to fetch user data. Status: ${response.statusCode}');
-      }
+      final data = await _apiService.get('/user');
+      return data;
     } catch (error) {
       LoggerService.logError('Error fetching user data: $error');
+      return null;
     }
-    return null;
   }
 
   Future<bool> deleteAccount(String accessToken) async {
-    final url = Uri.parse('${Environment.apiBaseUrl}/user');
     try {
-      final response = await http.delete(
-        url,
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return true;
-      } else {
-        LoggerService.logError(
-            'Failed to delete account. Status: ${response.statusCode}');
-      }
+      // Using the post method with a custom method parameter for DELETE
+      // since ApiService might not have a delete method implementation
+      await _apiService
+          .post('/user', null, headers: {'X-HTTP-Method-Override': 'DELETE'});
+      return true;
     } catch (error) {
       LoggerService.logError('Error deleting account: $error');
+      return false;
     }
-    return false;
   }
 
   // Save user data after successful authentication

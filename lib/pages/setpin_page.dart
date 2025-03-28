@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:vaultx_app/config/logger_config.dart';
 
 import '../services/auth_service.dart';
+import '../services/service_locator.dart';
 import '../services/storage_service.dart';
 
 class SetPinPage extends StatefulWidget {
@@ -18,7 +19,7 @@ class _SetPinPageState extends State<SetPinPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  final AuthService _authService = AuthService();
+  final AuthService _authService = serviceLocator<AuthService>();
   final StorageService _storageService = StorageService();
 
   @override

@@ -1,10 +1,11 @@
 import 'dart:async';
+
 import 'package:basic_utils/basic_utils.dart';
-import '../models/distinguished_name.dart';
-import '../services/storage_service.dart';
 import 'package:x509/x509.dart';
+
 import '../models/certificate_info.dart';
 import '../models/distinguished_name.dart';
+import '../services/storage_service.dart';
 
 /// A helper class to generate an RSA key pair, produce a self-signed certificate,
 /// and optionally extract the public key from the cert for usage.
@@ -136,5 +137,4 @@ class KeyCertHelper {
       validUntil: validUntil,
     );
   }
-
 }

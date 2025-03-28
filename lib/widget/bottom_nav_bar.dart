@@ -40,10 +40,7 @@ class BottomNavBar extends StatelessWidget {
           icon: Icon(Icons.person_outline),
           label: 'Profile',
         ),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.link),
-            label: 'Blockchain'
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.link), label: 'Blockchain'),
         BottomNavigationBarItem(
           icon: Icon(Icons.history_outlined),
           label: 'Activity',

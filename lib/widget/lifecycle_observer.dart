@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../services/websocket_service.dart';
 
 class LifecycleObserver extends WidgetsBindingObserver {
