@@ -71,7 +71,9 @@ class _LoginPageState extends State<LoginPage> {
       final response = await http.get(url);
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
-      } else {
+      } else if (response.statusCode == 404) {
+        _storageService.removeRecentAccount(userId);
+      } else{
         debugPrint(
             'Error fetching user data for $userId: ${response.statusCode}');
       }

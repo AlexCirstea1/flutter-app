@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:vaultx_app/config/logger_config.dart';
 
 class StorageService {
   final _secureStorage = const FlutterSecureStorage();
@@ -40,25 +41,52 @@ class StorageService {
     return await _secureStorage.read(key: USER_ID);
   }
 
-  // In StorageService class
-  Future<void> savePrivateKey(String version, String privateKey) async {
-    // Save the current key version
-    await _secureStorage.write(key: 'CURRENT_KEY_VERSION', value: version);
-
-    // Save the private key with its version
-    await _secureStorage.write(
-        key: '${MY_PRIVATE_KEY}_$version', value: privateKey);
-  }
-
-  Future<String?> getPrivateKey([String? version]) async {
-    if (version == null) {
-      // Get the current version
-      version = await _secureStorage.read(key: 'CURRENT_KEY_VERSION');
-      if (version == null) return null;
+  Future<void> savePrivateKey(String version, String privateKey,
+      [String? userId]) async {
+    // If userId is not provided, try to get it from storage
+    userId = userId ?? await getUserId();
+    if (userId == null) {
+      throw Exception('Cannot save private key: No user ID available');
     }
 
-    // Get the private key for the specific version
-    return await _secureStorage.read(key: '${MY_PRIVATE_KEY}_$version');
+    // Save the current key version with user ID
+    final versionKey = 'CURRENT_KEY_VERSION_$userId';
+    await _secureStorage.write(key: versionKey, value: version);
+
+    // Save the private key with its version and user ID
+    final privateKeyName = '${MY_PRIVATE_KEY}_${userId}_$version';
+    await _secureStorage.write(key: privateKeyName, value: privateKey);
+  }
+
+  Future<String?> getPrivateKey([String? version, String? userId]) async {
+    // If userId is not provided, try to get it from storage
+    userId = userId ?? await getUserId();
+    if (userId == null) {
+      return null;
+    }
+
+    if (version == null) {
+      // Get the current version for this specific user
+      final versionKey = 'CURRENT_KEY_VERSION_$userId';
+      version = await _secureStorage.read(key: versionKey);
+
+      if (version == null) {
+        return null;
+      }
+    }
+
+    // Get the private key for the specific version and user
+    final privateKeyName = '${MY_PRIVATE_KEY}_${userId}_$version';
+    final privateKey = await _secureStorage.read(key: privateKeyName);
+    if (privateKey != null) {
+      LoggerService.logInfo(
+          'Successfully retrieved private key for user: $userId, version: $version');
+    } else {
+      LoggerService.logError(
+          'Private key not found with name: $privateKeyName');
+    }
+
+    return privateKey;
   }
 
   // Clear all tokens and username
@@ -116,22 +144,38 @@ class StorageService {
 
   /// Get the list of recent account IDs
   Future<List<String>> getRecentAccounts() async {
-    print("DEBUG: Reading recent accounts from secure storage");
     final existing = await _secureStorage.read(key: RECENT_ACCOUNTS);
-    print("DEBUG: Raw recent accounts from storage: $existing");
 
     if (existing == null) {
-      print("DEBUG: No recent accounts found in storage");
       return [];
     }
 
     try {
       final list = List<String>.from(jsonDecode(existing));
-      print("DEBUG: Parsed recent accounts: $list");
       return list;
     } catch (e) {
-      print("DEBUG: Error parsing recent accounts: $e");
       return [];
+    }
+  }
+
+  Future<void> removeRecentAccount(String userId) async {
+    final existing = await _secureStorage.read(key: RECENT_ACCOUNTS);
+
+    if (existing == null) {
+      return; // Nothing to remove
+    }
+
+    try {
+      List<String> list = List<String>.from(jsonDecode(existing));
+
+      // Remove the userId if it exists
+      list.remove(userId);
+
+      // Save the updated list
+      await _secureStorage.write(key: RECENT_ACCOUNTS, value: jsonEncode(list));
+      LoggerService.logInfo('Removed account $userId from recent accounts list');
+    } catch (e) {
+      LoggerService.logError('Error removing recent account', e);
     }
   }
 }

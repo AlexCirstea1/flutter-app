@@ -29,6 +29,7 @@ class _ProfilePageState extends State<ProfileViewPage> {
   bool _isBlocked = false;
   bool _amIBlocked = false;
   bool _blockchainConsent = false;
+  bool _isAdmin = false;
   final StorageService _storageService = StorageService();
   late AvatarService _avatarService;
 
@@ -38,6 +39,7 @@ class _ProfilePageState extends State<ProfileViewPage> {
     _avatarService = AvatarService(_storageService);
     _fetchUserProfile();
     _checkBlockStatus();
+    _checkIfUserIsAdmin();
   }
 
   Future<void> _fetchUserProfile() async {
@@ -56,6 +58,30 @@ class _ProfilePageState extends State<ProfileViewPage> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _checkIfUserIsAdmin() async {
+    try {
+      final url = Uri.parse('${Environment.apiBaseUrl}/user/public/${widget.userId}/roles');
+      final token = await _storageService.getAccessToken();
+      if (token == null) throw Exception('Authentication required');
+
+      final response = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final roles = List<String>.from(jsonDecode(response.body));
+        if (mounted) {
+          setState(() {
+            _isAdmin = roles.any((role) => role.toUpperCase().contains('ADMIN'));
+          });
+        }
+      }
+    } catch (e) {
+      LoggerService.logError('Error checking if user is admin', e);
     }
   }
 
@@ -396,18 +422,46 @@ class _ProfilePageState extends State<ProfileViewPage> {
           ListTile(
             leading: const Icon(Icons.report),
             title: const Text('Report'),
-            onTap: _reportUser,
+            enabled: !_isAdmin,
+            onTap: _isAdmin ? null : _reportUser,
           ),
           ListTile(
             leading: Icon(_isBlocked ? Icons.person_add : Icons.block),
             title: Text(_isBlocked ? 'Unblock' : 'Block'),
-            onTap: _blockUser,
+            enabled: !_isAdmin,
+            onTap: _isAdmin ? null : _blockUser,
           ),
           ListTile(
             leading: const Icon(Icons.delete),
             title: const Text('Delete Conversation'),
-            onTap: _deleteConversation,
+            enabled: !_isAdmin,
+            onTap: _isAdmin ? null : _deleteConversation,
           ),
+          if (_isAdmin) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.shield, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Actions are disabled for admin users",
+                      style: TextStyle(
+                        color: Colors.amber,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

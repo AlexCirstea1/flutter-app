@@ -28,11 +28,18 @@ class BottomNavBar extends StatelessWidget {
       type: BottomNavigationBarType.fixed,
       elevation: 8,
       items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
         BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined), label: 'Settings'),
+          icon: Icon(Icons.home_outlined),
+          label: 'Home',
+        ),
         BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline), label: 'Profile'),
+          icon: Icon(Icons.person_outline),
+          label: 'Profile',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.settings_outlined),
+          label: 'Settings',
+        ),
       ],
       onTap: (index) {
         _onTabSelected(context, index);
@@ -48,15 +55,14 @@ class BottomNavBar extends StatelessWidget {
         destination = const MyHomePage();
         break;
       case 1:
-        destination = const SettingsPage();
+        destination = const ProfilePage();
         break;
       case 2:
-        destination = const ProfilePage();
+        destination = const SettingsPage();
         break;
       default:
         return;
     }
-
     Navigator.pushReplacement(
       context,
       NoTransitionPageRoute(builder: (_) => destination),
@@ -68,12 +74,8 @@ class NoTransitionPageRoute<T> extends MaterialPageRoute<T> {
   NoTransitionPageRoute({required super.builder, super.settings});
 
   @override
-  Widget buildTransitions(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
+  Widget buildTransitions(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
     return child;
   }
 }
