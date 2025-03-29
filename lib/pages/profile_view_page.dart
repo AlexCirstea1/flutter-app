@@ -21,43 +21,106 @@ class ProfileViewPage extends StatefulWidget {
   });
 
   @override
-  State<ProfileViewPage> createState() => _ProfilePageState();
+  State<ProfileViewPage> createState() => _ProfileViewPageState();
 }
 
-class _ProfilePageState extends State<ProfileViewPage> {
-  bool _isLoading = false;
+class _ProfileViewPageState extends State<ProfileViewPage> {
+  Uint8List? _userAvatar;
+  bool _isLoading = true;
+  bool _blockchainConsent = false;
+
+  // Additional state variables for actions.
   bool _isBlocked = false;
   bool _amIBlocked = false;
-  bool _blockchainConsent = false;
   bool _isAdmin = false;
-  final StorageService _storageService = StorageService();
-  late AvatarService _avatarService;
+
+  late final StorageService _storageService;
+  late final AvatarService _avatarService;
 
   @override
   void initState() {
     super.initState();
+    _storageService = StorageService();
     _avatarService = AvatarService(_storageService);
-    _fetchUserProfile();
+    _loadProfileData();
     _checkBlockStatus();
     _checkIfUserIsAdmin();
   }
 
-  Future<void> _fetchUserProfile() async {
+  Future<void> _loadProfileData() async {
     setState(() => _isLoading = true);
-
     try {
+      // Load user avatar
+      final avatar = await _avatarService.getAvatar(widget.userId);
+
+      // Load user data from the API
       final userData = await _fetchUserData(widget.userId);
-      if (userData != null && mounted) {
+      bool consent = false;
+      if (userData != null) {
+        consent = userData['blockchainConsent'] as bool? ?? false;
+      }
+
+      if (mounted) {
         setState(() {
-          _blockchainConsent = userData['blockchainConsent'] as bool? ?? false;
+          _userAvatar = avatar;
+          _blockchainConsent = consent;
+          _isLoading = false;
         });
       }
     } catch (e) {
-      LoggerService.logError('Error fetching user profile', e);
-    } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<Map<String, dynamic>?> _fetchUserData(String userId) async {
+    try {
+      final url = Uri.parse('${Environment.apiBaseUrl}/user/public/$userId');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        LoggerService.logError(
+            'Error fetching user data: ${response.statusCode}', null);
+      }
+    } catch (e) {
+      LoggerService.logError('Error fetching user data by ID $userId', e);
+    }
+    return null;
+  }
+
+  Future<void> _checkBlockStatus() async {
+    try {
+      final token = await _storageService.getAccessToken();
+      if (token == null) throw Exception('Authentication required');
+
+      // Check if the current user has blocked the chat partner.
+      final iBlockedUrl = Uri.parse(
+          '${Environment.apiBaseUrl}/user/block/${widget.userId}/status');
+      final iBlockedResponse = await http.get(
+        iBlockedUrl,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      // Check if the chat partner has blocked the current user.
+      final blockedMeUrl = Uri.parse(
+          '${Environment.apiBaseUrl}/user/blockedBy/${await _storageService.getUserId()}/status');
+      final blockedMeResponse = await http.get(
+        blockedMeUrl,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (mounted) {
+        setState(() {
+          _isBlocked = iBlockedResponse.statusCode == 200 &&
+              jsonDecode(iBlockedResponse.body) == true;
+          _amIBlocked = blockedMeResponse.statusCode == 200 &&
+              jsonDecode(blockedMeResponse.body) == true;
+        });
+      }
+    } catch (e) {
+      LoggerService.logError('Error checking block status', e);
     }
   }
 
@@ -85,23 +148,6 @@ class _ProfilePageState extends State<ProfileViewPage> {
     } catch (e) {
       LoggerService.logError('Error checking if user is admin', e);
     }
-  }
-
-  Future<Map<String, dynamic>?> _fetchUserData(String userId) async {
-    try {
-      final url = Uri.parse('${Environment.apiBaseUrl}/user/public/$userId');
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      } else {
-        LoggerService.logError(
-            'Error fetching user data: ${response.statusCode}', null);
-      }
-    } catch (e) {
-      LoggerService.logError('Error fetching user data by ID $userId', e);
-    }
-    return null;
   }
 
   Future<void> _reportUser() async {
@@ -210,40 +256,6 @@ class _ProfilePageState extends State<ProfileViewPage> {
     }
   }
 
-  Future<void> _checkBlockStatus() async {
-    try {
-      final token = await _storageService.getAccessToken();
-      if (token == null) throw Exception('Authentication required');
-
-      // Check if the current user has blocked the chat partner.
-      final iBlockedUrl = Uri.parse(
-          '${Environment.apiBaseUrl}/user/block/${widget.userId}/status');
-      final iBlockedResponse = await http.get(
-        iBlockedUrl,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      // Check if the chat partner has blocked the current user.
-      final blockedMeUrl = Uri.parse(
-          '${Environment.apiBaseUrl}/user/blockedBy/${_storageService.getUserId()}/status');
-      final blockedMeResponse = await http.get(
-        blockedMeUrl,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (mounted) {
-        setState(() {
-          _isBlocked = iBlockedResponse.statusCode == 200 &&
-              jsonDecode(iBlockedResponse.body) == true;
-          _amIBlocked = blockedMeResponse.statusCode == 200 &&
-              jsonDecode(blockedMeResponse.body) == true;
-        });
-      }
-    } catch (e) {
-      LoggerService.logError('Error checking block status', e);
-    }
-  }
-
   Future<void> _blockUser() async {
     final String actionText = _isBlocked ? 'Unblock' : 'Block';
 
@@ -291,23 +303,20 @@ class _ProfilePageState extends State<ProfileViewPage> {
               content: Text(
                   'User ${_isBlocked ? 'blocked' : 'unblocked'} successfully')),
         );
-        // Optionally, you might pop back or refresh UI.
         Navigator.pop(context, _isBlocked ? 'blocked' : 'unblocked');
       } else {
         throw Exception(
             'Failed to ${_isBlocked ? 'unblock' : 'block'} user: ${response.statusCode}');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _deleteConversation() async {
-    // Show confirmation dialog
     final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -317,10 +326,8 @@ class _ProfilePageState extends State<ProfileViewPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text(
-                  'CANCEL',
-                  style: TextStyle(color: Colors.white),
-                ),
+                child:
+                    const Text('CANCEL', style: TextStyle(color: Colors.white)),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
@@ -338,9 +345,7 @@ class _ProfilePageState extends State<ProfileViewPage> {
 
     try {
       final token = await _storageService.getAccessToken();
-      if (token == null) {
-        throw Exception('Authentication required');
-      }
+      if (token == null) throw Exception('Authentication required');
 
       final url = Uri.parse(
           '${Environment.apiBaseUrl}/messages?participantId=${widget.userId}');
@@ -356,7 +361,6 @@ class _ProfilePageState extends State<ProfileViewPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text('Conversation deleted successfully')));
-          // Return 'deleted' to indicate the conversation was deleted
           Navigator.pop(context, 'deleted');
         }
       } else {
@@ -375,69 +379,311 @@ class _ProfilePageState extends State<ProfileViewPage> {
     }
   }
 
-  Future<Uint8List?> _fetchAvatar(String userId) async {
-    return _avatarService.getAvatar(userId);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      backgroundColor: theme.surface,
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Profile'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'PROFILE DETAILS',
+          style: TextStyle(
+            fontSize: 16,
+            letterSpacing: 2.0,
+            fontWeight: FontWeight.w300,
+            color: Colors.cyan.shade100,
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.cyan.shade200),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildProfileContent(),
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Color(0xFF101720)],
+          ),
+        ),
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.cyanAccent,
+                ),
+              )
+            : SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildProfileHeader(),
+                    const SizedBox(height: 30),
+                    _buildUserInfoSection(),
+                    const SizedBox(height: 24),
+                    _buildSecuritySection(),
+                    const SizedBox(height: 24),
+                    _buildActionsSection(),
+                  ],
+                ),
+              ),
+      ),
     );
   }
 
-  Widget _buildProfileContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Display avatar with FutureBuilder
-          FutureBuilder<Uint8List?>(
-            future: _fetchAvatar(widget.userId),
-            builder: (_, snapshot) {
-              return CircleAvatar(
-                radius: 50,
-                backgroundImage:
-                    snapshot.hasData ? MemoryImage(snapshot.data!) : null,
-                child: snapshot.hasData
-                    ? null
-                    : const Icon(Icons.person, size: 50, color: Colors.white70),
-              );
-            },
+  Widget _buildProfileHeader() {
+    return Column(
+      children: [
+        Container(
+          height: 120,
+          width: 120,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.cyan.withOpacity(0.4), width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.cyan.withOpacity(0.2),
+                blurRadius: 15,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            widget.username,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          child: _userAvatar != null
+              ? CircleAvatar(backgroundImage: MemoryImage(_userAvatar!))
+              : CircleAvatar(
+                  backgroundColor: Colors.black38,
+                  child:
+                      Icon(Icons.person, color: Colors.cyan.shade300, size: 50),
+                ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          widget.username.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.5,
+            color: Colors.white,
           ),
-          _buildBlockchainConsentIndicator(),
-          UserRoleChip(userId: widget.userId),
-          const SizedBox(height: 8),
-          const Divider(height: 32),
+        ),
+        const SizedBox(height: 16),
+        Theme(
+          data: Theme.of(context).copyWith(
+            chipTheme: ChipThemeData(
+              backgroundColor: Colors.cyan.withOpacity(0.15),
+              disabledColor: Colors.cyan.withOpacity(0.05),
+              selectedColor: Colors.cyan.withOpacity(0.3),
+              secondarySelectedColor: Colors.cyan.withOpacity(0.3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+              labelStyle: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 1,
+              ),
+              secondaryLabelStyle: TextStyle(color: Colors.cyan.shade200),
+              brightness: Brightness.dark,
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: Colors.cyan.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          child: UserRoleChip(userId: widget.userId),
+        ),
+      ],
+    );
+  }
 
-          // Action buttons: Report, Block, Delete
+  Widget _buildUserInfoSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121A24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.cyan.withOpacity(0.05),
+            blurRadius: 15,
+            spreadRadius: -5,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_circle, size: 18, color: Colors.cyan.shade200),
+              const SizedBox(width: 8),
+              Text(
+                'ACCOUNT INFORMATION',
+                style: TextStyle(
+                  fontSize: 14,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.cyan.shade200,
+                ),
+              ),
+            ],
+          ),
+          Divider(color: Colors.cyan.withOpacity(0.1), height: 30),
+          _buildInfoRow('USERNAME', widget.username),
+          _buildInfoRow('ACCOUNT TYPE', 'SECURE MESSAGING USER'),
+          _buildInfoRow('STATUS', 'ACTIVE'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecuritySection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121A24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.cyan.withOpacity(0.05),
+            blurRadius: 15,
+            spreadRadius: -5,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.security, size: 18, color: Colors.cyan.shade200),
+              const SizedBox(width: 8),
+              Text(
+                'SECURITY DETAILS',
+                style: TextStyle(
+                  fontSize: 14,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.cyan.shade200,
+                ),
+              ),
+            ],
+          ),
+          Divider(color: Colors.cyan.withOpacity(0.1), height: 30),
+          _buildInfoRow('ENCRYPTION', 'ENABLED'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'BLOCKCHAIN SERVICES',
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _blockchainConsent
+                      ? Colors.cyan.withOpacity(0.1)
+                      : Colors.grey.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _blockchainConsent
+                        ? Colors.cyan.withOpacity(0.3)
+                        : Colors.grey.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _blockchainConsent ? Icons.check_circle : Icons.cancel,
+                      size: 14,
+                      color: _blockchainConsent
+                          ? Colors.cyan.shade300
+                          : Colors.grey.shade400,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _blockchainConsent ? 'ENABLED' : 'DISABLED',
+                      style: TextStyle(
+                        color: _blockchainConsent
+                            ? Colors.cyan.shade300
+                            : Colors.grey.shade400,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionsSection() {
+    return Container(
+      margin: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121A24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.cyan.withOpacity(0.05),
+            blurRadius: 15,
+            spreadRadius: -5,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning, size: 18, color: Colors.cyan.shade200),
+              const SizedBox(width: 8),
+              Text(
+                'ACTIONS',
+                style: TextStyle(
+                  fontSize: 14,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.cyan.shade200,
+                ),
+              ),
+            ],
+          ),
+          Divider(color: Colors.cyan.withOpacity(0.1), height: 30),
           ListTile(
-            leading: const Icon(Icons.report),
+            leading: const Icon(Icons.report, color: Colors.redAccent),
             title: const Text('Report'),
             enabled: !_isAdmin,
             onTap: _isAdmin ? null : _reportUser,
           ),
           ListTile(
-            leading: Icon(_isBlocked ? Icons.person_add : Icons.block),
+            leading: Icon(
+              _isBlocked ? Icons.person_add : Icons.block,
+              color: _isBlocked ? Colors.blue : Colors.red,
+            ),
             title: Text(_isBlocked ? 'Unblock' : 'Block'),
             enabled: !_isAdmin,
             onTap: _isAdmin ? null : _blockUser,
           ),
           ListTile(
-            leading: const Icon(Icons.delete),
+            leading: const Icon(Icons.delete, color: Colors.red),
             title: const Text('Delete Conversation'),
             enabled: !_isAdmin,
             onTap: _isAdmin ? null : _deleteConversation,
@@ -472,23 +718,26 @@ class _ProfilePageState extends State<ProfileViewPage> {
     );
   }
 
-  Widget _buildBlockchainConsentIndicator() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(
-            _blockchainConsent ? Icons.link : Icons.link_off,
-            size: 20,
-            color: _blockchainConsent ? Colors.green : Colors.grey,
-          ),
-          const SizedBox(width: 8),
           Text(
-            _blockchainConsent ? 'Blockchain Enabled' : 'No Blockchain',
+            label,
             style: TextStyle(
-              color: _blockchainConsent ? Colors.green : Colors.grey,
-              fontWeight: FontWeight.w500,
+              fontSize: 12,
+              letterSpacing: 0.5,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: Colors.grey.shade300,
             ),
           ),
         ],

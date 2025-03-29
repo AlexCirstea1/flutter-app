@@ -128,166 +128,314 @@ class _LoginPageState extends State<LoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  /// Build a wide card for each recent account.
-  Widget _buildRecentAccountCard(Map<String, String> account) {
-    final userId = account['id'];
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _usernameController.text = account['username'] ?? '';
-        });
-      },
-      child: Card(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: true,
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Color(0xFF101720)],
+          ),
         ),
-        elevation: 3,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              // Avatar with FutureBuilder
-              FutureBuilder<Uint8List?>(
-                future:
-                    userId != null ? _avatarService.getAvatar(userId) : null,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    );
-                  }
-
-                  if (snapshot.hasData && snapshot.data != null) {
-                    // Display the avatar image
-                    return CircleAvatar(
-                      radius: 16,
-                      backgroundImage: MemoryImage(snapshot.data!),
-                    );
-                  } else {
-                    // Fallback to the default icon
-                    return const Icon(
-                      Icons.account_circle,
-                      size: 32,
-                      color: Colors.blueAccent,
-                    );
-                  }
-                },
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  account['username'] ?? 'Unknown',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 60),
+                // Logo with glow effect
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.cyan.withOpacity(0.15),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: Image.asset(
+                    'assets/images/response_transparent_logo.png',
+                    width: 120,
                   ),
                 ),
-              ),
-              UserRoleChip(userId: userId, isCompact: true),
-              const SizedBox(width: 3),
-              const Icon(
-                Icons.chevron_right,
-                color: Colors.grey,
-                size: 16,
-              ),
-            ],
+                const SizedBox(height: 50),
+
+                // Title with cybersecurity aesthetic
+                Text(
+                  'SECURE ACCESS',
+                  style: TextStyle(
+                    color: Colors.cyan.shade100,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 3.0,
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Username field with cyber styling
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF121A24),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: TextField(
+                    controller: _usernameController,
+                    style: TextStyle(
+                      color: Colors.grey.shade300,
+                      fontSize: 14,
+                    ),
+                    decoration: InputDecoration(
+                      prefixIcon: Icon(Icons.person_outline, color: Colors.cyan.shade400, size: 20),
+                      labelText: 'USERNAME',
+                      labelStyle: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
+                        letterSpacing: 1.0,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                    ),
+                  ),
+                ),
+
+                // Password field with cyber styling
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF121A24),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  margin: const EdgeInsets.only(bottom: 30),
+                  child: TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    style: TextStyle(
+                      color: Colors.grey.shade300,
+                      fontSize: 14,
+                      fontFamily: 'monospace',
+                    ),
+                    decoration: InputDecoration(
+                      prefixIcon: Icon(Icons.lock_outline, color: Colors.cyan.shade400, size: 20),
+                      labelText: 'PASSWORD',
+                      labelStyle: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
+                        letterSpacing: 1.0,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                    ),
+                  ),
+                ),
+
+                // Login button with cyber styling
+                _isLoading
+                    ? const CircularProgressIndicator(color: Colors.cyanAccent)
+                    : Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.cyan.withOpacity(0.15),
+                        blurRadius: 12,
+                        spreadRadius: -2,
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.cyan.shade900,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        side: BorderSide(
+                          color: Colors.cyan.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      'ACCESS SECURE NETWORK',
+                      style: TextStyle(
+                        color: Colors.cyan.shade100,
+                        fontSize: 12,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Register link with cyber styling
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/register'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.cyan.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      'CREATE SECURE IDENTITY',
+                      style: TextStyle(
+                        color: Colors.cyan.withOpacity(0.7),
+                        fontSize: 10,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 50),
+
+                // Recent Accounts Section with cyber styling
+                if (_recentAccounts.isNotEmpty)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.security, size: 14, color: Colors.cyan.shade400),
+                          const SizedBox(width: 8),
+                          Text(
+                            'AUTHORIZED IDENTITIES',
+                            style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Divider(color: Colors.cyan.withOpacity(0.1), height: 20),
+                      const SizedBox(height: 10),
+                      ..._recentAccounts.map(_buildRecentAccountCard).toList(),
+                    ],
+                  ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      backgroundColor: theme.colorScheme.primary,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 100),
-              // Logo
-              Image.asset(
-                'assets/images/response_transparent_logo.png',
-                width: 120,
-              ),
-              const SizedBox(height: 50),
+  Widget _buildRecentAccountCard(Map<String, String> account) {
+    final userId = account['id'];
 
-              // Login Form
-              TextField(
-                controller: _usernameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.person_outline, color: Colors.white70),
-                  labelText: 'Username',
-                  labelStyle: TextStyle(color: Colors.white70),
-                ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121A24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.transparent),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.cyan.withOpacity(0.2), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.cyan.withOpacity(0.05),
+                blurRadius: 8,
+                spreadRadius: 1,
               ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.lock_outline, color: Colors.white70),
-                  labelText: 'Password',
-                  labelStyle: TextStyle(color: Colors.white70),
-                ),
-              ),
-              const SizedBox(height: 30),
-              _isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : ElevatedButton(
-                      onPressed: _handleLogin,
-                      child: const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                        child: Text('Login'),
-                      ),
-                    ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/register'),
-                child: const Text(
-                  'Don\'t have an account? Register',
-                  style: TextStyle(color: Colors.white70),
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Recent Accounts Section displayed as wide cards
-              if (_recentAccounts.isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Recent Accounts',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Column(
-                      children:
-                          _recentAccounts.map(_buildRecentAccountCard).toList(),
-                    ),
-                  ],
-                ),
             ],
           ),
+          child: FutureBuilder<Uint8List?>(
+            future: userId != null ? _avatarService.getAvatar(userId) : null,
+            builder: (context, snapshot) {
+              return CircleAvatar(
+                backgroundColor: Colors.black38,
+                backgroundImage: snapshot.hasData ? MemoryImage(snapshot.data!) : null,
+                child: snapshot.connectionState == ConnectionState.waiting
+                    ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.cyanAccent,
+                  ),
+                )
+                    : snapshot.hasData
+                    ? null
+                    : const Icon(Icons.person, color: Colors.cyanAccent, size: 20),
+              );
+            },
+          ),
         ),
+        title: Text(
+          account['username']?.toUpperCase() ?? 'UNKNOWN',
+          style: const TextStyle(
+            fontSize: 13,
+            letterSpacing: 0.5,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
+        subtitle: userId != null
+            ? Text(
+          'ID: ${userId.substring(0, 8)}...',
+          style: TextStyle(
+            fontSize: 11,
+            fontFamily: 'monospace',
+            color: Colors.grey.shade500,
+          ),
+        )
+            : null,
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: Colors.cyan.shade300,
+        ),
+        onTap: () {
+          setState(() {
+            _usernameController.text = account['username'] ?? '';
+          });
+        },
       ),
     );
   }

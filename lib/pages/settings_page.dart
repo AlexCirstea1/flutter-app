@@ -1,17 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/environment.dart';
-import '../config/logger_config.dart';
 import '../services/auth_service.dart';
 import '../services/service_locator.dart';
 import '../services/storage_service.dart';
 import '../utils/key_cert_helper.dart';
 import '../widget/bottom_nav_bar.dart';
 
-// Example "SettingsPage" to contain account & security actions.
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -21,47 +17,46 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   int _selectedIndex = 4;
-  bool _isLoading = false;
-  bool _hasPin = false;
+  bool _isGeneratingKeys = false;
+  bool _isLoadingUserId = true;
   String? _userId;
 
-  // Example toggles for new features
-  bool _darkMode = false;
-  bool _notificationsEnabled = true;
-
-  final AuthService _authService = serviceLocator<AuthService>();
   final StorageService _storageService = StorageService();
+  final AuthService _authService = serviceLocator<AuthService>();
 
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
+    _loadUserId();
   }
 
-  Future<void> _fetchUserData() async {
-    try {
-      final accessToken = await _storageService.getAccessToken();
-      if (accessToken != null) {
-        final userData = await _authService.getUserData(accessToken);
-        if (userData != null) {
-          // Get the userId and store it
-          final userId = await _storageService.getUserId();
+  Future<void> _loadUserId() async {
+    final userId = await _storageService.getUserId();
+    setState(() {
+      _userId = userId;
+      _isLoadingUserId = false;
+    });
+  }
 
-          setState(() {
-            _hasPin = userData['hasPin'] ?? false;
-            _userId = userId;
-            _isLoading = false;
-          });
-        }
+  void _onItemTapped(int index) {
+    setState(() => _selectedIndex = index);
+  }
+
+  Future<void> _logout() async {
+    final token = await _storageService.getAccessToken();
+    if (token != null) {
+      final success = await _authService.logout(token);
+      if (success && mounted) {
+        await _storageService.clearLoginDetails();
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
       }
-    } catch (_) {
-      setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _rotateKeys() async {
-    setState(() => _isLoading = true);
+  Future<void> _regenerateKeys() async {
+    setState(() => _isGeneratingKeys = true);
     try {
+      // Generate the keys and certificate using records (Dart 3+)
       final (privatePem, certificatePem, publicPem) =
           await KeyCertHelper.generateSelfSignedCert();
 
@@ -80,222 +75,347 @@ class _SettingsPageState extends State<SettingsPage> {
           final keyVersion = response.body;
           await _storageService.savePrivateKey(keyVersion, privatePem);
           await _storageService.saveCertificate(keyVersion, certificatePem);
-          _showSnackBar('Encryption keys rotated successfully');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Security keys regenerated successfully'),
+                backgroundColor: Colors.green.shade800,
+              ),
+            );
+          }
         } else {
-          _showSnackBar('Failed to upload new public key');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Failed to update public key on server'),
+                backgroundColor: Colors.red.shade800,
+              ),
+            );
+          }
         }
       }
     } catch (e) {
-      LoggerService.logError('Key rotation error', e);
-      _showSnackBar('Failed to rotate encryption keys');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _logout() async {
-    final token = await _storageService.getAccessToken();
-    if (token != null && await _authService.logout(token)) {
-      await _storageService.clearLoginDetails();
-      if (mounted) Navigator.pushReplacementNamed(context, '/login');
-    } else {
-      _showSnackBar('Logout failed');
-    }
-  }
-
-  Future<void> _deleteAccount() async {
-    final token = await _storageService.getAccessToken();
-    if (token != null && await _authService.deleteAccount(token)) {
-      await _storageService.clearLoginDetails();
-      if (mounted) Navigator.pushReplacementNamed(context, '/login');
-    } else {
-      _showSnackBar('Account deletion failed');
-    }
-  }
-
-  void _confirmDelete() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Account?'),
-        content: const Text('This action is irreversible. Proceed?'),
-        actions: [
-          TextButton(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to regenerate keys: $e'),
+            backgroundColor: Colors.red.shade800,
           ),
-          TextButton(
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
+        );
+      }
+    } finally {
+      setState(() => _isGeneratingKeys = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'SETTINGS',
+          style: TextStyle(
+            fontSize: 16,
+            letterSpacing: 2.0,
+            fontWeight: FontWeight.w300,
+            color: Colors.cyan.shade100,
+          ),
+        ),
+        automaticallyImplyLeading: false,
+      ),
+      body: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Color(0xFF101720)],
+          ),
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+
+              // Security section
+              _buildSectionHeader('SECURITY SETTINGS', Icons.security),
+              const SizedBox(height: 16),
+              _buildSettingsCard(
+                children: [
+                  _buildSettingItem(
+                    title: 'REGENERATE SECURITY KEYS',
+                    subtitle: 'Create new encryption keys for your account',
+                    icon: Icons.vpn_key_rounded,
+                    onTap: _isGeneratingKeys ? null : _regenerateKeys,
+                    trailing: _isGeneratingKeys
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.cyanAccent,
+                            ),
+                          )
+                        : Icon(
+                            Icons.refresh,
+                            size: 18,
+                            color: Colors.cyan.shade300,
+                          ),
+                  ),
+                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  _buildSettingItem(
+                    title: 'SETUP PIN',
+                    subtitle: 'Configure a security PIN code for the app',
+                    icon: Icons.pin,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/pin-setup');
+                    },
+                  ),
+                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  _buildSettingItem(
+                    title: 'BIOMETRIC AUTHENTICATION',
+                    subtitle: 'Use fingerprint or face recognition',
+                    icon: Icons.fingerprint,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/biometric-setup');
+                    },
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Account section
+              _buildSectionHeader('ACCOUNT MANAGEMENT', Icons.account_circle),
+              const SizedBox(height: 16),
+              _buildSettingsCard(
+                children: [
+                  _buildSettingItem(
+                    title: 'USER ID',
+                    subtitle: _isLoadingUserId
+                        ? 'Loading...'
+                        : _userId?.substring(0, 10) ?? 'Not available',
+                    icon: Icons.perm_identity,
+                    titleStyle: TextStyle(
+                      color: Colors.grey.shade300,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    subtitleStyle: const TextStyle(
+                      color: Colors.cyanAccent,
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                    ),
+                    onTap: null,
+                  ),
+                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  _buildSettingItem(
+                    title: 'EDIT PROFILE',
+                    subtitle: 'Change your username and details',
+                    icon: Icons.edit,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/edit-profile');
+                    },
+                  ),
+                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  _buildSettingItem(
+                    title: 'BLOCKCHAIN CONSENT',
+                    subtitle: 'Manage your consent for blockchain features',
+                    icon: Icons.link,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/blockchain-consent');
+                    },
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // App settings section
+              _buildSectionHeader('APPLICATION', Icons.settings),
+              const SizedBox(height: 16),
+              _buildSettingsCard(
+                children: [
+                  _buildSettingItem(
+                    title: 'NOTIFICATIONS',
+                    subtitle: 'Configure message notifications',
+                    icon: Icons.notifications,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/notifications');
+                    },
+                  ),
+                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  _buildSettingItem(
+                    title: 'THEME SETTINGS',
+                    subtitle: 'Customize app appearance',
+                    icon: Icons.color_lens,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/theme-settings');
+                    },
+                  ),
+                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  _buildSettingItem(
+                    title: 'PRIVACY POLICY',
+                    subtitle: 'Review our privacy terms',
+                    icon: Icons.privacy_tip,
+                    onTap: () {
+                      Navigator.pushNamed(context, '/privacy-policy');
+                    },
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 30),
+
+              // Logout section
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 40),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.redAccent.withOpacity(0.1),
+                        blurRadius: 10,
+                        spreadRadius: -5,
+                      ),
+                    ],
+                  ),
+                  child: TextButton.icon(
+                    onPressed: _logout,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        side: BorderSide(
+                            color: Colors.redAccent.withOpacity(0.3)),
+                      ),
+                    ),
+                    icon: const Icon(Icons.logout, size: 18),
+                    label: const Text(
+                      'SECURE LOGOUT',
+                      style: TextStyle(
+                        letterSpacing: 1.5,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.cyan.shade400),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              letterSpacing: 1.5,
+              fontWeight: FontWeight.w400,
+              color: Colors.grey.shade400,
             ),
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteAccount();
-            },
           ),
         ],
       ),
     );
   }
 
-  //endregion
-
-  //region: Example new toggles (Dark Mode, Notifications)
-  Future<void> _toggleDarkMode(bool value) async {
-    setState(() {
-      _darkMode = value;
-    });
-    // If you want to store this preference:
-    // await _storageService.saveInStorage('darkMode', value.toString());
-  }
-
-  Future<void> _toggleNotifications(bool value) async {
-    setState(() {
-      _notificationsEnabled = value;
-    });
-    // If you want to store this preference:
-    // await _storageService.saveInStorage('notifications', value.toString());
-  }
-  //endregion
-
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
-    // If index == 2, go to Profile, etc.
-  }
-
-  void _showSnackBar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      backgroundColor: theme.surface,
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: theme.primary,
-        automaticallyImplyLeading: false,
+  Widget _buildSettingsCard({required List<Widget> children}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF121A24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.cyan.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.cyan.withOpacity(0.03),
+            blurRadius: 15,
+            spreadRadius: -5,
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  //region: Example new toggles or settings
-                  Text(
-                    'App Preferences',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: theme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+      child: Column(
+        children: children,
+      ),
+    );
+  }
 
-                  SwitchListTile(
-                    title: const Text('Dark Mode'),
-                    value: _darkMode,
-                    onChanged: _toggleDarkMode,
-                  ),
-                  SwitchListTile(
-                    title: const Text('Notifications'),
-                    value: _notificationsEnabled,
-                    onChanged: _toggleNotifications,
-                  ),
-                  //endregion
-
-                  //endregion
-                  const SizedBox(height: 20),
-                  const Divider(
-                    thickness: 1,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Security & Account',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: theme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  //region: Existing security actions
-
-                  //region: Existing security actions
-                  ElevatedButton.icon(
-                    onPressed: () => Navigator.pushNamed(context, '/set-pin'),
-                    icon: Icon(_hasPin ? Icons.refresh : Icons.pin),
-                    label: Text(_hasPin ? 'Reset PIN' : 'Set PIN'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.secondary,
-                      foregroundColor: theme.onSecondary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  ElevatedButton.icon(
-                    onPressed: _rotateKeys,
-                    icon: const Icon(Icons.key),
-                    label: const Text('Rotate Encryption Keys'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.secondary,
-                      foregroundColor: theme.onSecondary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  ElevatedButton.icon(
-                    onPressed: _logout,
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Logout'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueGrey,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  ElevatedButton.icon(
-                    onPressed: _confirmDelete,
-                    icon: const Icon(Icons.delete),
-                    label: const Text('Delete Account'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  //endregion
-
-                  // Additional placeholders for future features...
-                ],
-              ),
+  Widget _buildSettingItem({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback? onTap,
+    Widget? trailing,
+    TextStyle? titleStyle,
+    TextStyle? subtitleStyle,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black12,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.cyan.withOpacity(0.2), width: 1),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: Colors.cyan.shade200,
+        ),
+      ),
+      title: Text(
+        title,
+        style: titleStyle ??
+            TextStyle(
+              fontSize: 13,
+              letterSpacing: 0.5,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade300,
             ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
       ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(
+          subtitle,
+          style: subtitleStyle ??
+              TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade500,
+              ),
+        ),
+      ),
+      trailing: trailing ??
+          (onTap == null
+              ? null
+              : Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: Colors.grey.shade600,
+                )),
+      onTap: onTap,
     );
   }
 }

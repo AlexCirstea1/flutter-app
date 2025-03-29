@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:icons_flutter/icons_flutter.dart';
-import 'package:vaultx_app/pages/home_page.dart';
-import 'package:vaultx_app/pages/profile_page.dart';
-import 'package:vaultx_app/pages/settings_page.dart';
 
 import '../pages/activity_page.dart';
 import '../pages/blockchain_page.dart';
+import '../pages/home_page.dart';
+import '../pages/profile_page.dart';
+import '../pages/settings_page.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -19,41 +19,82 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 80,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF121A24), Colors.black],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.5),
+            blurRadius: 10,
+            spreadRadius: 1,
+          ),
+        ],
+        border: Border(
+          top: BorderSide(
+            color: Colors.cyan.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(context, 0, Ionicons.ios_chatbubbles, 'CHAT'),
+          _buildNavItem(context, 1, Icons.person_outline, 'PROFILE'),
+          _buildNavItem(context, 2, Icons.link, 'BLOCKCHAIN'),
+          _buildNavItem(context, 3, Icons.history_outlined, 'ACTIVITY'),
+          _buildNavItem(context, 4, Icons.settings_outlined, 'SETTINGS'),
+        ],
+      ),
+    );
+  }
 
-    return BottomNavigationBar(
-      backgroundColor: colorScheme.surface,
-      selectedItemColor: const Color(0xFF00B5FF),
-      unselectedItemColor: Colors.grey.shade500,
-      selectedLabelStyle:
-          const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-      unselectedLabelStyle: const TextStyle(fontSize: 12),
-      currentIndex: currentIndex,
-      type: BottomNavigationBarType.fixed,
-      elevation: 8,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Ionicons.ios_chatbubbles),
-          label: 'Chat',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline),
-          label: 'Profile',
-        ),
-        BottomNavigationBarItem(icon: Icon(Icons.link), label: 'Blockchain'),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.history_outlined),
-          label: 'Activity',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings_outlined),
-          label: 'Settings',
-        ),
-      ],
-      onTap: (index) {
+  Widget _buildNavItem(
+      BuildContext context, int index, IconData icon, String label) {
+    final isSelected = index == currentIndex;
+
+    return InkWell(
+      onTap: () {
         _onTabSelected(context, index);
         onTap(index);
       },
+      child: Container(
+        width: MediaQuery.of(context).size.width / 5,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: isSelected ? Colors.cyan : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.cyan : Colors.grey.shade500,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.cyan.shade100 : Colors.grey.shade600,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

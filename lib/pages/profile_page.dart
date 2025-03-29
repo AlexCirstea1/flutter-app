@@ -132,49 +132,149 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildCertInfoRow(String label, String value, {Color? textColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            ),
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text('PROFILE',
+          style: TextStyle(
+            fontSize: 16,
+            letterSpacing: 2.0,
+            fontWeight: FontWeight.w300,
+            color: Colors.cyan.shade100,
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: textColor ?? Theme.of(context).colorScheme.onSurface,
-            ),
+        ),
+        automaticallyImplyLeading: false,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
+          : Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Color(0xFF101720)],
           ),
-        ],
+        ),
+        child: SingleChildScrollView(
+          physics: BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.cyanAccent, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.cyanAccent.withOpacity(0.15),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                  ),
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.black38,
+                    backgroundImage: _avatarBytes != null
+                        ? MemoryImage(_avatarBytes!)
+                        : null,
+                    child: _avatarBytes == null
+                        ? Icon(Icons.person, size: 50, color: Colors.cyanAccent)
+                        : null,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                _username,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: 1.5,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              UserRoleChip(userId: _userId),
+              const SizedBox(height: 8),
+              Text(
+                _email,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade400,
+                ),
+              ),
+              _buildBlockchainConsentIndicator(),
+              const SizedBox(height: 30),
+              _buildCertificateSection(),
+              const SizedBox(height: 60),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, '/about');
+                },
+                child: Text(
+                  '// ABOUT THIS APP',
+                  style: TextStyle(
+                    color: Colors.cyan.withOpacity(0.7),
+                    fontSize: 12,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
       ),
     );
   }
 
   Widget _buildBlockchainConsentIndicator() {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _blockchainConsent ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _blockchainConsent ? Colors.green.withOpacity(0.3) : Colors.grey.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             _blockchainConsent ? Icons.link : Icons.link_off,
-            size: 20,
-            color: _blockchainConsent ? Colors.green : Colors.grey,
+            size: 16,
+            color: _blockchainConsent ? Colors.green.shade300 : Colors.grey.shade400,
           ),
           const SizedBox(width: 8),
           Text(
-            _blockchainConsent ? 'Blockchain Enabled' : 'No Blockchain',
+            _blockchainConsent ? 'BLOCKCHAIN ENABLED' : 'NO BLOCKCHAIN',
             style: TextStyle(
-              color: _blockchainConsent ? Colors.green : Colors.grey,
-              fontWeight: FontWeight.w500,
+              color: _blockchainConsent ? Colors.green.shade300 : Colors.grey.shade400,
+              fontWeight: FontWeight.w400,
+              fontSize: 12,
+              letterSpacing: 1,
             ),
           ),
         ],
@@ -182,84 +282,92 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).colorScheme;
+  Widget _buildCertificateSection() {
+    if (_certificateInfo == null) {
+      return const SizedBox.shrink();
+    }
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: theme.primary,
-        foregroundColor: theme.onPrimary,
-        title: const Text('Profile'),
-        automaticallyImplyLeading: false,
+    final dn = _certificateInfo!.distinguishedName;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF121A24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.cyan.withOpacity(0.05),
+            blurRadius: 15,
+            spreadRadius: -5,
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Container(
-              padding: const EdgeInsets.all(24),
-              width: double.infinity,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Top section with profile info
-                  Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 55,
-                        backgroundColor: theme.primary,
-                        backgroundImage: _avatarBytes != null
-                            ? MemoryImage(_avatarBytes!)
-                            : null,
-                        child: _avatarBytes == null
-                            ? const Icon(Icons.person,
-                                size: 55, color: Colors.white)
-                            : null,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        _username,
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: theme.onSurface,
-                        ),
-                      ),
-                      UserRoleChip(userId: _userId),
-                      _buildBlockchainConsentIndicator(),
-                      const SizedBox(height: 8),
-                      Text(
-                        _email,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: theme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      _buildCertificateInfo(),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-
-                  // Bottom section with "About this app"
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pushNamed(context, '/about');
-                    },
-                    child: const Text(
-                      'About this app',
-                      style: TextStyle(
-                        color: Color(0xB5D8FFFF),
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.security, size: 18, color: Colors.cyan.shade200),
+              const SizedBox(width: 8),
+              Text(
+                'SECURITY CERTIFICATE',
+                style: TextStyle(
+                  fontSize: 14,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.cyan.shade200,
+                ),
               ),
+            ],
+          ),
+          Divider(color: Colors.cyan.withOpacity(0.1), height: 30),
+          _buildCertInfoRow('Common Name', dn.commonName),
+          _buildCertInfoRow('Organization', dn.organization ?? 'N/A'),
+          _buildCertInfoRow('Department', dn.organizationalUnit ?? 'N/A'),
+          _buildCertInfoRow('State', dn.state ?? 'N/A'),
+          _buildCertInfoRow('RSA Key Size', '${_certificateInfo!.keySize} bits'),
+          _buildCertInfoRow(
+            'Expires In',
+            _certificateInfo!.isExpired
+                ? 'Expired'
+                : '${_certificateInfo!.daysRemaining} days',
+            textColor: _certificateInfo!.daysRemaining < 30
+                ? Colors.redAccent
+                : _certificateInfo!.daysRemaining < 90
+                ? Colors.orangeAccent
+                : Colors.greenAccent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCertInfoRow(String label, String value, {Color? textColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 12,
+              letterSpacing: 0.5,
+              color: Colors.grey.shade500,
             ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              fontFamily: 'monospace',
+              color: textColor ?? Colors.grey.shade300,
+            ),
+          ),
+        ],
       ),
     );
   }

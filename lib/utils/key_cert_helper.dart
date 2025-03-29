@@ -87,47 +87,56 @@ class KeyCertHelper {
 
   /// Parses a PEM certificate into a CertificateInfo object
   static CertificateInfo parseCertificate(String pemCertificate) {
-    // Parse the PEM certificate and assume the first object is an X509Certificate
-    final cert = parsePem(pemCertificate).first as X509Certificate;
+    // Convert the PEM certificate to a structured X509CertificateData object.
+    final data = X509Utils.x509CertificateFromPem(pemCertificate);
 
-    // Map to hold the distinguished name fields.
+    // Create a map for the Distinguished Name fields using standard OIDs.
     final Map<String, String> dnMap = {};
 
-    // Since Name does not expose a structured getter, fallback to parsing its string output.
-    final subject = cert.tbsCertificate.subject;
-    if (subject != null) {
-      final subjectString = subject.toString();
-      // Use regex to extract key=value pairs (e.g. "CN=MyCert")
-      final regex = RegExp(r'([A-Za-z]+)\s*=\s*([^,]+)');
-      final matches = regex.allMatches(subjectString);
-      for (final match in matches) {
-        if (match.groupCount >= 2) {
-          final key = match.group(1)?.trim();
-          final value = match.group(2)?.trim();
-          if (key != null && value != null) {
-            dnMap[key] = value;
-          }
-        }
+    // The subject is provided as a map with OID keys.
+    if (data.subject != null) {
+      // Common Name (OID 2.5.4.3)
+      if (data.subject!.containsKey("2.5.4.3")) {
+        dnMap["CN"] = data.subject!["2.5.4.3"]!;
+      }
+      // Organization (OID 2.5.4.10)
+      if (data.subject!.containsKey("2.5.4.10")) {
+        dnMap["O"] = data.subject!["2.5.4.10"]!;
+      }
+      // Organizational Unit (OID 2.5.4.11)
+      if (data.subject!.containsKey("2.5.4.11")) {
+        dnMap["OU"] = data.subject!["2.5.4.11"]!;
+      }
+      // Locality (OID 2.5.4.7)
+      if (data.subject!.containsKey("2.5.4.7")) {
+        dnMap["L"] = data.subject!["2.5.4.7"]!;
+      }
+      // State/Province (OID 2.5.4.8)
+      if (data.subject!.containsKey("2.5.4.8")) {
+        dnMap["ST"] = data.subject!["2.5.4.8"]!;
+      }
+      // Country (OID 2.5.4.6)
+      if (data.subject!.containsKey("2.5.4.6")) {
+        dnMap["C"] = data.subject!["2.5.4.6"]!;
+      }
+      // Email Address (OID 1.2.840.113549.1.9.1)
+      if (data.subject!.containsKey("1.2.840.113549.1.9.1")) {
+        dnMap["EMAIL"] = data.subject!["1.2.840.113549.1.9.1"]!;
       }
     }
 
-    // Extract validity dates
-    final issuedOn = cert.tbsCertificate.validity?.notBefore ?? DateTime.now();
-    final validUntil = cert.tbsCertificate.validity?.notAfter ?? DateTime.now();
+    // Extract the key size from the public key data, if available.
+    int keySize = 2048; // default value
+    if (data.publicKeyData != null && data.publicKeyData!.length != null) {
+      keySize = data.publicKeyData!.length!;
+    }
 
-    // Determine key size by extracting the public key from the SubjectPublicKeyInfo
-    int keySize = 2048;
-    try {
-      final publicKeyInfo = cert.tbsCertificate.subjectPublicKeyInfo;
-      if (publicKeyInfo != null) {
-        final spk = publicKeyInfo.subjectPublicKey;
-        // Cast to RsaPublicKey which exposes the modulus getter
-        if (spk is RsaPublicKey) {
-          keySize = (spk as RsaPublicKey).modulus.bitLength;
-        }
-      }
-    } catch (_) {
-      // Use default key size if extraction fails.
+    // Extract validity dates if provided; otherwise use current time as placeholders.
+    DateTime issuedOn = DateTime.now();
+    DateTime validUntil = DateTime.now();
+    if (data.validity != null) {
+      issuedOn = data.validity!.notBefore;
+      validUntil = data.validity!.notAfter;
     }
 
     return CertificateInfo(
@@ -137,4 +146,5 @@ class KeyCertHelper {
       validUntil: validUntil,
     );
   }
+
 }

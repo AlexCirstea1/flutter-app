@@ -114,13 +114,17 @@ class AuthService {
 
   // Logout
   Future<bool> logout(String accessToken) async {
+    final url = Uri.parse('${Environment.apiBaseUrl}/auth/logout');
     try {
-      await _apiService.post('/auth/logout', null);
-      return true;
+      final response = await http.post(
+        url,
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
+      return response.statusCode == 200;
     } catch (error) {
       LoggerService.logError('Logout error: $error');
-      return false;
     }
+    return false;
   }
 
   // Save PIN

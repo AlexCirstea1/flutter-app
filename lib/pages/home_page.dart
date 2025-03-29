@@ -235,35 +235,143 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     });
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: _buildUserAvatar(),
+        title: Text(
+          'SECURE MESSAGING',
+          style: TextStyle(
+            fontSize: 14,
+            letterSpacing: 2.0,
+            fontWeight: FontWeight.w300,
+            color: Colors.cyan.shade100,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search, color: Colors.cyan.shade200),
+            onPressed: _navigateToSelectUser,
+          ),
+          IconButton(
+            icon: Icon(Icons.logout, color: Colors.cyan.shade200),
+            onPressed: _logout,
+          ),
+        ],
+      ),
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black, Color(0xFF101720)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.security, size: 14, color: Colors.cyan.shade400),
+                    const SizedBox(width: 8),
+                    Text(
+                      'WELCOME, ${_username.toUpperCase()}',
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Divider(color: Colors.cyan.withOpacity(0.1), height: 1),
+              ),
+              Expanded(child: _buildChatList()),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
+    );
+  }
+
   Widget _buildUserAvatar() {
     return Padding(
-      padding: const EdgeInsets.only(left: 16.0),
-      child: _userAvatar != null
-          ? CircleAvatar(backgroundImage: MemoryImage(_userAvatar!))
-          : const CircleAvatar(
-              child: Icon(Icons.person, color: Colors.white70)),
+      padding: const EdgeInsets.only(left: 8.0),
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.cyan.withOpacity(0.3), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.cyan.withOpacity(0.1),
+              blurRadius: 10,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: _userAvatar != null
+            ? CircleAvatar(backgroundImage: MemoryImage(_userAvatar!))
+            : const CircleAvatar(
+            backgroundColor: Colors.black45,
+            child: Icon(Icons.person, color: Colors.cyan)),
+      ),
     );
   }
 
   Widget _buildChatList() {
     if (_isLoadingHistory) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.cyanAccent),
+      );
     }
 
     if (_chatHistory.isEmpty) {
-      return const Center(
-        child: Text(
-          'No conversations yet.',
-          style: TextStyle(fontSize: 16, color: Colors.white54),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.lock, size: 50, color: Colors.grey.shade800),
+            const SizedBox(height: 16),
+            Text(
+              'NO CONVERSATIONS YET',
+              style: TextStyle(
+                fontSize: 14,
+                letterSpacing: 1.5,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start a new secure conversation',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    return ListView.separated(
+    return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _chatHistory.length,
-      separatorBuilder: (_, __) =>
-          const Divider(color: Colors.white12, indent: 72, height: 1),
       itemBuilder: (ctx, i) {
         final chat = _chatHistory[i];
         final lastMsg = chat.messages.isNotEmpty ? chat.messages.last : null;
@@ -276,106 +384,140 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
           final difference = now.difference(timestamp);
 
           if (difference.inDays > 0) {
-            // Show date for older messages
-            timeString =
-                '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+            timeString = '${timestamp.day}/${timestamp.month}/${timestamp.year}';
           } else {
-            // Show time for today's messages
-            timeString =
-                '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+            timeString = '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
           }
         }
 
-        return ListTile(
-          leading: FutureBuilder<Uint8List?>(
-            future: _fetchAvatar(chat.participant),
-            builder: (_, snap) {
-              return snap.connectionState == ConnectionState.waiting
-                  ? const CircleAvatar(
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : CircleAvatar(
-                      backgroundImage:
-                          snap.hasData ? MemoryImage(snap.data!) : null,
-                      child: snap.hasData
-                          ? null
-                          : const Icon(Icons.person, color: Colors.white70),
-                    );
-            },
-          ),
-          title: Text(
-            chat.participantUsername.isNotEmpty
-                ? chat.participantUsername
-                : 'User ${chat.participant}',
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          subtitle: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  (lastMsg?.plaintext?.isNotEmpty ?? false)
-                      ? lastMsg!.plaintext!
-                      : '[Encrypted message]',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white60),
-                ),
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF121A24),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: chat.unreadCount > 0
+                  ? Colors.cyan.withOpacity(0.3)
+                  : Colors.transparent,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 5,
+                offset: const Offset(0, 2),
               ),
-              if (timeString.isNotEmpty)
-                Text(
-                  timeString,
-                  style: const TextStyle(
-                    color: Colors.white38,
-                    fontSize: 12,
-                  ),
-                ),
             ],
           ),
-          trailing: chat.unreadCount > 0
-              ? Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.blueAccent,
-                    borderRadius: BorderRadius.circular(12),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            leading: _buildChatAvatar(chat.participant),
+            title: Row(
+              children: [
+                Text(
+                  chat.participantUsername.isNotEmpty
+                      ? chat.participantUsername.toUpperCase()
+                      : 'USER-${chat.participant.substring(0, 6)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                    color: Colors.white,
                   ),
-                  child: Text(
-                    '${chat.unreadCount}',
-                    style: const TextStyle(fontSize: 12, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
+                if (chat.unreadCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.cyan.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      '${chat.unreadCount}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.cyanAccent,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
                   ),
-                )
-              : const SizedBox.shrink(),
-          onTap: () => _navigateToChat(chat),
+              ],
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        (lastMsg?.plaintext?.isNotEmpty ?? false)
+                            ? lastMsg!.plaintext!
+                            : '[ENCRYPTED]',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 12,
+                          fontFamily: lastMsg?.plaintext == null ? 'monospace' : null,
+                        ),
+                      ),
+                    ),
+                    if (timeString.isNotEmpty)
+                      Text(
+                        timeString,
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            onTap: () => _navigateToChat(chat),
+          ),
         );
       },
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        elevation: 2,
-        leading: _buildUserAvatar(),
-        title: Text('Hello, $_username',
-            style: const TextStyle(fontWeight: FontWeight.w400)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: _navigateToSelectUser,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: _logout,
+  Widget _buildChatAvatar(String userId) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.cyan.withOpacity(0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.cyan.withOpacity(0.05),
+            blurRadius: 8,
+            spreadRadius: 1,
           ),
         ],
       ),
-      body: SafeArea(child: _buildChatList()),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+      child: FutureBuilder<Uint8List?>(
+        future: _fetchAvatar(userId),
+        builder: (_, snap) {
+          return CircleAvatar(
+            radius: 22,
+            backgroundColor: Colors.black38,
+            backgroundImage: snap.hasData ? MemoryImage(snap.data!) : null,
+            child: snap.connectionState == ConnectionState.waiting
+                ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.cyanAccent,
+              ),
+            )
+                : snap.hasData
+                ? null
+                : const Icon(Icons.person, color: Colors.cyanAccent, size: 20),
+          );
+        },
       ),
     );
   }

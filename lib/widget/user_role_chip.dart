@@ -43,15 +43,9 @@ class _UserRoleChipState extends State<UserRoleChip> {
     setState(() => _isLoading = true);
 
     try {
-      // final token = await _storageService.getAccessToken();
-      // if (token == null) throw Exception('Authentication required');
-
       final url = Uri.parse(
           '${Environment.apiBaseUrl}/user/public/${widget.userId}/roles');
-      final response = await http.get(
-        url,
-        // headers: {'Authorization': 'Bearer $token'},
-      );
+      final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final List<dynamic> rolesJson = jsonDecode(response.body);
@@ -76,6 +70,8 @@ class _UserRoleChipState extends State<UserRoleChip> {
         width: widget.isCompact ? 20 : 32,
         child: CircularProgressIndicator(
           strokeWidth: widget.isCompact ? 1.5 : 2,
+          color: Colors.cyan.shade200,
+          backgroundColor: Colors.cyan.withOpacity(0.1),
         ),
       );
     }
@@ -87,8 +83,9 @@ class _UserRoleChipState extends State<UserRoleChip> {
     // Determine the primary role based on priority
     String primaryRole = _getPrimaryRole(_userRoles);
 
-    // Role display configurations
+    // Role display configurations - using cybersecurity colors
     Color backgroundColor;
+    Color borderColor;
     Color textColor = Colors.white;
     String label;
     IconData? icon;
@@ -96,35 +93,48 @@ class _UserRoleChipState extends State<UserRoleChip> {
     final roleUpper = primaryRole.toUpperCase();
 
     if (roleUpper.contains("VERIFIED")) {
-      backgroundColor = Colors.green.shade600;
-      label = "Verified";
+      backgroundColor = Colors.green.shade900.withOpacity(0.7);
+      borderColor = Colors.green.shade400.withOpacity(0.5);
+      label = "VERIFIED";
       icon = Icons.verified_user;
     } else if (roleUpper.contains("ANONYMOUS")) {
-      backgroundColor = Colors.grey.shade700;
-      label = "Anonymous";
+      backgroundColor = Colors.grey.shade900.withOpacity(0.7);
+      borderColor = Colors.grey.shade500.withOpacity(0.5);
+      label = "ANONYMOUS";
       icon = Icons.person_outline;
     } else if (roleUpper.contains("ADMIN")) {
-      backgroundColor = Colors.deepPurple;
-      label = "Admin";
+      backgroundColor = Colors.deepPurple.shade900.withOpacity(0.7);
+      borderColor = Colors.deepPurple.shade400.withOpacity(0.5);
+      label = "ADMIN";
       icon = Icons.admin_panel_settings;
     } else if (roleUpper.contains("USER")) {
-      backgroundColor = Colors.blue.shade700;
-      label = "User";
+      backgroundColor = Colors.blue.shade900.withOpacity(0.7);
+      borderColor = Colors.blue.shade400.withOpacity(0.5);
+      label = "USER";
       icon = Icons.person;
     } else {
-      backgroundColor = Colors.blueGrey;
+      backgroundColor = Colors.blueGrey.shade900.withOpacity(0.7);
+      borderColor = Colors.blueGrey.shade400.withOpacity(0.5);
       textColor = Colors.white70;
-      label = "Unknown";
+      label = "UNKNOWN";
       icon = Icons.help_outline;
     }
 
-    // For compact mode, only show the icon
+    // For compact mode, only show the icon with cybersecurity styling
     if (widget.isCompact) {
       return Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: backgroundColor,
           shape: BoxShape.circle,
+          border: Border.all(color: borderColor, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: borderColor.withOpacity(0.5),
+              blurRadius: 4,
+              spreadRadius: 0,
+            ),
+          ],
         ),
         child: Icon(
           icon,
@@ -134,20 +144,40 @@ class _UserRoleChipState extends State<UserRoleChip> {
       );
     }
 
-    // Regular mode: Show full chip with text
-    return Chip(
-      avatar: icon != null ? Icon(icon, size: 16, color: textColor) : null,
-      label: Text(
-        label,
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
+    // Regular mode: Cybersecurity-styled chip
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: borderColor.withOpacity(0.3),
+            blurRadius: 8,
+            spreadRadius: -2,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: textColor),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
         ),
       ),
-      backgroundColor: backgroundColor,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      materialTapTargetSize: MaterialTapTargetSize.padded,
     );
   }
 
