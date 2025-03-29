@@ -20,36 +20,41 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 80,
+      height: 75,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF121A24), Colors.black],
+          colors: [Color(0xFF121A24), Color(0xFF090F16)],
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.6),
+            blurRadius: 15,
             spreadRadius: 1,
+            offset: const Offset(0, -3),
           ),
         ],
         border: Border(
           top: BorderSide(
-            color: Colors.cyan.withOpacity(0.2),
+            color: Colors.cyan.withOpacity(0.3),
             width: 1,
           ),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(context, 0, Ionicons.ios_chatbubbles, 'CHAT'),
-          _buildNavItem(context, 1, Icons.person_outline, 'PROFILE'),
-          _buildNavItem(context, 2, Icons.link, 'BLOCKCHAIN'),
-          _buildNavItem(context, 3, Icons.history_outlined, 'ACTIVITY'),
-          _buildNavItem(context, 4, Icons.settings_outlined, 'SETTINGS'),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.only(
+            bottom: 21), // Increased bottom padding to move content up
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavItem(context, 0, Ionicons.ios_chatbubbles, 'CHAT'),
+            _buildNavItem(context, 1, Icons.person_outline, 'PROFILE'),
+            _buildNavItem(context, 2, Icons.link, 'BLOCKCHAIN'),
+            _buildNavItem(context, 3, Icons.history_outlined, 'ACTIVITY'),
+            _buildNavItem(context, 4, Icons.settings_outlined, 'SETTINGS'),
+          ],
+        ),
       ),
     );
   }
@@ -65,7 +70,6 @@ class BottomNavBar extends StatelessWidget {
       },
       child: Container(
         width: MediaQuery.of(context).size.width / 5,
-        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
@@ -77,19 +81,28 @@ class BottomNavBar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const SizedBox(height: 8), // Reduced top padding slightly
             Icon(
               icon,
-              color: isSelected ? Colors.cyan : Colors.grey.shade500,
+              color: isSelected ? Colors.cyan : Colors.grey.shade600,
               size: 24,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? Colors.cyan.shade100 : Colors.grey.shade600,
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                letterSpacing: 0.5,
+                letterSpacing: 1.0,
+                shadows: isSelected
+                    ? [
+                        Shadow(
+                          color: Colors.cyan.withOpacity(0.3),
+                          blurRadius: 5,
+                        )
+                      ]
+                    : null,
               ),
             ),
           ],
