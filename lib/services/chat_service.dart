@@ -13,6 +13,7 @@ import '../config/environment.dart';
 import '../config/logger_config.dart';
 import '../models/chat_history_dto.dart';
 import '../models/message_dto.dart';
+import '../models/chat_request_dto.dart';
 import '../services/storage_service.dart';
 import '../utils/crypto_helper.dart';
 
@@ -27,16 +28,16 @@ class PublicKeyData {
 class ChatService {
   final StorageService storageService;
 
-  /// (Optional) In-memory list of messages for a single chat session.
+  /// In-memory list of messages for a single conversation.
   final List<MessageDTO> messages = [];
 
   bool isFetchingHistory = false;
 
   ChatService({required this.storageService});
 
-  // ---------------------------------------------------------------------------
+  // ---------------------------
   // (A) Fetch Single Conversation
-  // ---------------------------------------------------------------------------
+  // ---------------------------
   Future<void> fetchChatHistory({
     required String chatUserId,
     required VoidCallback onMessagesUpdated,
@@ -48,7 +49,6 @@ class ChatService {
       isFetchingHistory = false;
       return;
     }
-
     final url =
         Uri.parse('${Environment.apiBaseUrl}/messages?recipientId=$chatUserId');
     try {
@@ -57,10 +57,8 @@ class ChatService {
       if (resp.statusCode == 200) {
         final rawBody = utf8.decode(resp.bodyBytes);
         final List<dynamic> rawList = jsonDecode(rawBody);
-
         messages.clear();
         final myUserId = await storageService.getUserId();
-
         for (var rawMsg in rawList) {
           final msg = MessageDTO(
             id: rawMsg['id']?.toString() ?? const Uuid().v4(),
@@ -73,8 +71,7 @@ class ChatService {
             encryptedKeyForSender: rawMsg['encryptedKeyForSender'] ?? '',
             encryptedKeyForRecipient: rawMsg['encryptedKeyForRecipient'] ?? '',
             timestamp: DateTime.parse(
-              rawMsg['timestamp'] ?? DateTime.now().toIso8601String(),
-            ),
+                rawMsg['timestamp'] ?? DateTime.now().toIso8601String()),
             isRead: rawMsg['read'] ?? false,
             readTimestamp: rawMsg['readTimestamp'] != null
                 ? DateTime.parse(rawMsg['readTimestamp'])
@@ -94,7 +91,6 @@ class ChatService {
             final bool isRecipient = (msg.recipient == myUserId);
             final versionToUse =
                 isRecipient ? msg.recipientKeyVersion : msg.senderKeyVersion;
-
             final myPrivateKey =
                 await storageService.getPrivateKey(versionToUse);
             if (myPrivateKey != null) {
@@ -108,15 +104,12 @@ class ChatService {
                   final aesKeyBytes = base64.decode(aesKeyB64);
                   final ivBytes = base64.decode(msg.iv);
                   final cipherBytes = base64.decode(msg.ciphertext);
-
                   final keyObj = encrypt.Key(aesKeyBytes);
                   final ivObj = encrypt.IV(ivBytes);
                   final encrypter = encrypt.Encrypter(
                       encrypt.AES(keyObj, mode: encrypt.AESMode.cbc));
-                  final plain = encrypter.decrypt(
-                    encrypt.Encrypted(cipherBytes),
-                    iv: ivObj,
-                  );
+                  final plain = encrypter
+                      .decrypt(encrypt.Encrypted(cipherBytes), iv: ivObj);
                   msg.plaintext = plain;
                 }
               } catch (e) {
@@ -126,11 +119,8 @@ class ChatService {
           }
           messages.add(msg);
         }
-
-        // Sort by ascending timestamp
+        // Sort messages by timestamp
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-
-        // Mark all unread as read
         await markMessagesAsRead();
         onMessagesUpdated();
       } else {
@@ -144,33 +134,27 @@ class ChatService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // (B) Mark All or Single Message as Read
-  // ---------------------------------------------------------------------------
+  // ---------------------------
+  // (B) Mark Messages as Read
+  // ---------------------------
   Future<void> markMessagesAsRead() async {
     final currentUserId = await storageService.getUserId();
     if (currentUserId == null) return;
-
     final accessToken = await storageService.getAccessToken();
     if (accessToken == null) return;
-
     final unread = messages
         .where((m) => m.recipient == currentUserId && !m.isRead)
         .toList();
     if (unread.isEmpty) return;
-
     final url = Uri.parse('${Environment.apiBaseUrl}/chats/mark-as-read');
     final body = {'messageIds': unread.map((m) => m.id).toList()};
-
     try {
-      final resp = await http.post(
-        url,
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(body),
-      );
+      final resp = await http.post(url,
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(body));
       if (resp.statusCode == 200) {
         LoggerService.logInfo('Marked messages as read on server.');
         final now = DateTime.now();
@@ -194,16 +178,13 @@ class ChatService {
     final body = {
       'messageIds': [messageId]
     };
-
     try {
-      final resp = await http.post(
-        url,
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(body),
-      );
+      final resp = await http.post(url,
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(body));
       if (resp.statusCode == 200) {
         LoggerService.logInfo('Marked msg $messageId read on server');
         final now = DateTime.now();
@@ -221,11 +202,9 @@ class ChatService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // (C) Handle Real-Time "Incoming" or "Sent" Message
-  // ---------------------------------------------------------------------------
-  /// If you keep an in-memory [messages] list for the current chat, use this method
-  /// to handle a newly arrived or updated message from your WebSocket/stomp subscription.
+  // ---------------------------
+  // (C) Handle Incoming or Sent Message (Real-Time)
+  // ---------------------------
   void handleIncomingOrSentMessage(
     Map<String, dynamic> rawMsg,
     String currentUserId,
@@ -238,7 +217,7 @@ class ChatService {
     LoggerService.logInfo(
         "Processing message type=$type, sender=$sender, recipient=$recipient");
 
-    // If the message doesn't involve me at all, skip
+    // Skip if not involving current user
     if (![sender, recipient].contains(currentUserId)) {
       LoggerService.logInfo("Skipping: not my message.");
       return;
@@ -271,110 +250,81 @@ class ChatService {
     final bool isRecipient = (newMsg.recipient == currentUserId);
     final bool isSender = (newMsg.sender == currentUserId);
 
-    LoggerService.logInfo(
-        "Message processing - isRecipient=$isRecipient, isSender=$isSender, hasClientTempId=${newMsg.clientTempId != null}");
-
-    // For sender messages with a temp ID, try to find the ephemeral message first
-    if (isSender && newMsg.clientTempId != null) {
+    // For messages sent by the local user, bypass decryption and use the plain text already set
+    if (isSender) {
+      // We assume that the ephemeral message created when sending already contains the plaintext.
       final idx = messages.indexWhere((m) => m.id == newMsg.clientTempId);
       if (idx >= 0) {
         LoggerService.logInfo(
-            "Found ephemeral message at index $idx with plaintext: ${messages[idx].plaintext}");
-        // Preserve the plaintext from our ephemeral message
-        final existingPlaintext = messages[idx].plaintext;
+            "Replacing ephemeral message with final message (SENT).");
+        // Preserve the local plaintext
+        newMsg.plaintext = messages[idx].plaintext;
         messages[idx] = newMsg;
-        messages[idx].plaintext = existingPlaintext; // Keep ephemeral plaintext
-        LoggerService.logInfo(
-            "Updated ephemeral message with plaintext: ${messages[idx].plaintext}");
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
         onMessagesUpdated();
         return;
       }
-    }
-
-    // Decrypt the message if needed
-    final versionToUse =
-        isRecipient ? newMsg.recipientKeyVersion : newMsg.senderKeyVersion;
-    final myPrivateKey = await storageService.getPrivateKey(versionToUse);
-
-    LoggerService.logInfo(
-        "Attempting decryption with keyVersion=$versionToUse, hasPrivateKey=${myPrivateKey != null}, hasCiphertext=${newMsg.ciphertext.isNotEmpty}, hasIV=${newMsg.iv.isNotEmpty}");
-
-    if (myPrivateKey != null &&
-        newMsg.ciphertext.isNotEmpty &&
-        newMsg.iv.isNotEmpty) {
-      try {
-        final ephemeralKeyEnc = isRecipient
-            ? newMsg.encryptedKeyForRecipient
-            : newMsg.encryptedKeyForSender;
-        LoggerService.logInfo(
-            "Decrypting ephemeralKeyEnc => $ephemeralKeyEnc, version=$versionToUse, length=${ephemeralKeyEnc.length}");
-
-        if (ephemeralKeyEnc.isNotEmpty) {
-          final aesKeyB64 =
-              CryptoHelper.rsaDecrypt(ephemeralKeyEnc, myPrivateKey);
-          final aesKeyBytes = base64.decode(aesKeyB64);
-
-          final ivBytes = base64.decode(newMsg.iv);
-          final cipherBytes = base64.decode(newMsg.ciphertext);
-
-          final keyObj = encrypt.Key(aesKeyBytes);
-          final ivObj = encrypt.IV(ivBytes);
-          final encrypter =
-              encrypt.Encrypter(encrypt.AES(keyObj, mode: encrypt.AESMode.cbc));
-          final plain = encrypter.decrypt(
-            encrypt.Encrypted(cipherBytes),
-            iv: ivObj,
-          );
-          newMsg.plaintext = plain;
-
-          LoggerService.logInfo(
-              "After decryption attempt, plaintext=${newMsg.plaintext}");
-        } else {
-          LoggerService.logError("Empty ephemeralKeyEnc, cannot decrypt");
-        }
-      } catch (e) {
-        LoggerService.logError('Decrypt fail for newMsg ${newMsg.id}: $e');
-      }
     } else {
-      LoggerService.logInfo("Skipping decryption due to missing prerequisites");
+      // For incoming messages, perform decryption
+      final versionToUse =
+          isRecipient ? newMsg.recipientKeyVersion : newMsg.senderKeyVersion;
+      final myPrivateKey = await storageService.getPrivateKey(versionToUse);
+      LoggerService.logInfo(
+          "Attempting decryption with keyVersion=$versionToUse, hasPrivateKey=${myPrivateKey != null}");
+      if (myPrivateKey != null &&
+          newMsg.ciphertext.isNotEmpty &&
+          newMsg.iv.isNotEmpty) {
+        try {
+          final ephemeralKeyEnc = isRecipient
+              ? newMsg.encryptedKeyForRecipient
+              : newMsg.encryptedKeyForSender;
+          if (ephemeralKeyEnc.isNotEmpty) {
+            final aesKeyB64 =
+                CryptoHelper.rsaDecrypt(ephemeralKeyEnc, myPrivateKey);
+            final aesKeyBytes = base64.decode(aesKeyB64);
+            final ivBytes = base64.decode(newMsg.iv);
+            final cipherBytes = base64.decode(newMsg.ciphertext);
+            final keyObj = encrypt.Key(aesKeyBytes);
+            final ivObj = encrypt.IV(ivBytes);
+            final encrypter = encrypt.Encrypter(
+                encrypt.AES(keyObj, mode: encrypt.AESMode.cbc));
+            final plain =
+                encrypter.decrypt(encrypt.Encrypted(cipherBytes), iv: ivObj);
+            newMsg.plaintext = plain;
+            LoggerService.logInfo("Decrypted plaintext: '${newMsg.plaintext}'");
+          }
+        } catch (e) {
+          LoggerService.logError('Decrypt fail for newMsg ${newMsg.id}: $e');
+        }
+      } else {
+        LoggerService.logInfo(
+            "Skipping decryption due to missing prerequisites");
+      }
     }
 
-    // Normal add/update logic
+    // Update in-memory message list
     final existIdx = messages.indexWhere((m) => m.id == newMsg.id);
     if (existIdx >= 0) {
-      LoggerService.logInfo(
-          "Updating existing message at index $existIdx, existing plaintext=${messages[existIdx].plaintext}");
-      // Don't overwrite plaintext if we already have it
+      // For already existing message, do not overwrite local plaintext if available
       final existingPlaintext = messages[existIdx].plaintext;
       if (existingPlaintext != null && existingPlaintext.isNotEmpty) {
         newMsg.plaintext = existingPlaintext;
       }
       messages[existIdx] = newMsg;
-      LoggerService.logInfo(
-          "After update, message plaintext=${messages[existIdx].plaintext}");
     } else {
-      LoggerService.logInfo(
-          "Adding new message with plaintext=${newMsg.plaintext}");
       messages.add(newMsg);
     }
-
     messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     onMessagesUpdated();
 
-    // Auto-mark as read if I'm the recipient
     if (isRecipient && !newMsg.isRead) {
       markSingleMessageAsRead(newMsg.id);
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // (D) handleNewOrUpdatedMessage - FOR chat listing (ChatHistoryDTO)
-  // ---------------------------------------------------------------------------
-  /// If you maintain a user-level chat listing (List<ChatHistoryDTO>),
-  /// call this method to update the correct ChatHistoryDTO.
-  /// This is separate from the in-memory [messages] used for a single conversation.
-  ///
+  // ---------------------------
+  // (D) Handle New/Updated Message for Chat Listing
+  // ---------------------------
   void handleNewOrUpdatedMessage({
     required Map<String, dynamic> msg,
     required String currentUserId,
@@ -387,7 +337,6 @@ class ChatService {
     LoggerService.logInfo(
         "handleNewOrUpdatedMessage => type=$type, sender=$sender, recipient=$recipient");
 
-    // If the message doesn't involve me, skip
     if (![sender, recipient].contains(currentUserId)) {
       LoggerService.logInfo("Skipping chatHistory update: not my message.");
       return;
@@ -417,11 +366,9 @@ class ChatService {
           : null,
     );
 
-    // Decrypt
     final bool isRecipient = (newMsg.recipient == currentUserId);
     final versionToUse =
         isRecipient ? newMsg.recipientKeyVersion : newMsg.senderKeyVersion;
-
     final myPrivateKey = await storageService.getPrivateKey(versionToUse);
     if (myPrivateKey != null &&
         newMsg.ciphertext.isNotEmpty &&
@@ -430,21 +377,18 @@ class ChatService {
         final ephemeralKeyEnc = isRecipient
             ? newMsg.encryptedKeyForRecipient
             : newMsg.encryptedKeyForSender;
-        LoggerService.logInfo(
-            "Decrypting ephemeralKeyEnc => $ephemeralKeyEnc, version=$versionToUse");
         if (ephemeralKeyEnc.isNotEmpty) {
           final aesKeyB64 =
               CryptoHelper.rsaDecrypt(ephemeralKeyEnc, myPrivateKey);
           final aesKeyBytes = base64.decode(aesKeyB64);
-
           final ivBytes = base64.decode(newMsg.iv);
           final cipherBytes = base64.decode(newMsg.ciphertext);
-
-          final aesKey = encrypt.Key(aesKeyBytes);
+          final keyObj = encrypt.Key(aesKeyBytes);
           final ivObj = encrypt.IV(ivBytes);
-          final encr =
-              encrypt.Encrypter(encrypt.AES(aesKey, mode: encrypt.AESMode.cbc));
-          final plain = encr.decrypt(encrypt.Encrypted(cipherBytes), iv: ivObj);
+          final encrypter =
+              encrypt.Encrypter(encrypt.AES(keyObj, mode: encrypt.AESMode.cbc));
+          final plain =
+              encrypter.decrypt(encrypt.Encrypted(cipherBytes), iv: ivObj);
           newMsg.plaintext = plain;
           LoggerService.logInfo("Decrypted plaintext: '${newMsg.plaintext}'");
         }
@@ -453,22 +397,17 @@ class ChatService {
       }
     }
 
-    // Insert/update in chatHistory
     final otherUserId = (sender == currentUserId) ? recipient : sender;
     final chatIndex =
         chatHistory.indexWhere((c) => c.participant == otherUserId);
     if (chatIndex == -1) {
-      // brand new conversation
-      chatHistory.add(
-        ChatHistoryDTO(
-          participant: otherUserId,
-          participantUsername: '',
-          messages: [newMsg],
-          unreadCount: (isRecipient && !newMsg.isRead) ? 1 : 0,
-        ),
-      );
+      chatHistory.add(ChatHistoryDTO(
+        participant: otherUserId,
+        participantUsername: '',
+        messages: [newMsg],
+        unreadCount: (isRecipient && !newMsg.isRead) ? 1 : 0,
+      ));
     } else {
-      // Check ephemeral replacement if I'm sender
       if (type == 'SENT_MESSAGE' && newMsg.clientTempId != null) {
         final tempId = newMsg.clientTempId!;
         final existingIdx = chatHistory[chatIndex]
@@ -480,7 +419,6 @@ class ChatService {
           chatHistory[chatIndex].messages.add(newMsg);
         }
       } else {
-        // Normal insertion or update
         final existingIdx = chatHistory[chatIndex]
             .messages
             .indexWhere((m) => m.id == newMsg.id);
@@ -488,7 +426,6 @@ class ChatService {
           chatHistory[chatIndex].messages[existingIdx] = newMsg;
         } else {
           chatHistory[chatIndex].messages.add(newMsg);
-          // If I'm the recipient, increment unread
           if (isRecipient && !newMsg.isRead) {
             chatHistory[chatIndex].unreadCount++;
           }
@@ -496,7 +433,6 @@ class ChatService {
       }
     }
 
-    // Sort messages & chats
     for (var c in chatHistory) {
       c.messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     }
@@ -511,9 +447,9 @@ class ChatService {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // (E) Sending an ephemeral-encrypted message
-  // ---------------------------------------------------------------------------
+  // ---------------------------
+  // (E) Sending an Ephemeral-Encrypted Message
+  // ---------------------------
   Future<void> sendMessage({
     required String currentUserId,
     required String chatUserId,
@@ -524,7 +460,7 @@ class ChatService {
     final now = DateTime.now();
     final tempId = const Uuid().v4();
 
-    // Locally show ephemeral message
+    // For sender messages, display the message immediately in plain text.
     final ephemeralMsg = MessageDTO(
       id: tempId,
       sender: currentUserId,
@@ -543,40 +479,32 @@ class ChatService {
     );
     onEphemeralAdded(ephemeralMsg);
 
-    // Fetch both public keys & versions
     final senderData = await _getOrFetchPublicKeyAndVersion(currentUserId);
     if (senderData == null || senderData.keyVersion.isEmpty) {
       LoggerService.logError("No sender public key or version found.");
       return;
     }
-
     final recipientData = await _getOrFetchPublicKeyAndVersion(chatUserId);
     if (recipientData == null || recipientData.keyVersion.isEmpty) {
       LoggerService.logError("No recipient public key or version found.");
       return;
     }
 
-    // Generate ephemeral AES key (256 bits) + IV (16 bytes)
     final aesKeyBytes = _makeFortunaRandom().nextBytes(32);
     final aesKey = encrypt.Key(aesKeyBytes);
     final ivBytes = _makeFortunaRandom().nextBytes(16);
     final ivObj = encrypt.IV(ivBytes);
-
-    // AES encrypt content
     final encr =
         encrypt.Encrypter(encrypt.AES(aesKey, mode: encrypt.AESMode.cbc));
     final cipher = encr.encrypt(content, iv: ivObj);
     final ciphertextB64 = base64.encode(cipher.bytes);
     final ivB64 = base64.encode(ivBytes);
-
-    // RSA-encrypt ephemeral AES key for both
     final aesKeyB64 = base64.encode(aesKeyBytes);
     final encForSender =
         CryptoHelper.rsaEncrypt(aesKeyB64, senderData.publicKey);
     final encForRecipient =
         CryptoHelper.rsaEncrypt(aesKeyB64, recipientData.publicKey);
 
-    // Build STOMP/WebSocket message
     final msgMap = {
       'sender': currentUserId,
       'recipient': chatUserId,
@@ -590,20 +518,18 @@ class ChatService {
       'timestamp': now.toIso8601String(),
       'type': 'SENT_MESSAGE',
     };
-
     stompSend(msgMap);
   }
 
-  // ---------------------------------------------------------------------------
-  // (F) Fetch entire chat listing
-  // ---------------------------------------------------------------------------
+  // ---------------------------
+  // (F) Fetch Entire Chat Listing (Chat Summaries)
+  // ---------------------------
   Future<List<ChatHistoryDTO>> fetchAllChats() async {
     final accessToken = await storageService.getAccessToken();
     if (accessToken == null) {
       LoggerService.logError('No access token for fetchAllChats');
       return [];
     }
-
     final url = Uri.parse('${Environment.apiBaseUrl}/chats');
     try {
       final resp = await http.get(url, headers: {
@@ -614,17 +540,13 @@ class ChatService {
         final rawBody = utf8.decode(resp.bodyBytes);
         final List<dynamic> rawList = jsonDecode(rawBody);
         final myUserId = await storageService.getUserId();
-
         final chats = rawList.map((c) => ChatHistoryDTO.fromJson(c)).toList();
-
         if (myUserId != null) {
-          // Attempt decryption for each message in each chat
           for (var chat in chats) {
             for (var msg in chat.messages) {
               final bool isRecipient = (msg.recipient == myUserId);
               final versionToUse =
                   isRecipient ? msg.recipientKeyVersion : msg.senderKeyVersion;
-
               final myPrivateKey =
                   await storageService.getPrivateKey(versionToUse);
               if (myPrivateKey != null &&
@@ -638,16 +560,14 @@ class ChatService {
                     final aesKeyB64 =
                         CryptoHelper.rsaDecrypt(ephemeralKeyEnc, myPrivateKey);
                     final aesKeyBytes = base64.decode(aesKeyB64);
-
                     final ivBytes = base64.decode(msg.iv);
                     final cipherBytes = base64.decode(msg.ciphertext);
-
                     final aesKey = encrypt.Key(aesKeyBytes);
                     final ivObj = encrypt.IV(ivBytes);
-                    final encr = encrypt.Encrypter(
+                    final encrypter = encrypt.Encrypter(
                         encrypt.AES(aesKey, mode: encrypt.AESMode.cbc));
-                    final plain =
-                        encr.decrypt(encrypt.Encrypted(cipherBytes), iv: ivObj);
+                    final plain = encrypter
+                        .decrypt(encrypt.Encrypted(cipherBytes), iv: ivObj);
                     msg.plaintext = plain;
                   }
                 } catch (e) {
@@ -656,10 +576,8 @@ class ChatService {
                 }
               }
             }
-            // sort each chat's messages ascending by time
             chat.messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
           }
-          // then sort chats by last message desc
           chats.sort((a, b) {
             final aLast = a.messages.isNotEmpty
                 ? a.messages.last.timestamp
@@ -670,7 +588,6 @@ class ChatService {
             return bLast.compareTo(aLast);
           });
         }
-
         return chats;
       } else {
         LoggerService.logError('fetchAllChats error. Code=${resp.statusCode}');
@@ -682,30 +599,26 @@ class ChatService {
     }
   }
 
-  // ---------------------------------------------------------------------------
+  // ---------------------------
   // (G) Public Key + Version from /user/publicKey/{id}
-  // ---------------------------------------------------------------------------
+  // ---------------------------
   Future<PublicKeyData?> _getOrFetchPublicKeyAndVersion(String userId) async {
     final cachedKey = await storageService.getFromStorage('publicKey_$userId');
     final cachedVersion =
         await storageService.getFromStorage('publicKeyVersion_$userId');
-
     if (cachedKey != null &&
         cachedKey.isNotEmpty &&
         cachedVersion != null &&
         cachedVersion.isNotEmpty) {
       return PublicKeyData(publicKey: cachedKey, keyVersion: cachedVersion);
     }
-
     final accessToken = await storageService.getAccessToken();
     if (accessToken == null) return null;
-
     final url = Uri.parse('${Environment.apiBaseUrl}/user/publicKey/$userId');
     try {
       final resp = await http
           .get(url, headers: {'Authorization': 'Bearer $accessToken'});
       if (resp.statusCode == 200) {
-        // parse JSON: { "publicKey":"...", "version":"..." }
         final jsonResp = jsonDecode(resp.body);
         final pubKey = jsonResp['publicKey'] as String? ?? '';
         final keyVer = jsonResp['version'] as String? ?? '';
@@ -733,9 +646,9 @@ class ChatService {
     return fr;
   }
 
-  // ---------------------------------------------------------------------------
-  // (H) Additional: read receipts for the in-memory messages
-  // ---------------------------------------------------------------------------
+  // ---------------------------
+  // (H) Read Receipts for In-Memory Messages
+  // ---------------------------
   void handleReadReceipt(
     Map<String, dynamic> data,
     String chatUserId,
@@ -745,7 +658,6 @@ class ChatService {
     final msgIds = data['messageIds'] ?? <dynamic>[];
     final tsStr = data['readTimestamp'] ?? '';
     if (readerId.isEmpty || msgIds.isEmpty || tsStr.isEmpty) return;
-
     final readAt = DateTime.parse(tsStr);
     if (readerId == chatUserId) {
       for (var m in messages) {
@@ -755,6 +667,167 @@ class ChatService {
         }
       }
       onMessagesUpdated();
+    }
+  }
+
+  // ---------------------------
+  // (I) Chat Requests Feature
+  // ---------------------------
+  /// Sends a chat request to start a conversation.
+  /// The sender’s message is immediately shown as plaintext locally.
+  Future<void> sendChatRequest({
+    required String currentUserId,
+    required String chatUserId,
+    required String content,
+    required Function(ChatRequestDTO ephemeral) onEphemeralAdded,
+    required void Function(Map<String, dynamic> msgMap) stompSend,
+  }) async {
+    final now = DateTime.now();
+    final tempId = const Uuid().v4();
+    // Locally show the request (plaintext is immediately visible for sender)
+    final ephemeralRequest = ChatRequestDTO(
+      id: tempId,
+      requester: currentUserId,
+      recipient: chatUserId,
+      ciphertext: '', // sender’s message is shown in plain text locally
+      iv: '',
+      encryptedKeyForSender: '',
+      encryptedKeyForRecipient: '',
+      senderKeyVersion: '',
+      recipientKeyVersion: '',
+      timestamp: now,
+      status: "PENDING",
+    );
+    onEphemeralAdded(ephemeralRequest);
+
+    // Fetch public keys and versions for sender and recipient
+    final senderData = await _getOrFetchPublicKeyAndVersion(currentUserId);
+    if (senderData == null || senderData.keyVersion.isEmpty) {
+      LoggerService.logError("No sender public key or version found.");
+      return;
+    }
+    final recipientData = await _getOrFetchPublicKeyAndVersion(chatUserId);
+    if (recipientData == null || recipientData.keyVersion.isEmpty) {
+      LoggerService.logError("No recipient public key or version found.");
+      return;
+    }
+
+    // Generate ephemeral AES key and IV for encrypting the message that will be sent
+    final aesKeyBytes = _makeFortunaRandom().nextBytes(32);
+    final aesKey = encrypt.Key(aesKeyBytes);
+    final ivBytes = _makeFortunaRandom().nextBytes(16);
+    final ivObj = encrypt.IV(ivBytes);
+    final encrypter =
+        encrypt.Encrypter(encrypt.AES(aesKey, mode: encrypt.AESMode.cbc));
+    final cipher = encrypter.encrypt(content, iv: ivObj);
+    final ciphertextB64 = base64.encode(cipher.bytes);
+    final ivB64 = base64.encode(ivBytes);
+
+    // Encrypt the AES key for both sender and recipient
+    final aesKeyB64 = base64.encode(aesKeyBytes);
+    final encForSender =
+        CryptoHelper.rsaEncrypt(aesKeyB64, senderData.publicKey);
+    final encForRecipient =
+        CryptoHelper.rsaEncrypt(aesKeyB64, recipientData.publicKey);
+
+    final msgMap = {
+      'requester': currentUserId,
+      'recipient': chatUserId,
+      'ciphertext': ciphertextB64,
+      'iv': ivB64,
+      'encryptedKeyForSender': encForSender,
+      'encryptedKeyForRecipient': encForRecipient,
+      'senderKeyVersion': senderData.keyVersion,
+      'recipientKeyVersion': recipientData.keyVersion,
+      'clientTempId': tempId,
+      'timestamp': now.toIso8601String(),
+      'type': 'CHAT_REQUEST',
+    };
+
+    stompSend(msgMap);
+  }
+
+  /// Fetch pending chat requests for the current user.
+  Future<List<ChatRequestDTO>> fetchChatRequests() async {
+    final accessToken = await storageService.getAccessToken();
+    if (accessToken == null) {
+      LoggerService.logError('No access token for fetchChatRequests');
+      return [];
+    }
+    final url = Uri.parse('${Environment.apiBaseUrl}/chat-requests');
+    try {
+      final resp = await http
+          .get(url, headers: {'Authorization': 'Bearer $accessToken'});
+      if (resp.statusCode == 200) {
+        final rawBody = utf8.decode(resp.bodyBytes);
+        final List<dynamic> rawList = jsonDecode(rawBody);
+        return rawList.map((e) => ChatRequestDTO.fromJson(e)).toList();
+      } else {
+        LoggerService.logError(
+            'Fetch chat requests error. Code=${resp.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      LoggerService.logError('Exception fetching chat requests: $e');
+      return [];
+    }
+  }
+
+  /// Accept a chat request. The backend converts the request into a normal chat message.
+  Future<void> acceptChatRequest({
+    required String requestId,
+    required VoidCallback onAccepted,
+  }) async {
+    final accessToken = await storageService.getAccessToken();
+    if (accessToken == null) {
+      LoggerService.logError('No access token for acceptChatRequest');
+      return;
+    }
+    final url =
+        Uri.parse('${Environment.apiBaseUrl}/chat-requests/$requestId/accept');
+    try {
+      final resp = await http.post(url, headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      });
+      if (resp.statusCode == 200) {
+        LoggerService.logInfo('Chat request accepted.');
+        onAccepted();
+      } else {
+        LoggerService.logError(
+            'Failed to accept chat request. Code=${resp.statusCode}');
+      }
+    } catch (e) {
+      LoggerService.logError('Exception accepting chat request: $e');
+    }
+  }
+
+  /// Reject a chat request.
+  Future<void> rejectChatRequest({
+    required String requestId,
+    required VoidCallback onRejected,
+  }) async {
+    final accessToken = await storageService.getAccessToken();
+    if (accessToken == null) {
+      LoggerService.logError('No access token for rejectChatRequest');
+      return;
+    }
+    final url =
+        Uri.parse('${Environment.apiBaseUrl}/chat-requests/$requestId/reject');
+    try {
+      final resp = await http.post(url, headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      });
+      if (resp.statusCode == 200) {
+        LoggerService.logInfo('Chat request rejected.');
+        onRejected();
+      } else {
+        LoggerService.logError(
+            'Failed to reject chat request. Code=${resp.statusCode}');
+      }
+    } catch (e) {
+      LoggerService.logError('Exception rejecting chat request: $e');
     }
   }
 }

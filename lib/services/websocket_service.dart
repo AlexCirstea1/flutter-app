@@ -106,6 +106,14 @@ class WebSocketService {
         _handleIncomingFrame(frame, tag: 'USER_SEARCH_RESULTS');
       },
     );
+
+    // 5) Chat request notifications
+    _stompClient?.subscribe(
+      destination: '/user/queue/chatRequests',
+      callback: (StompFrame frame) {
+        _handleIncomingFrame(frame, tag: 'CHAT_REQUEST');
+      },
+    );
   }
 
   void _handleIncomingFrame(StompFrame frame, {required String tag}) {

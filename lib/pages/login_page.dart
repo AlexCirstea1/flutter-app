@@ -204,7 +204,8 @@ class _LoginPageState extends State<LoginPage> {
                       fontSize: 14,
                     ),
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.person_outline, color: Colors.cyan.shade400, size: 20),
+                      prefixIcon: Icon(Icons.person_outline,
+                          color: Colors.cyan.shade400, size: 20),
                       labelText: 'USERNAME',
                       labelStyle: TextStyle(
                         color: Colors.grey.shade500,
@@ -212,7 +213,8 @@ class _LoginPageState extends State<LoginPage> {
                         letterSpacing: 1.0,
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16, horizontal: 16),
                     ),
                   ),
                 ),
@@ -241,7 +243,8 @@ class _LoginPageState extends State<LoginPage> {
                       fontFamily: 'monospace',
                     ),
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.lock_outline, color: Colors.cyan.shade400, size: 20),
+                      prefixIcon: Icon(Icons.lock_outline,
+                          color: Colors.cyan.shade400, size: 20),
                       labelText: 'PASSWORD',
                       labelStyle: TextStyle(
                         color: Colors.grey.shade500,
@@ -249,7 +252,8 @@ class _LoginPageState extends State<LoginPage> {
                         letterSpacing: 1.0,
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16, horizontal: 16),
                     ),
                   ),
                 ),
@@ -258,40 +262,40 @@ class _LoginPageState extends State<LoginPage> {
                 _isLoading
                     ? const CircularProgressIndicator(color: Colors.cyanAccent)
                     : Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.cyan.withOpacity(0.15),
-                        blurRadius: 12,
-                        spreadRadius: -2,
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyan.shade900,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        side: BorderSide(
-                          color: Colors.cyan.withOpacity(0.3),
-                          width: 1,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.cyan.withOpacity(0.15),
+                              blurRadius: 12,
+                              spreadRadius: -2,
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.cyan.shade900,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              side: BorderSide(
+                                color: Colors.cyan.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            'ACCESS SECURE NETWORK',
+                            style: TextStyle(
+                              color: Colors.cyan.shade100,
+                              fontSize: 12,
+                              letterSpacing: 1.5,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    child: Text(
-                      'ACCESS SECURE NETWORK',
-                      style: TextStyle(
-                        color: Colors.cyan.shade100,
-                        fontSize: 12,
-                        letterSpacing: 1.5,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
 
                 const SizedBox(height: 20),
 
@@ -299,7 +303,8 @@ class _LoginPageState extends State<LoginPage> {
                 GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/register'),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 16),
                     decoration: BoxDecoration(
                       color: Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
@@ -328,7 +333,8 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.security, size: 14, color: Colors.cyan.shade400),
+                          Icon(Icons.security,
+                              size: 14, color: Colors.cyan.shade400),
                           const SizedBox(width: 8),
                           Text(
                             'AUTHORIZED IDENTITIES',
@@ -390,19 +396,21 @@ class _LoginPageState extends State<LoginPage> {
             builder: (context, snapshot) {
               return CircleAvatar(
                 backgroundColor: Colors.black38,
-                backgroundImage: snapshot.hasData ? MemoryImage(snapshot.data!) : null,
+                backgroundImage:
+                    snapshot.hasData ? MemoryImage(snapshot.data!) : null,
                 child: snapshot.connectionState == ConnectionState.waiting
                     ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.cyanAccent,
-                  ),
-                )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.cyanAccent,
+                        ),
+                      )
                     : snapshot.hasData
-                    ? null
-                    : const Icon(Icons.person, color: Colors.cyanAccent, size: 20),
+                        ? null
+                        : const Icon(Icons.person,
+                            color: Colors.cyanAccent, size: 20),
               );
             },
           ),
@@ -416,25 +424,43 @@ class _LoginPageState extends State<LoginPage> {
             color: Colors.white,
           ),
         ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (userId != null)
+              UserRoleChip(
+                userId: userId,
+                isCompact: true,
+              ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.cyan.shade300,
+            ),
+          ],
+        ),
         subtitle: userId != null
             ? Text(
-          'ID: ${userId.substring(0, 8)}...',
-          style: TextStyle(
-            fontSize: 11,
-            fontFamily: 'monospace',
-            color: Colors.grey.shade500,
-          ),
-        )
+                'ID: ${userId.substring(0, 8)}...',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  color: Colors.grey.shade500,
+                ),
+              )
             : null,
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
-          color: Colors.cyan.shade300,
-        ),
         onTap: () {
           setState(() {
             _usernameController.text = account['username'] ?? '';
           });
+
+          // Scroll to the top of the page with animation
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
         },
       ),
     );

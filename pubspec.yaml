@@ -53,7 +53,7 @@ dependencies:
   icons_flutter: ^0.0.5
   x509: ^0.2.4+3
   get_it: ^7.6.0
-
+  web_socket_channel: ^2.4.0
 
 dev_dependencies:
   build_runner: ^2.4.5
