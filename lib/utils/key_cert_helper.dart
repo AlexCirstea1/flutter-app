@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:basic_utils/basic_utils.dart';
-import 'package:x509/x509.dart';
 
 import '../models/certificate_info.dart';
 import '../models/distinguished_name.dart';
@@ -94,51 +93,47 @@ class KeyCertHelper {
     final Map<String, String> dnMap = {};
 
     // The subject is provided as a map with OID keys.
-    if (data.subject != null) {
-      // Common Name (OID 2.5.4.3)
-      if (data.subject!.containsKey("2.5.4.3")) {
-        dnMap["CN"] = data.subject!["2.5.4.3"]!;
-      }
-      // Organization (OID 2.5.4.10)
-      if (data.subject!.containsKey("2.5.4.10")) {
-        dnMap["O"] = data.subject!["2.5.4.10"]!;
-      }
-      // Organizational Unit (OID 2.5.4.11)
-      if (data.subject!.containsKey("2.5.4.11")) {
-        dnMap["OU"] = data.subject!["2.5.4.11"]!;
-      }
-      // Locality (OID 2.5.4.7)
-      if (data.subject!.containsKey("2.5.4.7")) {
-        dnMap["L"] = data.subject!["2.5.4.7"]!;
-      }
-      // State/Province (OID 2.5.4.8)
-      if (data.subject!.containsKey("2.5.4.8")) {
-        dnMap["ST"] = data.subject!["2.5.4.8"]!;
-      }
-      // Country (OID 2.5.4.6)
-      if (data.subject!.containsKey("2.5.4.6")) {
-        dnMap["C"] = data.subject!["2.5.4.6"]!;
-      }
-      // Email Address (OID 1.2.840.113549.1.9.1)
-      if (data.subject!.containsKey("1.2.840.113549.1.9.1")) {
-        dnMap["EMAIL"] = data.subject!["1.2.840.113549.1.9.1"]!;
-      }
+    // Common Name (OID 2.5.4.3)
+    if (data.subject.containsKey("2.5.4.3")) {
+      dnMap["CN"] = data.subject["2.5.4.3"]!;
     }
-
+    // Organization (OID 2.5.4.10)
+    if (data.subject.containsKey("2.5.4.10")) {
+      dnMap["O"] = data.subject["2.5.4.10"]!;
+    }
+    // Organizational Unit (OID 2.5.4.11)
+    if (data.subject.containsKey("2.5.4.11")) {
+      dnMap["OU"] = data.subject["2.5.4.11"]!;
+    }
+    // Locality (OID 2.5.4.7)
+    if (data.subject.containsKey("2.5.4.7")) {
+      dnMap["L"] = data.subject["2.5.4.7"]!;
+    }
+    // State/Province (OID 2.5.4.8)
+    if (data.subject.containsKey("2.5.4.8")) {
+      dnMap["ST"] = data.subject["2.5.4.8"]!;
+    }
+    // Country (OID 2.5.4.6)
+    if (data.subject.containsKey("2.5.4.6")) {
+      dnMap["C"] = data.subject["2.5.4.6"]!;
+    }
+    // Email Address (OID 1.2.840.113549.1.9.1)
+    if (data.subject.containsKey("1.2.840.113549.1.9.1")) {
+      dnMap["EMAIL"] = data.subject["1.2.840.113549.1.9.1"]!;
+    }
+  
     // Extract the key size from the public key data, if available.
     int keySize = 2048; // default value
-    if (data.publicKeyData != null && data.publicKeyData!.length != null) {
-      keySize = data.publicKeyData!.length!;
+    if (data.publicKeyData.length != null) {
+      keySize = data.publicKeyData.length!;
     }
 
     // Extract validity dates if provided; otherwise use current time as placeholders.
     DateTime issuedOn = DateTime.now();
     DateTime validUntil = DateTime.now();
-    if (data.validity != null) {
-      issuedOn = data.validity!.notBefore;
-      validUntil = data.validity!.notAfter;
-    }
-
+    issuedOn = data.validity.notBefore;
+    validUntil = data.validity.notAfter;
+  
     return CertificateInfo(
       distinguishedName: DistinguishedName.fromMap(dnMap),
       keySize: keySize,

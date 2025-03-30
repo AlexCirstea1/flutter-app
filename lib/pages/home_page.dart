@@ -18,7 +18,7 @@ import '../widget/bottom_nav_bar.dart';
 import 'chat_request_page.dart';
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key}) : super(key: key);
+  const MyHomePage({super.key});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -131,7 +131,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
   }
 
   void _markAllAsReadStomp() {
-    final unread = _chatService!.messages
+    final unread = _chatService.messages
         .where((m) => m.recipient == _currentUserId && !m.isRead)
         .toList();
     if (unread.isEmpty) return;
@@ -484,7 +484,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
         String timeString = '';
         if (lastMsg?.timestamp != null) {
           final now = DateTime.now();
-          final timestamp = lastMsg!.timestamp!;
+          final timestamp = lastMsg!.timestamp;
           final difference = now.difference(timestamp);
 
           if (difference.inDays > 0) {

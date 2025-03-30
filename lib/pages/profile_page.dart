@@ -156,7 +156,7 @@ class _ProfilePageState extends State<ProfilePage> {
           : Container(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         width: double.infinity,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -164,7 +164,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
         child: SingleChildScrollView(
-          physics: BouncingScrollPhysics(),
+          physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
               const SizedBox(height: 20),
@@ -193,7 +193,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ? MemoryImage(_avatarBytes!)
                         : null,
                     child: _avatarBytes == null
-                        ? Icon(Icons.person, size: 50, color: Colors.cyanAccent)
+                        ? const Icon(Icons.person, size: 50, color: Colors.cyanAccent)
                         : null,
                   ),
                 ],
@@ -201,7 +201,7 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 20),
               Text(
                 _username,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w300,
                   letterSpacing: 1.5,
@@ -250,7 +250,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildBlockchainConsentIndicator() {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: _blockchainConsent ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),

@@ -349,7 +349,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       Divider(color: Colors.cyan.withOpacity(0.1), height: 20),
                       const SizedBox(height: 10),
-                      ..._recentAccounts.map(_buildRecentAccountCard).toList(),
+                      ..._recentAccounts.map(_buildRecentAccountCard),
                     ],
                   ),
               ],

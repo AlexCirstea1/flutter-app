@@ -594,6 +594,8 @@ class ActivityLog {
         return Icons.link;
       case 'user_action':
         return Icons.person_outline;
+      case 'security':
+        return Icons.security;
       default:
         return Icons.history;
     }

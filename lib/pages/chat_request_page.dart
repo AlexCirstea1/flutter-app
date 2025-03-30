@@ -10,7 +10,7 @@ import '../services/storage_service.dart';
 import '../config/logger_config.dart';
 
 class ChatRequestsPage extends StatefulWidget {
-  const ChatRequestsPage({Key? key}) : super(key: key);
+  const ChatRequestsPage({super.key});
 
   @override
   State<ChatRequestsPage> createState() => _ChatRequestsPageState();

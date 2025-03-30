@@ -36,10 +36,10 @@ class ChatPage extends StatefulWidget {
   final String chatUsername;
 
   const ChatPage({
-    Key? key,
+    super.key,
     required this.chatUserId,
     required this.chatUsername,
-  }) : super(key: key);
+  });
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -451,7 +451,7 @@ class _ChatPageState extends State<ChatPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : _buildMessagesList(),
           ),
-          Divider(height: 1, color: Colors.white24),
+          const Divider(height: 1, color: Colors.white24),
           _buildTextInput(),
         ],
       ),
@@ -475,7 +475,7 @@ class _ChatPageState extends State<ChatPage> {
           child: Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white60, fontSize: 14),
+            style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
         ),
       );
@@ -529,8 +529,8 @@ class _ChatPageState extends State<ChatPage> {
         decoration: BoxDecoration(
           color: isMine ? Colors.blueAccent.withOpacity(0.8) : Colors.white12,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(18),
-            topRight: Radius.circular(18),
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
             bottomLeft: Radius.circular(isMine ? 18 : 0),
             bottomRight: Radius.circular(isMine ? 0 : 18),
           ),

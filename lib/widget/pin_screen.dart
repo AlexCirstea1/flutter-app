@@ -127,14 +127,14 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
               width: 70,
               height: 70,
               margin: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.white10,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black26,
                     blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    offset: Offset(0, 2),
                   )
                 ],
               ),
