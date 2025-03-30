@@ -7,7 +7,6 @@ class AppTheme {
       primary: Colors.cyan,
       secondary: Colors.cyanAccent,
       error: Colors.red,
-      background: Colors.black,
       surface: Color(0xFF121A24),
     ),
     appBarTheme: const AppBarTheme(
@@ -38,7 +37,6 @@ class AppTheme {
       primary: Colors.blue,
       secondary: Colors.lightBlue,
       error: Colors.redAccent,
-      background: Colors.white,
       surface: Color(0xFFF5F5F5),
     ),
     appBarTheme: const AppBarTheme(

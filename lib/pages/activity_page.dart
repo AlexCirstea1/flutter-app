@@ -61,31 +61,29 @@ class _ActivityPageState extends State<ActivityPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'ACTIVITY LOG',
-          style: TextStyle(
-            fontSize: 16,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w300,
-            color: Colors.cyan.shade100,
-          ),
+          style: theme.appBarTheme.titleTextStyle,
         ),
         automaticallyImplyLeading: false,
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.cyan.withOpacity(0.3), width: 1),
+              border: Border.all(color: colorScheme.primary.withOpacity(0.3), width: 1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: PopupMenuButton<String>(
-              icon: Icon(Icons.filter_list, color: Colors.cyan.shade200),
+              icon: Icon(Icons.filter_list, color: colorScheme.primary),
               onSelected: (value) {
                 if (value == 'All') {
                   _fetchActivities();
@@ -93,11 +91,11 @@ class _ActivityPageState extends State<ActivityPage> {
                   _fetchActivities(filterType: value.toLowerCase());
                 }
               },
-              color: const Color(0xFF121A24),
+              color: colorScheme.surface,
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.cyan.withOpacity(0.3)),
+                side: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
               ),
               itemBuilder: (context) => [
                 _buildPopupMenuItem('All', 'ALL ACTIVITIES', Icons.list_alt),
@@ -114,17 +112,19 @@ class _ActivityPageState extends State<ActivityPage> {
       ),
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: SafeArea(
           child: _isLoading
-              ? const Center(
-              child: CircularProgressIndicator(color: Colors.cyanAccent))
+              ? Center(child: CircularProgressIndicator(color: colorScheme.secondary))
               : _activities.isEmpty
               ? _buildEmptyState()
               : _buildActivityList(),
@@ -138,16 +138,18 @@ class _ActivityPageState extends State<ActivityPage> {
   }
 
   PopupMenuItem<String> _buildPopupMenuItem(String value, String label, IconData icon) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return PopupMenuItem<String>(
       value: value,
       child: Row(
         children: [
-          Icon(icon, size: 18, color: Colors.cyan.shade300),
+          Icon(icon, size: 18, color: colorScheme.secondary),
           const SizedBox(width: 12),
           Text(
             label,
             style: TextStyle(
-              color: Colors.cyan.shade100,
+              color: colorScheme.primary,
               fontSize: 12,
               letterSpacing: 0.8,
               fontWeight: FontWeight.w400,
@@ -159,6 +161,9 @@ class _ActivityPageState extends State<ActivityPage> {
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -167,11 +172,11 @@ class _ActivityPageState extends State<ActivityPage> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.cyan.withOpacity(0.05),
-              border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+              color: colorScheme.primary.withOpacity(0.05),
+              border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.cyan.withOpacity(0.1),
+                  color: colorScheme.primary.withOpacity(0.1),
                   blurRadius: 20,
                   spreadRadius: 1,
                 ),
@@ -180,7 +185,7 @@ class _ActivityPageState extends State<ActivityPage> {
             child: Icon(
               Icons.history,
               size: 64,
-              color: Colors.cyan.withOpacity(0.4),
+              color: colorScheme.primary.withOpacity(0.4),
             ),
           ),
           const SizedBox(height: 24),
@@ -188,7 +193,7 @@ class _ActivityPageState extends State<ActivityPage> {
             'NO ACTIVITIES FOUND',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey.shade400,
+              color: theme.textTheme.bodyMedium?.color,
               letterSpacing: 1.5,
               fontWeight: FontWeight.w300,
             ),
@@ -198,17 +203,17 @@ class _ActivityPageState extends State<ActivityPage> {
             TextButton(
               onPressed: () => _fetchActivities(),
               style: TextButton.styleFrom(
-                backgroundColor: Colors.cyan.withOpacity(0.1),
+                backgroundColor: colorScheme.primary.withOpacity(0.1),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.cyan.withOpacity(0.3)),
+                  side: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
                 ),
               ),
               child: Text(
                 'SHOW ALL ACTIVITIES',
                 style: TextStyle(
-                  color: Colors.cyan.shade200,
+                  color: colorScheme.primary,
                   fontSize: 12,
                   letterSpacing: 1.2,
                 ),
@@ -239,23 +244,25 @@ class CyberActivityTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final Color primaryColor = activity.getColor(context);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF121A24),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
             color: activity.isUnusual
-                ? Colors.red.withOpacity(0.5)
+                ? colorScheme.error.withOpacity(0.5)
                 : primaryColor.withOpacity(0.2)
         ),
         boxShadow: [
           BoxShadow(
             color: activity.isUnusual
-                ? Colors.red.withOpacity(0.1)
-                : Colors.cyan.withOpacity(0.05),
+                ? colorScheme.error.withOpacity(0.1)
+                : colorScheme.primary.withOpacity(0.05),
             blurRadius: 8,
             spreadRadius: -2,
           ),
@@ -331,7 +338,7 @@ class CyberActivityTile extends StatelessWidget {
                           if (activity.isUnusual)
                             Icon(
                               Icons.warning_amber,
-                              color: Colors.red.shade400,
+                              color: colorScheme.error,
                               size: 16,
                             ),
                         ],
@@ -340,7 +347,7 @@ class CyberActivityTile extends StatelessWidget {
                       Text(
                         activity.description,
                         style: TextStyle(
-                          color: Colors.grey.shade200,
+                          color: theme.textTheme.bodyLarge?.color,
                           fontSize: 14,
                           fontWeight: activity.isUnusual
                               ? FontWeight.w600
@@ -351,7 +358,7 @@ class CyberActivityTile extends StatelessWidget {
                       Text(
                         _formatDate(activity.timestamp),
                         style: TextStyle(
-                          color: Colors.grey.shade500,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           fontSize: 12,
                           fontFamily: 'monospace',
                           letterSpacing: 0.5,
@@ -364,7 +371,7 @@ class CyberActivityTile extends StatelessWidget {
                 // Arrow indicator
                 Icon(
                   Icons.chevron_right,
-                  color: Colors.grey.shade600,
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                   size: 20,
                 ),
               ],
@@ -391,18 +398,20 @@ class CyberActivityTile extends StatelessWidget {
   }
 
   void _showActivityDetails(BuildContext context, ActivityLog activity) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final Color primaryColor = activity.getColor(context);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF121A24),
+        backgroundColor: colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(
             color: activity.isUnusual
-                ? Colors.red.withOpacity(0.5)
-                : Colors.cyan.withOpacity(0.3),
+                ? colorScheme.error.withOpacity(0.5)
+                : colorScheme.primary.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -431,7 +440,7 @@ class CyberActivityTile extends StatelessWidget {
                 Text(
                   'ACTIVITY DETAILS',
                   style: TextStyle(
-                    color: Colors.cyan.shade100,
+                    color: colorScheme.primary,
                     fontSize: 16,
                     letterSpacing: 1.5,
                     fontWeight: FontWeight.w500,
@@ -442,7 +451,7 @@ class CyberActivityTile extends StatelessWidget {
             const SizedBox(height: 16),
             Container(
               height: 1,
-              color: Colors.cyan.withOpacity(0.2),
+              color: colorScheme.primary.withOpacity(0.2),
             ),
           ],
         ),
@@ -450,33 +459,34 @@ class CyberActivityTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildDetailRow('TYPE', activity.type.toUpperCase()),
+            _buildDetailRow(context, 'TYPE', activity.type.toUpperCase()),
             const SizedBox(height: 12),
-            _buildDetailRow('DESCRIPTION', activity.description),
+            _buildDetailRow(context, 'DESCRIPTION', activity.description),
             const SizedBox(height: 12),
             _buildDetailRow(
+                context,
                 'TIMESTAMP',
                 activity.timestamp.toString(),
                 isMonospace: true
             ),
             if (activity.details != null) ...[
               const SizedBox(height: 12),
-              _buildDetailRow('DETAILS', activity.details!),
+              _buildDetailRow(context, 'DETAILS', activity.details!),
             ],
             if (activity.isUnusual) ...[
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: colorScheme.error.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  border: Border.all(color: colorScheme.error.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.warning_amber,
-                      color: Colors.red.shade400,
+                      color: colorScheme.error,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -484,7 +494,7 @@ class CyberActivityTile extends StatelessWidget {
                       child: Text(
                         'UNUSUAL ACTIVITY DETECTED\nCHANGE YOUR PASSWORD IMMEDIATELY IF UNAUTHORIZED',
                         style: TextStyle(
-                          color: Colors.red.shade300,
+                          color: colorScheme.error,
                           fontSize: 12,
                           height: 1.5,
                           letterSpacing: 0.8,
@@ -502,17 +512,17 @@ class CyberActivityTile extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
-              backgroundColor: Colors.cyan.withOpacity(0.1),
+              backgroundColor: colorScheme.primary.withOpacity(0.1),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: Colors.cyan.withOpacity(0.3)),
+                side: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
               ),
             ),
             child: Text(
               'CLOSE',
               style: TextStyle(
-                color: Colors.cyan.shade200,
+                color: colorScheme.primary,
                 fontSize: 12,
                 letterSpacing: 1.2,
               ),
@@ -523,14 +533,17 @@ class CyberActivityTile extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isMonospace = false}) {
+  Widget _buildDetailRow(BuildContext context, String label, String value, {bool isMonospace = false}) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: Colors.cyan.shade300,
+            color: colorScheme.secondary,
             fontSize: 12,
             fontWeight: FontWeight.w500,
             letterSpacing: 1.0,
@@ -540,7 +553,7 @@ class CyberActivityTile extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            color: Colors.grey.shade300,
+            color: theme.textTheme.bodyLarge?.color,
             fontSize: 14,
             fontFamily: isMonospace ? 'monospace' : null,
             height: 1.4,
@@ -602,7 +615,9 @@ class ActivityLog {
   }
 
   Color getColor(BuildContext context) {
-    if (isUnusual) return Theme.of(context).colorScheme.error;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (isUnusual) return colorScheme.error;
 
     switch (type.toLowerCase()) {
       case 'login':
@@ -618,7 +633,7 @@ class ActivityLog {
       case 'user_action':
         return Colors.indigo;
       default:
-        return Colors.grey;
+        return colorScheme.primary;
     }
   }
 }

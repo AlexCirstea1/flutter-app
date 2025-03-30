@@ -73,7 +73,6 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     super.dispose();
   }
 
-  // Called when coming back to this page
   @override
   void didPopNext() {
     // When the user navigates back to the home page, refresh the chat history.
@@ -267,39 +266,40 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: _buildUserAvatar(),
         title: Text(
           'SECURE MESSAGING',
-          style: TextStyle(
-            fontSize: 14,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w300,
-            color: Colors.cyan.shade100,
-          ),
+          style: theme.appBarTheme.titleTextStyle,
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.search, color: Colors.cyan.shade200),
+            icon: Icon(Icons.search, color: colorScheme.primary),
             onPressed: _navigateToSelectUser,
           ),
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.cyan.shade200),
+            icon: Icon(Icons.logout, color: colorScheme.primary),
             onPressed: _logout,
           ),
         ],
       ),
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: SafeArea(
@@ -310,12 +310,12 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Row(
                   children: [
-                    Icon(Icons.security, size: 14, color: Colors.cyan.shade400),
+                    Icon(Icons.security, size: 14, color: colorScheme.primary),
                     const SizedBox(width: 8),
                     Text(
                       'WELCOME, ${_username.toUpperCase()}',
                       style: TextStyle(
-                        color: Colors.grey.shade400,
+                        color: theme.textTheme.bodyMedium?.color,
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
                         letterSpacing: 1.5,
@@ -326,22 +326,21 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Divider(color: Colors.cyan.withOpacity(0.1), height: 1),
+                child: Divider(color: colorScheme.primary.withOpacity(0.1), height: 1),
               ),
-              // Add this after the Divider
+              // Chat requests section
               InkWell(
                 onTap: _navigateToChatRequests,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF121A24),
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: _pendingRequestsCount > 0
-                          ? Colors.cyan.withOpacity(0.5)
-                          : Colors.cyan.withOpacity(0.2),
+                          ? colorScheme.primary.withOpacity(0.5)
+                          : colorScheme.primary.withOpacity(0.2),
                     ),
                   ),
                   child: Row(
@@ -352,8 +351,8 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                           Icon(
                             Icons.connect_without_contact,
                             color: _pendingRequestsCount > 0
-                                ? Colors.cyan
-                                : Colors.grey.shade400,
+                                ? colorScheme.primary
+                                : theme.textTheme.bodyMedium?.color,
                             size: 18,
                           ),
                           const SizedBox(width: 12),
@@ -364,36 +363,34 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                               fontWeight: FontWeight.w500,
                               letterSpacing: 1.0,
                               color: _pendingRequestsCount > 0
-                                  ? Colors.cyan.shade100
-                                  : Colors.grey.shade400,
+                                  ? colorScheme.primary
+                                  : theme.textTheme.bodyMedium?.color,
                             ),
                           ),
                         ],
                       ),
                       if (_isLoadingRequests)
-                        const SizedBox(
+                        SizedBox(
                           height: 16,
                           width: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.cyanAccent,
+                            color: colorScheme.secondary,
                           ),
                         )
                       else if (_pendingRequestsCount > 0)
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.cyan.withOpacity(0.2),
+                            color: colorScheme.primary.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: Colors.cyan.withOpacity(0.3)),
+                            border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
                           ),
                           child: Text(
                             '$_pendingRequestsCount',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: Colors.cyanAccent,
+                              color: colorScheme.secondary,
                               fontFamily: 'monospace',
                             ),
                           ),
@@ -402,7 +399,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                   ),
                 ),
               ),
-              Expanded(child: _buildChatList()),
+              Expanded(child: _buildChatList(theme, colorScheme)),
             ],
           ),
         ),
@@ -415,15 +412,17 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
   }
 
   Widget _buildUserAvatar() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(left: 8.0),
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.cyan.withOpacity(0.3), width: 1),
+          border: Border.all(color: colorScheme.primary.withOpacity(0.3), width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.cyan.withOpacity(0.1),
+              color: colorScheme.primary.withOpacity(0.1),
               blurRadius: 10,
               spreadRadius: 1,
             ),
@@ -431,17 +430,17 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
         ),
         child: _userAvatar != null
             ? CircleAvatar(backgroundImage: MemoryImage(_userAvatar!))
-            : const CircleAvatar(
-                backgroundColor: Colors.black45,
-                child: Icon(Icons.person, color: Colors.cyan)),
+            : CircleAvatar(
+            backgroundColor: colorScheme.surface,
+            child: Icon(Icons.person, color: colorScheme.primary)),
       ),
     );
   }
 
-  Widget _buildChatList() {
+  Widget _buildChatList(ThemeData theme, ColorScheme colorScheme) {
     if (_isLoadingHistory) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.cyanAccent),
+      return Center(
+        child: CircularProgressIndicator(color: colorScheme.secondary),
       );
     }
 
@@ -450,14 +449,14 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.lock, size: 50, color: Colors.grey.shade800),
+            Icon(Icons.lock, size: 50, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
               'NO CONVERSATIONS YET',
               style: TextStyle(
                 fontSize: 14,
                 letterSpacing: 1.5,
-                color: Colors.grey.shade600,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
               ),
             ),
             const SizedBox(height: 8),
@@ -465,7 +464,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
               'Start a new secure conversation',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade700,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
               ),
             ),
           ],
@@ -488,64 +487,60 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
           final difference = now.difference(timestamp);
 
           if (difference.inDays > 0) {
-            timeString =
-                '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+            timeString = '${timestamp.day}/${timestamp.month}/${timestamp.year}';
           } else {
-            timeString =
-                '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+            timeString = '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
           }
         }
 
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFF121A24),
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: chat.unreadCount > 0
-                  ? Colors.cyan.withOpacity(0.3)
+                  ? colorScheme.primary.withOpacity(0.3)
                   : Colors.transparent,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: colorScheme.shadow.withOpacity(0.2),
                 blurRadius: 5,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
           child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            leading: _buildChatAvatar(chat.participant),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            leading: _buildChatAvatar(chat.participant, theme, colorScheme),
             title: Row(
               children: [
                 Text(
                   chat.participantUsername.isNotEmpty
                       ? chat.participantUsername.toUpperCase()
                       : 'USER-${chat.participant.substring(0, 6)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,
-                    color: Colors.white,
+                    color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 const SizedBox(width: 8),
                 if (chat.unreadCount > 0)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.cyan.withOpacity(0.2),
+                      color: colorScheme.primary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+                      border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
                     ),
                     child: Text(
                       '${chat.unreadCount}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Colors.cyanAccent,
+                        color: colorScheme.secondary,
                         fontFamily: 'monospace',
                       ),
                     ),
@@ -566,10 +561,9 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.grey.shade400,
+                          color: theme.textTheme.bodyMedium?.color,
                           fontSize: 12,
-                          fontFamily:
-                              lastMsg?.plaintext == null ? 'monospace' : null,
+                          fontFamily: lastMsg?.plaintext == null ? 'monospace' : null,
                         ),
                       ),
                     ),
@@ -577,7 +571,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                       Text(
                         timeString,
                         style: TextStyle(
-                          color: Colors.grey.shade600,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           fontSize: 10,
                           fontFamily: 'monospace',
                         ),
@@ -593,14 +587,14 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     );
   }
 
-  Widget _buildChatAvatar(String userId) {
+  Widget _buildChatAvatar(String userId, ThemeData theme, ColorScheme colorScheme) {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.cyan.withOpacity(0.2), width: 1),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.05),
+            color: colorScheme.primary.withOpacity(0.05),
             blurRadius: 8,
             spreadRadius: 1,
           ),
@@ -611,21 +605,20 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
         builder: (_, snap) {
           return CircleAvatar(
             radius: 22,
-            backgroundColor: Colors.black38,
+            backgroundColor: colorScheme.surface.withOpacity(0.8),
             backgroundImage: snap.hasData ? MemoryImage(snap.data!) : null,
             child: snap.connectionState == ConnectionState.waiting
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.cyanAccent,
-                    ),
-                  )
+                ? SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: colorScheme.secondary,
+              ),
+            )
                 : snap.hasData
-                    ? null
-                    : const Icon(Icons.person,
-                        color: Colors.cyanAccent, size: 20),
+                ? null
+                : Icon(Icons.person, color: colorScheme.primary, size: 20),
           );
         },
       ),

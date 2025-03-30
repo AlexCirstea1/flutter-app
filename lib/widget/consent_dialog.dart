@@ -14,21 +14,27 @@ class ConsentDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0D1218), Color(0xFF0A0E14)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface.withOpacity(0.9),
+            ],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+          border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
           boxShadow: [
             BoxShadow(
-              color: Colors.cyan.withOpacity(0.1),
+              color: colorScheme.primary.withOpacity(0.1),
               blurRadius: 15,
               spreadRadius: -5,
             ),
@@ -40,12 +46,12 @@ class ConsentDialog extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.security, size: 18, color: Colors.cyan.shade300),
+                Icon(Icons.security, size: 18, color: colorScheme.primary),
                 const SizedBox(width: 10),
                 Text(
                   'BLOCKCHAIN SERVICE CONSENT',
                   style: TextStyle(
-                    color: Colors.cyan.shade100,
+                    color: colorScheme.primary,
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     letterSpacing: 1.5,
@@ -54,12 +60,12 @@ class ConsentDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Divider(color: Colors.cyan.withOpacity(0.1), height: 1),
+            Divider(color: colorScheme.primary.withOpacity(0.1), height: 1),
             const SizedBox(height: 20),
             RichText(
               text: TextSpan(
                 style: TextStyle(
-                  color: Colors.grey.shade300,
+                  color: theme.textTheme.bodyMedium?.color,
                   fontSize: 13,
                   height: 1.5,
                 ),
@@ -70,7 +76,7 @@ class ConsentDialog extends StatelessWidget {
                   TextSpan(
                     text: 'BLOCKCHAIN TECHNOLOGY',
                     style: TextStyle(
-                      color: Colors.cyan.shade200,
+                      color: colorScheme.primary,
                       fontFamily: 'monospace',
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.5,
@@ -89,7 +95,7 @@ class ConsentDialog extends StatelessWidget {
             Text(
               'Do you consent to the use of blockchain services for your account? Your consent helps us to maintain a secure and transparent platform.',
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.8),
                 fontSize: 13,
                 height: 1.5,
               ),
@@ -106,18 +112,19 @@ class ConsentDialog extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.transparent,
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+                      border: Border.all(
+                          color: colorScheme.primary.withOpacity(0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.info_outline,
-                            size: 14, color: Colors.cyan.shade300),
+                            size: 14, color: colorScheme.primary),
                         const SizedBox(width: 6),
                         Text(
                           'DETAILS',
                           style: TextStyle(
-                            color: Colors.cyan.shade300,
+                            color: colorScheme.primary,
                             fontSize: 11,
                             letterSpacing: 1,
                           ),
@@ -131,7 +138,7 @@ class ConsentDialog extends StatelessWidget {
                     TextButton(
                       onPressed: onConsentDenied,
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey.shade400,
+                        foregroundColor: theme.textTheme.bodyMedium?.color,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 10),
                       ),
@@ -149,7 +156,7 @@ class ConsentDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.cyan.withOpacity(0.15),
+                            color: colorScheme.primary.withOpacity(0.15),
                             blurRadius: 12,
                             spreadRadius: -3,
                           ),
@@ -158,14 +165,14 @@ class ConsentDialog extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: onConsentGiven,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.cyan.shade900,
-                          foregroundColor: Colors.white,
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4),
                             side: BorderSide(
-                              color: Colors.cyan.withOpacity(0.3),
+                              color: colorScheme.primary.withOpacity(0.3),
                               width: 1,
                             ),
                           ),

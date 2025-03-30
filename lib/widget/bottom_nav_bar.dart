@@ -19,17 +19,23 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       height: 75,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF121A24), Color(0xFF090F16)],
+          colors: [
+            colorScheme.surface,
+            colorScheme.surface.withOpacity(0.85),
+          ],
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.6),
+            color: colorScheme.shadow.withOpacity(0.6),
             blurRadius: 15,
             spreadRadius: 1,
             offset: const Offset(0, -3),
@@ -37,14 +43,13 @@ class BottomNavBar extends StatelessWidget {
         ],
         border: Border(
           top: BorderSide(
-            color: Colors.cyan.withOpacity(0.3),
+            color: colorScheme.primary.withOpacity(0.3),
             width: 1,
           ),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(
-            bottom: 21), // Increased bottom padding to move content up
+        padding: const EdgeInsets.only(bottom: 21),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -62,6 +67,8 @@ class BottomNavBar extends StatelessWidget {
   Widget _buildNavItem(
       BuildContext context, int index, IconData icon, String label) {
     final isSelected = index == currentIndex;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return InkWell(
       onTap: () {
@@ -73,7 +80,7 @@ class BottomNavBar extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: isSelected ? Colors.cyan : Colors.transparent,
+              color: isSelected ? colorScheme.primary : Colors.transparent,
               width: 2,
             ),
           ),
@@ -81,27 +88,27 @@ class BottomNavBar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 8), // Reduced top padding slightly
+            const SizedBox(height: 8),
             Icon(
               icon,
-              color: isSelected ? Colors.cyan : Colors.grey.shade600,
+              color: isSelected ? colorScheme.primary : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
               size: 24,
             ),
             const SizedBox(height: 5),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.cyan.shade100 : Colors.grey.shade600,
+                color: isSelected ? colorScheme.primary.withOpacity(0.9) : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 letterSpacing: 1.0,
                 shadows: isSelected
                     ? [
-                        Shadow(
-                          color: Colors.cyan.withOpacity(0.3),
-                          blurRadius: 5,
-                        )
-                      ]
+                  Shadow(
+                    color: colorScheme.primary.withOpacity(0.3),
+                    blurRadius: 5,
+                  )
+                ]
                     : null,
               ),
             ),

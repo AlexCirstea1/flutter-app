@@ -13,7 +13,7 @@ class Environment {
   static const String _prodHost = 'api.productionserver.com';
 
   // Set the app flavor here
-  static Flavor appFlavor = Flavor.TEST; // Change as needed
+  static Flavor appFlavor = Flavor.LOCAL; // Change as needed
 
   // Returns the base API URL (with /api appended)
   static String get apiBaseUrl {

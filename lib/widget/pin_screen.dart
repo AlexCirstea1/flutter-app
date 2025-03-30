@@ -109,61 +109,19 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Widget _buildNumberRow(List<String> numbers) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: numbers.map((number) {
-        return GestureDetector(
-          onTapDown: (_) => setState(() => _currentlyPressed = number),
-          onTapUp: (_) {
-            setState(() => _currentlyPressed = "");
-            number == "⌫" ? _deletePin() : _onNumberPress(number);
-          },
-          onTapCancel: () => setState(() => _currentlyPressed = ""),
-          child: AnimatedScale(
-            duration: const Duration(milliseconds: 100),
-            scale: _currentlyPressed == number ? 0.9 : 1.0,
-            child: Container(
-              width: 70,
-              height: 70,
-              margin: const EdgeInsets.all(6),
-              decoration: const BoxDecoration(
-                color: Colors.white10,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  )
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  number,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white70,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('Enter your PIN'),
+        title: Text(
+          'Enter your PIN',
+          style: theme.appBarTheme.titleTextStyle,
+        ),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
@@ -199,19 +157,21 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
                                 height: 16,
                                 decoration: BoxDecoration(
                                   color: filled
-                                      ? Colors.white70
+                                      ? colorScheme.primary
                                       : Colors.transparent,
-                                  border: Border.all(color: Colors.white30),
+                                  border: Border.all(
+                                    color: colorScheme.primary.withOpacity(0.5),
+                                  ),
                                   shape: BoxShape.circle,
                                   boxShadow: filled
                                       ? [
-                                          BoxShadow(
-                                            color: Colors.blueAccent
-                                                .withOpacity(0.4),
-                                            blurRadius: 8,
-                                            spreadRadius: 1,
-                                          ),
-                                        ]
+                                    BoxShadow(
+                                      color: colorScheme.primary
+                                          .withOpacity(0.4),
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
                                       : [],
                                 ),
                               ),
@@ -230,7 +190,7 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
               duration: const Duration(milliseconds: 300),
               child: Text(
                 _errorMessage ?? '',
-                style: const TextStyle(color: Colors.redAccent),
+                style: TextStyle(color: colorScheme.error),
               ),
             ),
             const Spacer(),
@@ -249,14 +209,66 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
                   const SnackBar(content: Text('PIN recovery not implemented')),
                 );
               },
-              child: const Text(
+              child: Text(
                 'Forgot your PIN?',
-                style: TextStyle(color: Colors.white54),
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNumberRow(List<String> numbers) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: numbers.map((number) {
+        return GestureDetector(
+          onTapDown: (_) => setState(() => _currentlyPressed = number),
+          onTapUp: (_) {
+            setState(() => _currentlyPressed = "");
+            number == "⌫" ? _deletePin() : _onNumberPress(number);
+          },
+          onTapCancel: () => setState(() => _currentlyPressed = ""),
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 100),
+            scale: _currentlyPressed == number ? 0.9 : 1.0,
+            child: Container(
+              width: 70,
+              height: 70,
+              margin: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: colorScheme.surface.withOpacity(0.3),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: colorScheme.primary.withOpacity(0.1),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  number,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

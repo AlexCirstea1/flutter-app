@@ -100,34 +100,35 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'SECURE ACCESS REQUESTS',
-          style: TextStyle(
-            fontSize: 14,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w300,
-            color: Colors.cyan.shade100,
-          ),
+          style: theme.appBarTheme.titleTextStyle,
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.cyan.shade200),
+            icon: Icon(Icons.refresh, color: colorScheme.primary),
             onPressed: _fetchRequests,
           ),
         ],
       ),
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: SafeArea(
@@ -138,12 +139,13 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Row(
                   children: [
-                    Icon(Icons.security, size: 14, color: Colors.cyan.shade400),
+                    Icon(Icons.security,
+                        size: 14, color: colorScheme.secondary),
                     const SizedBox(width: 8),
                     Text(
                       'PENDING AUTHORIZATION REQUESTS',
                       style: TextStyle(
-                        color: Colors.grey.shade400,
+                        color: theme.textTheme.bodyMedium?.color,
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
                         letterSpacing: 1.5,
@@ -154,7 +156,8 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Divider(color: Colors.cyan.withOpacity(0.1), height: 1),
+                child: Divider(
+                    color: colorScheme.primary.withOpacity(0.1), height: 1),
               ),
               Expanded(child: _buildRequestsList()),
             ],
@@ -165,9 +168,12 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
   }
 
   Widget _buildRequestsList() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.cyanAccent),
+      return Center(
+        child: CircularProgressIndicator(color: colorScheme.secondary),
       );
     }
 
@@ -176,14 +182,16 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.lock, size: 50, color: Colors.grey.shade800),
+            Icon(Icons.lock,
+                size: 50,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
               'NO PENDING REQUESTS',
               style: TextStyle(
                 fontSize: 14,
                 letterSpacing: 1.5,
-                color: Colors.grey.shade600,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
               ),
             ),
             const SizedBox(height: 8),
@@ -191,7 +199,7 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
               'Your secure communications network is clear',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade700,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.4),
               ),
             ),
           ],
@@ -210,15 +218,18 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
   }
 
   Widget _buildRequestCard(ChatRequestDTO request) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF121A24),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: colorScheme.shadow.withOpacity(0.2),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -230,13 +241,13 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
           ListTile(
             contentPadding: const EdgeInsets.all(16),
             leading: _buildRequestAvatar(request.requester),
-            title: const Text(
+            title: Text(
               'INCOMING CONNECTION REQUEST',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 1.0,
-                color: Colors.cyanAccent,
+                color: colorScheme.secondary,
               ),
             ),
             subtitle: Column(
@@ -248,7 +259,7 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
                   style: TextStyle(
                     fontSize: 11,
                     fontFamily: 'monospace',
-                    color: Colors.grey.shade500,
+                    color: theme.textTheme.bodyMedium?.color,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -256,7 +267,7 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
                   'Received: ${_formatDate(request.timestamp)}',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey.shade500,
+                    color: theme.textTheme.bodyMedium?.color,
                   ),
                 ),
               ],
@@ -264,7 +275,8 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Divider(color: Colors.cyan.withOpacity(0.1), height: 1),
+            child:
+                Divider(color: colorScheme.primary.withOpacity(0.1), height: 1),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -274,7 +286,7 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
                   child: ElevatedButton(
                     onPressed: () => _rejectRequest(request),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade900,
+                      backgroundColor: colorScheme.error,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -295,7 +307,7 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
                   child: ElevatedButton(
                     onPressed: () => _acceptRequest(request),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyan.shade700,
+                      backgroundColor: colorScheme.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -320,13 +332,17 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
   }
 
   Widget _buildRequestAvatar(String userId) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.cyan.withOpacity(0.2), width: 1),
+        border:
+            Border.all(color: colorScheme.primary.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.05),
+            color: colorScheme.primary.withOpacity(0.05),
             blurRadius: 8,
             spreadRadius: 1,
           ),
@@ -337,21 +353,21 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
         builder: (_, snap) {
           return CircleAvatar(
             radius: 25,
-            backgroundColor: Colors.black38,
+            backgroundColor: colorScheme.surface.withOpacity(0.5),
             backgroundImage: snap.hasData ? MemoryImage(snap.data!) : null,
             child: snap.connectionState == ConnectionState.waiting
-                ? const SizedBox(
+                ? SizedBox(
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.cyanAccent,
+                      color: colorScheme.secondary,
                     ),
                   )
                 : snap.hasData
                     ? null
-                    : const Icon(Icons.person,
-                        color: Colors.cyanAccent, size: 20),
+                    : Icon(Icons.person,
+                        color: colorScheme.secondary, size: 20),
           );
         },
       ),

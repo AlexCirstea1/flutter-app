@@ -84,32 +84,33 @@ class _SelectUserPageState extends State<SelectUserPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'SELECT USER',
-          style: TextStyle(
-            fontSize: 16,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w300,
-            color: Colors.cyan.shade100,
-          ),
+          style: theme.appBarTheme.titleTextStyle,
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.cyan.shade200),
+          icon: Icon(Icons.arrow_back, color: colorScheme.primary),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: Padding(
@@ -119,12 +120,13 @@ class _SelectUserPageState extends State<SelectUserPage> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF121A24),
+                  color: colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+                  border:
+                      Border.all(color: colorScheme.primary.withOpacity(0.2)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.cyan.withOpacity(0.05),
+                      color: colorScheme.primary.withOpacity(0.05),
                       blurRadius: 10,
                       spreadRadius: -5,
                     ),
@@ -133,17 +135,19 @@ class _SelectUserPageState extends State<SelectUserPage> {
                 child: TextField(
                   controller: _searchController,
                   style: TextStyle(
-                    color: Colors.grey.shade300,
+                    color: theme.textTheme.bodyLarge?.color,
                     fontSize: 14,
                   ),
                   decoration: InputDecoration(
                     hintText: 'SEARCH SECURE CONTACTS',
                     hintStyle: TextStyle(
-                      color: Colors.grey.shade500,
+                      color:
+                          theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
                       fontSize: 12,
                       letterSpacing: 1.0,
                     ),
-                    prefixIcon: Icon(Icons.search, color: Colors.cyan.shade400, size: 20),
+                    prefixIcon: Icon(Icons.search,
+                        color: colorScheme.primary, size: 20),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 15),
                   ),
@@ -155,135 +159,155 @@ class _SelectUserPageState extends State<SelectUserPage> {
                 padding: const EdgeInsets.only(left: 4, bottom: 12),
                 child: _searchController.text.isNotEmpty
                     ? Row(
-                  children: [
-                    Icon(Icons.security, size: 14, color: Colors.cyan.shade400),
-                    const SizedBox(width: 8),
-                    Text(
-                      'SEARCH RESULTS',
-                      style: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ],
-                )
+                        children: [
+                          Icon(Icons.security,
+                              size: 14, color: colorScheme.secondary),
+                          const SizedBox(width: 8),
+                          Text(
+                            'SEARCH RESULTS',
+                            style: TextStyle(
+                              color: theme.textTheme.bodyMedium?.color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      )
                     : Row(
-                  children: [
-                    Icon(Icons.lock, size: 14, color: Colors.grey.shade600),
-                    const SizedBox(width: 8),
-                    Text(
-                      'SECURE DIRECTORY',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 1.5,
+                        children: [
+                          Icon(Icons.lock,
+                              size: 14,
+                              color: theme.textTheme.bodyMedium?.color
+                                  ?.withOpacity(0.6)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'SECURE DIRECTORY',
+                            style: TextStyle(
+                              color: theme.textTheme.bodyMedium?.color
+                                  ?.withOpacity(0.6),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
-              Divider(color: Colors.cyan.withOpacity(0.1), height: 1),
+              Divider(color: colorScheme.primary.withOpacity(0.1), height: 1),
               const SizedBox(height: 10),
               Expanded(
                 child: _searchResults.isEmpty
                     ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                          _searchController.text.isEmpty ? Icons.search : Icons.person_off,
-                          size: 50,
-                          color: Colors.grey.shade800
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _searchController.text.isEmpty ? 'ENTER USERNAME TO SEARCH' : 'NO USERS FOUND',
-                        style: TextStyle(
-                          fontSize: 14,
-                          letterSpacing: 1.5,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _searchController.text.isEmpty
-                            ? 'Start typing to find secure contacts'
-                            : 'Try a different search term',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-                    : ListView.builder(
-                  itemCount: _searchResults.length,
-                  itemBuilder: (context, index) {
-                    final user = _searchResults[index];
-                    return Container(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF121A24),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.transparent),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 5,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        leading: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.cyan.withOpacity(0.2), width: 1),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.cyan.withOpacity(0.05),
-                                blurRadius: 8,
-                                spreadRadius: 1,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _searchController.text.isEmpty
+                                  ? Icons.search
+                                  : Icons.person_off,
+                              size: 50,
+                              color: theme.textTheme.bodyMedium?.color
+                                  ?.withOpacity(0.2),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchController.text.isEmpty
+                                  ? 'ENTER USERNAME TO SEARCH'
+                                  : 'NO USERS FOUND',
+                              style: TextStyle(
+                                fontSize: 14,
+                                letterSpacing: 1.5,
+                                color: theme.textTheme.bodyMedium?.color
+                                    ?.withOpacity(0.6),
                               ),
-                            ],
-                          ),
-                          child: const CircleAvatar(
-                            backgroundColor: Colors.black38,
-                            child: Icon(Icons.person, color: Colors.cyanAccent, size: 20),
-                          ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _searchController.text.isEmpty
+                                  ? 'Start typing to find secure contacts'
+                                  : 'Try a different search term',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.textTheme.bodyMedium?.color
+                                    ?.withOpacity(0.4),
+                              ),
+                            ),
+                          ],
                         ),
-                        title: Text(
-                          user['username']?.toUpperCase() ?? 'UNKNOWN',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            letterSpacing: 0.5,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        ),
-                        subtitle: Text(
-                          'SECURE ID: ${user['id'].substring(0, 8)}...',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontFamily: 'monospace',
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                        trailing: Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: Colors.cyan.shade300,
-                        ),
-                        onTap: () => _createChat(user),
+                      )
+                    : ListView.builder(
+                        itemCount: _searchResults.length,
+                        itemBuilder: (context, index) {
+                          final user = _searchResults[index];
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.transparent),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorScheme.shadow.withOpacity(0.2),
+                                  blurRadius: 5,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              leading: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color:
+                                          colorScheme.primary.withOpacity(0.2),
+                                      width: 1),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          colorScheme.primary.withOpacity(0.05),
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: CircleAvatar(
+                                  backgroundColor:
+                                      colorScheme.surface.withOpacity(0.5),
+                                  child: Icon(Icons.person,
+                                      color: colorScheme.secondary, size: 20),
+                                ),
+                              ),
+                              title: Text(
+                                user['username']?.toUpperCase() ?? 'UNKNOWN',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.textTheme.bodyLarge?.color,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'SECURE ID: ${user['id'].substring(0, 8)}...',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  color: theme.textTheme.bodyMedium?.color
+                                      ?.withOpacity(0.7),
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: colorScheme.primary,
+                              ),
+                              onTap: () => _createChat(user),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           ),

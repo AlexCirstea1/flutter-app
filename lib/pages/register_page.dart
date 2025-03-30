@@ -31,7 +31,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final AuthService _authService = serviceLocator<AuthService>();
   final StorageService _storageService = StorageService();
 
-  // Existing methods unchanged
   void _register() {
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -212,41 +211,45 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       resizeToAvoidBottomInset: true,
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight:
-                        constraints.maxHeight - 48, // Account for padding
+                    minHeight: constraints.maxHeight - 48, // Account for padding
                   ),
                   child: IntrinsicHeight(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Logo with cyberpunk effect - LARGER
+                        // Logo with glow effect
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.cyan.withOpacity(0.25),
+                                color: colorScheme.primary.withOpacity(0.25),
                                 blurRadius: 30,
                                 spreadRadius: 5,
                               ),
@@ -255,36 +258,35 @@ class _RegisterPageState extends State<RegisterPage> {
                           child: Icon(
                             Icons.shield_outlined,
                             size: 70,
-                            color: Colors.cyan.shade100,
+                            color: colorScheme.primary,
                           ),
                         ),
 
                         const SizedBox(height: 30),
 
-                        // Cybersecurity styled title
+                        // Title with theme styling
                         Text(
                           'SECURE REGISTRATION',
                           style: TextStyle(
                             fontSize: 20,
                             letterSpacing: 2.0,
                             fontWeight: FontWeight.w300,
-                            color: Colors.cyan.shade100,
+                            color: colorScheme.primary,
                           ),
                           textAlign: TextAlign.center,
                         ),
 
                         const SizedBox(height: 40),
 
-                        // Username field with cyber styling
+                        // Username field with theme styling
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF121A24),
+                            color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: Colors.cyan.withOpacity(0.2)),
+                            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.cyan.withOpacity(0.05),
+                                color: colorScheme.primary.withOpacity(0.05),
                                 blurRadius: 10,
                                 spreadRadius: -5,
                               ),
@@ -292,17 +294,17 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           child: TextField(
                             controller: _usernameController,
-                            style: TextStyle(color: Colors.grey.shade300),
+                            style: theme.textTheme.bodyLarge,
                             decoration: InputDecoration(
                               labelText: 'USERNAME',
                               labelStyle: TextStyle(
-                                color: Colors.grey.shade500,
+                                color: theme.textTheme.bodyMedium?.color,
                                 fontSize: 12,
                                 letterSpacing: 1.0,
                                 fontWeight: FontWeight.w400,
                               ),
                               prefixIcon: Icon(Icons.person,
-                                  color: Colors.cyan.shade400, size: 20),
+                                  color: colorScheme.primary, size: 20),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
                                   vertical: 16, horizontal: 16),
@@ -311,16 +313,15 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Email field with cyber styling
+                        // Email field with theme styling
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF121A24),
+                            color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: Colors.cyan.withOpacity(0.2)),
+                            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.cyan.withOpacity(0.05),
+                                color: colorScheme.primary.withOpacity(0.05),
                                 blurRadius: 10,
                                 spreadRadius: -5,
                               ),
@@ -329,19 +330,19 @@ class _RegisterPageState extends State<RegisterPage> {
                           child: TextField(
                             controller: _emailController,
                             style: TextStyle(
-                              color: Colors.grey.shade300,
+                              color: theme.textTheme.bodyLarge?.color,
                               fontFamily: 'monospace',
                             ),
                             decoration: InputDecoration(
                               labelText: 'EMAIL',
                               labelStyle: TextStyle(
-                                color: Colors.grey.shade500,
+                                color: theme.textTheme.bodyMedium?.color,
                                 fontSize: 12,
                                 letterSpacing: 1.0,
                                 fontWeight: FontWeight.w400,
                               ),
                               prefixIcon: Icon(Icons.email,
-                                  color: Colors.cyan.shade400, size: 20),
+                                  color: colorScheme.primary, size: 20),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
                                   vertical: 16, horizontal: 16),
@@ -350,16 +351,15 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Password field with cyber styling
+                        // Password field with theme styling
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF121A24),
+                            color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: Colors.cyan.withOpacity(0.2)),
+                            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.cyan.withOpacity(0.05),
+                                color: colorScheme.primary.withOpacity(0.05),
                                 blurRadius: 10,
                                 spreadRadius: -5,
                               ),
@@ -369,19 +369,19 @@ class _RegisterPageState extends State<RegisterPage> {
                             controller: _passwordController,
                             obscureText: true,
                             style: TextStyle(
-                              color: Colors.grey.shade300,
+                              color: theme.textTheme.bodyLarge?.color,
                               fontFamily: 'monospace',
                             ),
                             decoration: InputDecoration(
                               labelText: 'PASSWORD',
                               labelStyle: TextStyle(
-                                color: Colors.grey.shade500,
+                                color: theme.textTheme.bodyMedium?.color,
                                 fontSize: 12,
                                 letterSpacing: 1.0,
                                 fontWeight: FontWeight.w400,
                               ),
                               prefixIcon: Icon(Icons.lock,
-                                  color: Colors.cyan.shade400, size: 20),
+                                  color: colorScheme.primary, size: 20),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
                                   vertical: 16, horizontal: 16),
@@ -390,16 +390,15 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Confirm Password field with cyber styling
+                        // Confirm Password field with theme styling
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF121A24),
+                            color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: Colors.cyan.withOpacity(0.2)),
+                            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.cyan.withOpacity(0.05),
+                                color: colorScheme.primary.withOpacity(0.05),
                                 blurRadius: 10,
                                 spreadRadius: -5,
                               ),
@@ -409,19 +408,19 @@ class _RegisterPageState extends State<RegisterPage> {
                             controller: _confirmPasswordController,
                             obscureText: true,
                             style: TextStyle(
-                              color: Colors.grey.shade300,
+                              color: theme.textTheme.bodyLarge?.color,
                               fontFamily: 'monospace',
                             ),
                             decoration: InputDecoration(
                               labelText: 'CONFIRM PASSWORD',
                               labelStyle: TextStyle(
-                                color: Colors.grey.shade500,
+                                color: theme.textTheme.bodyMedium?.color,
                                 fontSize: 12,
                                 letterSpacing: 1.0,
                                 fontWeight: FontWeight.w400,
                               ),
                               prefixIcon: Icon(Icons.lock_outline,
-                                  color: Colors.cyan.shade400, size: 20),
+                                  color: colorScheme.primary, size: 20),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
                                   vertical: 16, horizontal: 16),
@@ -431,78 +430,77 @@ class _RegisterPageState extends State<RegisterPage> {
 
                         const SizedBox(height: 30),
 
-                        // Register button with cyber styling
+                        // Register button with theme styling
                         _isLoading
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                    color: Colors.cyanAccent))
+                            ? Center(
+                            child: CircularProgressIndicator(
+                                color: colorScheme.secondary))
                             : Container(
-                                height: 54,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.cyan.shade800,
-                                      Colors.cyan.shade900,
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.cyan.withOpacity(0.3),
-                                      blurRadius: 12,
-                                      spreadRadius: -6,
-                                    ),
-                                  ],
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: _register,
-                                  style: ElevatedButton.styleFrom(
-                                    foregroundColor: Colors.white,
-                                    backgroundColor: Colors.transparent,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'SECURE REGISTRATION',
-                                    style: TextStyle(
-                                      letterSpacing: 1.5,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
+                          height: 54,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primary,
+                                colorScheme.primary.withOpacity(0.8),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorScheme.primary.withOpacity(0.3),
+                                blurRadius: 12,
+                                spreadRadius: -6,
                               ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: _register,
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: colorScheme.onPrimary,
+                              backgroundColor: Colors.transparent,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'SECURE REGISTRATION',
+                              style: TextStyle(
+                                letterSpacing: 1.5,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
 
                         const SizedBox(height: 20),
 
-                        // Anonymous registration option
+                        // Anonymous registration option with theme styling
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.transparent,
-                            border:
-                                Border.all(color: Colors.grey.withOpacity(0.2)),
+                            border: Border.all(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.2) ?? Colors.grey.withOpacity(0.2)),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: TextButton(
                             onPressed: _registerDummyUser,
                             style: TextButton.styleFrom(
-                              foregroundColor: Colors.cyanAccent,
+                              foregroundColor: colorScheme.secondary,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.shield,
-                                    size: 16, color: Colors.cyan.shade200),
+                                    size: 16, color: colorScheme.secondary),
                                 const SizedBox(width: 8),
                                 Text(
                                   'REGISTER ANONYMOUSLY',
                                   style: TextStyle(
                                     letterSpacing: 1.0,
                                     fontSize: 12,
-                                    color: Colors.cyan.shade200,
+                                    color: colorScheme.secondary,
                                   ),
                                 ),
                               ],
@@ -513,14 +511,14 @@ class _RegisterPageState extends State<RegisterPage> {
                         // Spacer to push content down
                         const Spacer(),
 
-                        // Login link with cyber styling
+                        // Login link with theme styling
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
                               height: 1,
                               width: 60,
-                              color: Colors.cyan.withOpacity(0.1),
+                              color: colorScheme.primary.withOpacity(0.1),
                             ),
                             GestureDetector(
                               onTap: () => Navigator.pop(context),
@@ -530,15 +528,15 @@ class _RegisterPageState extends State<RegisterPage> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.4),
+                                  color: colorScheme.surface.withOpacity(0.4),
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
-                                      color: Colors.cyan.withOpacity(0.15)),
+                                      color: colorScheme.primary.withOpacity(0.15)),
                                 ),
                                 child: Text(
                                   'BACK TO LOGIN',
                                   style: TextStyle(
-                                    color: Colors.grey.shade400,
+                                    color: theme.textTheme.bodyMedium?.color,
                                     fontSize: 12,
                                     letterSpacing: 1.0,
                                   ),
@@ -548,7 +546,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             Container(
                               height: 1,
                               width: 60,
-                              color: Colors.cyan.withOpacity(0.1),
+                              color: colorScheme.primary.withOpacity(0.1),
                             ),
                           ],
                         ),

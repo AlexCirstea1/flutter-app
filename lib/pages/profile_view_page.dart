@@ -381,61 +381,65 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'PROFILE DETAILS',
-          style: TextStyle(
-            fontSize: 16,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w300,
-            color: Colors.cyan.shade100,
-          ),
+          style: theme.appBarTheme.titleTextStyle,
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.cyan.shade200),
+          icon: Icon(Icons.arrow_back, color: colorScheme.primary),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  color: Colors.cyanAccent,
-                ),
-              )
+            ? Center(
+          child: CircularProgressIndicator(
+            color: colorScheme.secondary,
+          ),
+        )
             : SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _buildProfileHeader(),
-                    const SizedBox(height: 30),
-                    _buildUserInfoSection(),
-                    const SizedBox(height: 24),
-                    _buildSecuritySection(),
-                    const SizedBox(height: 24),
-                    _buildActionsSection(),
-                  ],
-                ),
-              ),
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildProfileHeader(),
+              const SizedBox(height: 30),
+              _buildUserInfoSection(),
+              const SizedBox(height: 24),
+              _buildSecuritySection(),
+              const SizedBox(height: 24),
+              _buildActionsSection(),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildProfileHeader() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       children: [
         Container(
@@ -443,10 +447,10 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
           width: 120,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.cyan.withOpacity(0.4), width: 2),
+            border: Border.all(color: colorScheme.primary.withOpacity(0.4), width: 2),
             boxShadow: [
               BoxShadow(
-                color: Colors.cyan.withOpacity(0.2),
+                color: colorScheme.primary.withOpacity(0.2),
                 blurRadius: 15,
                 spreadRadius: 1,
               ),
@@ -455,40 +459,39 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
           child: _userAvatar != null
               ? CircleAvatar(backgroundImage: MemoryImage(_userAvatar!))
               : CircleAvatar(
-                  backgroundColor: Colors.black38,
-                  child:
-                      Icon(Icons.person, color: Colors.cyan.shade300, size: 50),
-                ),
+            backgroundColor: colorScheme.surface.withOpacity(0.7),
+            child: Icon(Icons.person, color: colorScheme.primary, size: 50),
+          ),
         ),
         const SizedBox(height: 20),
         Text(
           widget.username.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.5,
-            color: Colors.white,
+            color: theme.textTheme.bodyLarge?.color,
           ),
         ),
         const SizedBox(height: 16),
         Theme(
           data: Theme.of(context).copyWith(
             chipTheme: ChipThemeData(
-              backgroundColor: Colors.cyan.withOpacity(0.15),
-              disabledColor: Colors.cyan.withOpacity(0.05),
-              selectedColor: Colors.cyan.withOpacity(0.3),
-              secondarySelectedColor: Colors.cyan.withOpacity(0.3),
+              backgroundColor: colorScheme.primary.withOpacity(0.15),
+              disabledColor: colorScheme.primary.withOpacity(0.05),
+              selectedColor: colorScheme.primary.withOpacity(0.3),
+              secondarySelectedColor: colorScheme.primary.withOpacity(0.3),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-              labelStyle: const TextStyle(
-                color: Colors.white,
+              labelStyle: TextStyle(
+                color: theme.textTheme.bodyLarge?.color,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 1,
               ),
-              secondaryLabelStyle: TextStyle(color: Colors.cyan.shade200),
-              brightness: Brightness.dark,
+              secondaryLabelStyle: TextStyle(color: colorScheme.primary),
+              brightness: theme.brightness,
               shape: RoundedRectangleBorder(
-                side: BorderSide(color: Colors.cyan.withOpacity(0.3)),
+                side: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
@@ -500,15 +503,18 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   }
 
   Widget _buildUserInfoSection() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF121A24),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.05),
+            color: colorScheme.primary.withOpacity(0.05),
             blurRadius: 15,
             spreadRadius: -5,
           ),
@@ -519,7 +525,7 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.account_circle, size: 18, color: Colors.cyan.shade200),
+              Icon(Icons.account_circle, size: 18, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 'ACCOUNT INFORMATION',
@@ -527,12 +533,12 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                   fontSize: 14,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w500,
-                  color: Colors.cyan.shade200,
+                  color: colorScheme.primary,
                 ),
               ),
             ],
           ),
-          Divider(color: Colors.cyan.withOpacity(0.1), height: 30),
+          Divider(color: colorScheme.primary.withOpacity(0.1), height: 30),
           _buildInfoRow('USERNAME', widget.username),
           _buildInfoRow('ACCOUNT TYPE', 'SECURE MESSAGING USER'),
           _buildInfoRow('STATUS', 'ACTIVE'),
@@ -542,15 +548,18 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   }
 
   Widget _buildSecuritySection() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF121A24),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.05),
+            color: colorScheme.primary.withOpacity(0.05),
             blurRadius: 15,
             spreadRadius: -5,
           ),
@@ -561,7 +570,7 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.security, size: 18, color: Colors.cyan.shade200),
+              Icon(Icons.security, size: 18, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 'SECURITY DETAILS',
@@ -569,12 +578,12 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                   fontSize: 14,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w500,
-                  color: Colors.cyan.shade200,
+                  color: colorScheme.primary,
                 ),
               ),
             ],
           ),
-          Divider(color: Colors.cyan.withOpacity(0.1), height: 30),
+          Divider(color: colorScheme.primary.withOpacity(0.1), height: 30),
           _buildInfoRow('ENCRYPTION', 'ENABLED'),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -584,21 +593,20 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                 style: TextStyle(
                   fontSize: 12,
                   letterSpacing: 0.5,
-                  color: Colors.grey.shade500,
+                  color: theme.textTheme.bodyMedium?.color,
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: _blockchainConsent
-                      ? Colors.cyan.withOpacity(0.1)
-                      : Colors.grey.withOpacity(0.1),
+                      ? colorScheme.primary.withOpacity(0.1)
+                      : colorScheme.onSurface.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: _blockchainConsent
-                        ? Colors.cyan.withOpacity(0.3)
-                        : Colors.grey.withOpacity(0.3),
+                        ? colorScheme.primary.withOpacity(0.3)
+                        : colorScheme.onSurface.withOpacity(0.3),
                   ),
                 ),
                 child: Row(
@@ -607,16 +615,16 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                       _blockchainConsent ? Icons.check_circle : Icons.cancel,
                       size: 14,
                       color: _blockchainConsent
-                          ? Colors.cyan.shade300
-                          : Colors.grey.shade400,
+                          ? colorScheme.primary
+                          : theme.textTheme.bodyMedium?.color,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       _blockchainConsent ? 'ENABLED' : 'DISABLED',
                       style: TextStyle(
                         color: _blockchainConsent
-                            ? Colors.cyan.shade300
-                            : Colors.grey.shade400,
+                            ? colorScheme.primary
+                            : theme.textTheme.bodyMedium?.color,
                         fontWeight: FontWeight.w500,
                         fontSize: 11,
                         letterSpacing: 1,
@@ -633,16 +641,19 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   }
 
   Widget _buildActionsSection() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       margin: const EdgeInsets.only(top: 24),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF121A24),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.05),
+            color: colorScheme.primary.withOpacity(0.05),
             blurRadius: 15,
             spreadRadius: -5,
           ),
@@ -653,7 +664,7 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.warning, size: 18, color: Colors.cyan.shade200),
+              Icon(Icons.warning, size: 18, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 'ACTIONS',
@@ -661,30 +672,32 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                   fontSize: 14,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w500,
-                  color: Colors.cyan.shade200,
+                  color: colorScheme.primary,
                 ),
               ),
             ],
           ),
-          Divider(color: Colors.cyan.withOpacity(0.1), height: 30),
+          Divider(color: colorScheme.primary.withOpacity(0.1), height: 30),
           ListTile(
-            leading: const Icon(Icons.report, color: Colors.redAccent),
-            title: const Text('Report'),
+            leading: Icon(Icons.report, color: colorScheme.error),
+            title: Text('Report', style: TextStyle(color: theme.textTheme.bodyLarge?.color)),
             enabled: !_isAdmin,
             onTap: _isAdmin ? null : _reportUser,
           ),
           ListTile(
             leading: Icon(
               _isBlocked ? Icons.person_add : Icons.block,
-              color: _isBlocked ? Colors.blue : Colors.red,
+              color: _isBlocked ? colorScheme.primary : colorScheme.error,
             ),
-            title: Text(_isBlocked ? 'Unblock' : 'Block'),
+            title: Text(_isBlocked ? 'Unblock' : 'Block',
+                style: TextStyle(color: theme.textTheme.bodyLarge?.color)),
             enabled: !_isAdmin,
             onTap: _isAdmin ? null : _blockUser,
           ),
           ListTile(
-            leading: const Icon(Icons.delete, color: Colors.red),
-            title: const Text('Delete Conversation'),
+            leading: Icon(Icons.delete, color: colorScheme.error),
+            title: Text('Delete Conversation',
+                style: TextStyle(color: theme.textTheme.bodyLarge?.color)),
             enabled: !_isAdmin,
             onTap: _isAdmin ? null : _deleteConversation,
           ),
@@ -719,6 +732,8 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   }
 
   Widget _buildInfoRow(String label, String value) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -729,7 +744,7 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
             style: TextStyle(
               fontSize: 12,
               letterSpacing: 0.5,
-              color: Colors.grey.shade500,
+              color: theme.textTheme.bodyMedium?.color,
             ),
           ),
           Text(
@@ -737,7 +752,7 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w400,
-              color: Colors.grey.shade300,
+              color: theme.textTheme.bodyLarge?.color,
             ),
           ),
         ],

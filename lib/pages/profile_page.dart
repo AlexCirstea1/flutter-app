@@ -89,78 +89,35 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _selectedIndex = index);
   }
 
-  Widget _buildCertificateInfo() {
-    if (_certificateInfo == null) {
-      return const SizedBox.shrink();
-    }
-
-    final dn = _certificateInfo!.distinguishedName;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Security Certificate',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const Divider(),
-            _buildCertInfoRow('Common Name', dn.commonName),
-            _buildCertInfoRow('Organization', dn.organization ?? 'N/A'),
-            _buildCertInfoRow('Department', dn.organizationalUnit ?? 'N/A'),
-            _buildCertInfoRow('State', dn.state ?? 'N/A'),
-            _buildCertInfoRow(
-                'RSA Key Size', '${_certificateInfo!.keySize} bits'),
-            _buildCertInfoRow(
-              'Expires In',
-              _certificateInfo!.isExpired
-                  ? 'Expired'
-                  : '${_certificateInfo!.daysRemaining} days',
-              textColor:
-                  _certificateInfo!.daysRemaining < 30 ? Colors.red : null,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('PROFILE',
-          style: TextStyle(
-            fontSize: 16,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w300,
-            color: Colors.cyan.shade100,
-          ),
+        title: Text(
+          'PROFILE',
+          style: theme.appBarTheme.titleTextStyle,
         ),
         automaticallyImplyLeading: false,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
+          ? Center(child: CircularProgressIndicator(color: colorScheme.secondary))
           : Container(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: SingleChildScrollView(
@@ -176,10 +133,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     height: 110,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.cyanAccent, width: 1),
+                      border: Border.all(color: colorScheme.secondary, width: 1),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.cyanAccent.withOpacity(0.15),
+                          color: colorScheme.secondary.withOpacity(0.15),
                           blurRadius: 20,
                           spreadRadius: 5,
                         ),
@@ -188,12 +145,12 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: Colors.black38,
+                    backgroundColor: colorScheme.surface.withOpacity(0.5),
                     backgroundImage: _avatarBytes != null
                         ? MemoryImage(_avatarBytes!)
                         : null,
                     child: _avatarBytes == null
-                        ? const Icon(Icons.person, size: 50, color: Colors.cyanAccent)
+                        ? Icon(Icons.person, size: 50, color: colorScheme.secondary)
                         : null,
                   ),
                 ],
@@ -201,11 +158,11 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 20),
               Text(
                 _username,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w300,
                   letterSpacing: 1.5,
-                  color: Colors.white,
+                  color: theme.textTheme.bodyLarge?.color,
                 ),
               ),
               const SizedBox(height: 8),
@@ -215,7 +172,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 _email,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey.shade400,
+                  color: theme.textTheme.bodyMedium?.color,
                 ),
               ),
               _buildBlockchainConsentIndicator(),
@@ -229,7 +186,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text(
                   '// ABOUT THIS APP',
                   style: TextStyle(
-                    color: Colors.cyan.withOpacity(0.7),
+                    color: colorScheme.primary.withOpacity(0.7),
                     fontSize: 12,
                     letterSpacing: 1.5,
                   ),
@@ -248,14 +205,25 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildBlockchainConsentIndicator() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final consentColor = _blockchainConsent
+        ? colorScheme.secondary
+        : theme.textTheme.bodyMedium?.color?.withOpacity(0.5);
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _blockchainConsent ? Colors.green.withOpacity(0.15) : Colors.grey.withOpacity(0.1),
+        color: _blockchainConsent
+            ? colorScheme.secondary.withOpacity(0.15)
+            : theme.textTheme.bodyMedium?.color?.withOpacity(0.05) ?? Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: _blockchainConsent ? Colors.green.withOpacity(0.3) : Colors.grey.withOpacity(0.2),
+          color: _blockchainConsent
+              ? colorScheme.secondary.withOpacity(0.3)
+              : theme.textTheme.bodyMedium?.color?.withOpacity(0.1) ?? Colors.transparent,
           width: 1,
         ),
       ),
@@ -265,13 +233,13 @@ class _ProfilePageState extends State<ProfilePage> {
           Icon(
             _blockchainConsent ? Icons.link : Icons.link_off,
             size: 16,
-            color: _blockchainConsent ? Colors.green.shade300 : Colors.grey.shade400,
+            color: consentColor,
           ),
           const SizedBox(width: 8),
           Text(
             _blockchainConsent ? 'BLOCKCHAIN ENABLED' : 'NO BLOCKCHAIN',
             style: TextStyle(
-              color: _blockchainConsent ? Colors.green.shade300 : Colors.grey.shade400,
+              color: consentColor,
               fontWeight: FontWeight.w400,
               fontSize: 12,
               letterSpacing: 1,
@@ -287,18 +255,20 @@ class _ProfilePageState extends State<ProfilePage> {
       return const SizedBox.shrink();
     }
 
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final dn = _certificateInfo!.distinguishedName;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF121A24),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.05),
+            color: colorScheme.primary.withOpacity(0.05),
             blurRadius: 15,
             spreadRadius: -5,
           ),
@@ -309,7 +279,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Row(
             children: [
-              Icon(Icons.security, size: 18, color: Colors.cyan.shade200),
+              Icon(Icons.security, size: 18, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
                 'SECURITY CERTIFICATE',
@@ -317,12 +287,12 @@ class _ProfilePageState extends State<ProfilePage> {
                   fontSize: 14,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w500,
-                  color: Colors.cyan.shade200,
+                  color: colorScheme.primary,
                 ),
               ),
             ],
           ),
-          Divider(color: Colors.cyan.withOpacity(0.1), height: 30),
+          Divider(color: colorScheme.primary.withOpacity(0.1), height: 30),
           _buildCertInfoRow('Common Name', dn.commonName),
           _buildCertInfoRow('Organization', dn.organization ?? 'N/A'),
           _buildCertInfoRow('Department', dn.organizationalUnit ?? 'N/A'),
@@ -334,10 +304,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 ? 'Expired'
                 : '${_certificateInfo!.daysRemaining} days',
             textColor: _certificateInfo!.daysRemaining < 30
-                ? Colors.redAccent
+                ? colorScheme.error
                 : _certificateInfo!.daysRemaining < 90
-                ? Colors.orangeAccent
-                : Colors.greenAccent,
+                ? Colors.orange
+                : colorScheme.secondary,
           ),
         ],
       ),
@@ -345,6 +315,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildCertInfoRow(String label, String value, {Color? textColor}) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -355,7 +327,7 @@ class _ProfilePageState extends State<ProfilePage> {
             style: TextStyle(
               fontSize: 12,
               letterSpacing: 0.5,
-              color: Colors.grey.shade500,
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
             ),
           ),
           Text(
@@ -364,7 +336,7 @@ class _ProfilePageState extends State<ProfilePage> {
               fontSize: 13,
               fontWeight: FontWeight.w400,
               fontFamily: 'monospace',
-              color: textColor ?? Colors.grey.shade300,
+              color: textColor ?? theme.textTheme.bodyLarge?.color,
             ),
           ),
         ],

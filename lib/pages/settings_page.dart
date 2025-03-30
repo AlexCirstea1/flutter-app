@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 import '../config/environment.dart';
 import '../services/auth_service.dart';
 import '../services/service_locator.dart';
 import '../services/storage_service.dart';
+import '../theme/theme_provider.dart';
 import '../utils/key_cert_helper.dart';
 import '../widget/bottom_nav_bar.dart';
 
@@ -110,30 +112,31 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'SETTINGS',
-          style: TextStyle(
-            fontSize: 16,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w300,
-            color: Colors.cyan.shade100,
-          ),
+          style: theme.appBarTheme.titleTextStyle,
         ),
         automaticallyImplyLeading: false,
       ),
       body: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: SingleChildScrollView(
@@ -154,30 +157,32 @@ class _SettingsPageState extends State<SettingsPage> {
                     icon: Icons.vpn_key_rounded,
                     onTap: _isGeneratingKeys ? null : _regenerateKeys,
                     trailing: _isGeneratingKeys
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.cyanAccent,
+                              color: colorScheme.secondary,
                             ),
                           )
                         : Icon(
                             Icons.refresh,
                             size: 18,
-                            color: Colors.cyan.shade300,
+                            color: colorScheme.primary,
                           ),
                   ),
-                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  Divider(
+                      height: 1, color: colorScheme.onSurface.withOpacity(0.1)),
                   _buildSettingItem(
                     title: 'SETUP PIN',
                     subtitle: 'Configure a security PIN code for the app',
                     icon: Icons.pin,
                     onTap: () {
-                      Navigator.pushNamed(context, '/pin-setup');
+                      Navigator.pushNamed(context, '/set-pin');
                     },
                   ),
-                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  Divider(
+                      height: 1, color: colorScheme.onSurface.withOpacity(0.1)),
                   _buildSettingItem(
                     title: 'BIOMETRIC AUTHENTICATION',
                     subtitle: 'Use fingerprint or face recognition',
@@ -203,18 +208,19 @@ class _SettingsPageState extends State<SettingsPage> {
                         : _userId?.substring(0, 10) ?? 'Not available',
                     icon: Icons.perm_identity,
                     titleStyle: TextStyle(
-                      color: Colors.grey.shade300,
+                      color: theme.textTheme.bodyLarge?.color,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
-                    subtitleStyle: const TextStyle(
-                      color: Colors.cyanAccent,
+                    subtitleStyle: TextStyle(
+                      color: colorScheme.secondary,
                       fontSize: 12,
                       fontFamily: 'monospace',
                     ),
                     onTap: null,
                   ),
-                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  Divider(
+                      height: 1, color: colorScheme.onSurface.withOpacity(0.1)),
                   _buildSettingItem(
                     title: 'EDIT PROFILE',
                     subtitle: 'Change your username and details',
@@ -223,7 +229,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       Navigator.pushNamed(context, '/edit-profile');
                     },
                   ),
-                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  Divider(
+                      height: 1, color: colorScheme.onSurface.withOpacity(0.1)),
                   _buildSettingItem(
                     title: 'BLOCKCHAIN CONSENT',
                     subtitle: 'Manage your consent for blockchain features',
@@ -250,16 +257,23 @@ class _SettingsPageState extends State<SettingsPage> {
                       Navigator.pushNamed(context, '/notifications');
                     },
                   ),
-                  const Divider(height: 1, color: Color(0xFF1A2530)),
-                  _buildSettingItem(
-                    title: 'THEME SETTINGS',
-                    subtitle: 'Customize app appearance',
-                    icon: Icons.color_lens,
-                    onTap: () {
-                      Navigator.pushNamed(context, '/theme-settings');
+                  Divider(
+                      height: 1, color: colorScheme.onSurface.withOpacity(0.1)),
+                  Consumer<ThemeProvider>(
+                    builder: (context, themeProvider, child) {
+                      return _buildSettingItem(
+                        title: 'THEME',
+                        subtitle: _getThemeModeText(themeProvider.themeMode),
+                        icon: Icons.color_lens,
+                        onTap: () {
+                          themeProvider.toggleTheme();
+                        },
+                        trailing: _getThemeModeIcon(themeProvider.themeMode),
+                      );
                     },
                   ),
-                  const Divider(height: 1, color: Color(0xFF1A2530)),
+                  Divider(
+                      height: 1, color: colorScheme.onSurface.withOpacity(0.1)),
                   _buildSettingItem(
                     title: 'PRIVACY POLICY',
                     subtitle: 'Review our privacy terms',
@@ -281,7 +295,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.redAccent.withOpacity(0.1),
+                        color: colorScheme.error.withOpacity(0.1),
                         blurRadius: 10,
                         spreadRadius: -5,
                       ),
@@ -290,13 +304,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: TextButton.icon(
                     onPressed: _logout,
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.redAccent,
+                      foregroundColor: colorScheme.error,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                         side: BorderSide(
-                            color: Colors.redAccent.withOpacity(0.3)),
+                            color: colorScheme.error.withOpacity(0.3)),
                       ),
                     ),
                     icon: const Icon(Icons.logout, size: 18),
@@ -322,11 +336,14 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildSectionHeader(String title, IconData icon) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.cyan.shade400),
+          Icon(icon, size: 16, color: colorScheme.primary),
           const SizedBox(width: 10),
           Text(
             title,
@@ -334,7 +351,7 @@ class _SettingsPageState extends State<SettingsPage> {
               fontSize: 14,
               letterSpacing: 1.5,
               fontWeight: FontWeight.w400,
-              color: Colors.grey.shade400,
+              color: theme.textTheme.bodyMedium?.color,
             ),
           ),
         ],
@@ -343,14 +360,17 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildSettingsCard({required List<Widget> children}) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF121A24),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.cyan.withOpacity(0.1)),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.03),
+            color: colorScheme.primary.withOpacity(0.03),
             blurRadius: 15,
             spreadRadius: -5,
           ),
@@ -371,19 +391,23 @@ class _SettingsPageState extends State<SettingsPage> {
     TextStyle? titleStyle,
     TextStyle? subtitleStyle,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.black12,
+          color: colorScheme.surface.withOpacity(0.3),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.cyan.withOpacity(0.2), width: 1),
+          border:
+              Border.all(color: colorScheme.primary.withOpacity(0.2), width: 1),
         ),
         child: Icon(
           icon,
           size: 18,
-          color: Colors.cyan.shade200,
+          color: colorScheme.primary,
         ),
       ),
       title: Text(
@@ -393,7 +417,7 @@ class _SettingsPageState extends State<SettingsPage> {
               fontSize: 13,
               letterSpacing: 0.5,
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade300,
+              color: theme.textTheme.bodyLarge?.color,
             ),
       ),
       subtitle: Padding(
@@ -403,7 +427,7 @@ class _SettingsPageState extends State<SettingsPage> {
           style: subtitleStyle ??
               TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade500,
+                color: theme.textTheme.bodyMedium?.color,
               ),
         ),
       ),
@@ -413,9 +437,43 @@ class _SettingsPageState extends State<SettingsPage> {
               : Icon(
                   Icons.arrow_forward_ios,
                   size: 14,
-                  color: Colors.grey.shade600,
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                 )),
       onTap: onTap,
+    );
+  }
+
+  String _getThemeModeText(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system:
+        return 'System default (current device settings)';
+      case ThemeMode.light:
+        return 'Light mode';
+      case ThemeMode.dark:
+        return 'Dark mode';
+    }
+  }
+
+  Widget _getThemeModeIcon(ThemeMode mode) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    IconData iconData;
+    switch (mode) {
+      case ThemeMode.system:
+        iconData = Icons.brightness_auto;
+        break;
+      case ThemeMode.light:
+        iconData = Icons.brightness_7;
+        break;
+      case ThemeMode.dark:
+        iconData = Icons.brightness_2;
+        break;
+    }
+
+    return Icon(
+      iconData,
+      size: 20,
+      color: colorScheme.primary,
     );
   }
 }

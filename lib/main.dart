@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:vaultx_app/pages/about_page.dart';
 import 'package:vaultx_app/pages/activity_page.dart';
 import 'package:vaultx_app/pages/blockchain_page.dart';
@@ -10,96 +11,54 @@ import 'package:vaultx_app/pages/setpin_page.dart';
 import 'package:vaultx_app/pages/settings_page.dart';
 import 'package:vaultx_app/pages/splash_screen.dart';
 import 'package:vaultx_app/services/service_locator.dart';
+import 'package:vaultx_app/theme/app_theme.dart';
+import 'package:vaultx_app/theme/theme_provider.dart';
 import 'package:vaultx_app/widget/pin_screen.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
-    RouteObserver<ModalRoute<void>>();
+RouteObserver<ModalRoute<void>>();
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   setupServiceLocator();
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF0A0E1A);
-    const secondaryColor = Color(0xFF192233);
-    const accentColor = Color(0xFF00B5FF); // Matching logo color (blue)
-    const errorColor = Color(0xFFFF5555);
-    const surfaceColor = Color(0xFF121924);
-
-    return MaterialApp(
-      title: 'Response',
-      navigatorKey: navigatorKey,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        colorScheme: const ColorScheme.dark(
-          primary: primaryColor,
-          secondary: secondaryColor,
-          surface: surfaceColor,
-          error: errorColor,
-          onPrimary: Colors.white,
-          onSecondary: Colors.white,
-          onSurface: Colors.white70,
-          onError: Colors.white,
-        ),
-        scaffoldBackgroundColor: primaryColor,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: secondaryColor,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          centerTitle: true,
-        ),
-        textTheme: const TextTheme(
-          titleLarge: TextStyle(
-              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-          bodyMedium: TextStyle(fontSize: 16, color: Colors.white70),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: surfaceColor,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: accentColor,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: accentColor,
-          foregroundColor: Colors.white,
-        ),
-        useMaterial3: true,
-      ),
-      themeMode: ThemeMode.dark,
-      initialRoute: '/',
-      navigatorObservers: [routeObserver],
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/login': (context) => const LoginPage(),
-        '/register': (context) => const RegisterPage(),
-        '/home': (context) => const MyHomePage(),
-        '/profile': (context) => const ProfilePage(),
-        '/settings': (context) => const SettingsPage(),
-        '/pin': (context) => const PinScreen(),
-        '/set-pin': (context) => const SetPinPage(),
-        '/about': (context) => const AboutPage(),
-        '/activity': (context) => const ActivityPage(),
-        '/blockchain': (context) => const BlockchainPage(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'Response',
+          navigatorKey: navigatorKey,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          initialRoute: '/',
+          navigatorObservers: [routeObserver],
+          routes: {
+            '/': (context) => const SplashScreen(),
+            '/login': (context) => const LoginPage(),
+            '/register': (context) => const RegisterPage(),
+            '/home': (context) => const MyHomePage(),
+            '/profile': (context) => const ProfilePage(),
+            '/settings': (context) => const SettingsPage(),
+            '/pin': (context) => const PinScreen(),
+            '/set-pin': (context) => const SetPinPage(),
+            '/about': (context) => const AboutPage(),
+            '/activity': (context) => const ActivityPage(),
+            '/blockchain': (context) => const BlockchainPage(),
+          },
+        );
       },
     );
   }

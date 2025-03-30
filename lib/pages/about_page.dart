@@ -5,30 +5,31 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: BackButton(color: Colors.cyan.shade200),
+        leading: BackButton(color: colorScheme.primary),
         title: Text(
           'ABOUT RESPONSE',
-          style: TextStyle(
-            fontSize: 16,
-            letterSpacing: 2.0,
-            fontWeight: FontWeight.w300,
-            color: Colors.cyan.shade100,
-          ),
+          style: theme.appBarTheme.titleTextStyle,
         ),
       ),
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: SafeArea(
@@ -51,7 +52,7 @@ class AboutPage extends StatelessWidget {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.cyan.withOpacity(0.15),
+                                color: colorScheme.primary.withOpacity(0.15),
                                 blurRadius: 30,
                                 spreadRadius: 1,
                               ),
@@ -60,7 +61,7 @@ class AboutPage extends StatelessWidget {
                           child: Image.asset(
                             'assets/images/response_transparent.png',
                             height: 70, // Much larger logo
-                            color: Colors.cyan.shade100,
+                            color: colorScheme.primary,
                           ),
                         ),
 
@@ -70,17 +71,17 @@ class AboutPage extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF121A24),
+                            color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.cyan.withOpacity(0.3),
+                              color: colorScheme.primary.withOpacity(0.3),
                               width: 1,
                             ),
                           ),
                           child: Text(
                             'Response is a secure, anonymous messaging app built for academic exploration of cybersecurity, encryption, and privacy.',
                             style: TextStyle(
-                              color: Colors.grey.shade300,
+                              color: theme.textTheme.bodyLarge?.color,
                               fontSize: 16,
                               height: 1.5,
                             ),
@@ -96,21 +97,21 @@ class AboutPage extends StatelessWidget {
                             Expanded(
                               child: Container(
                                 height: 1,
-                                color: Colors.cyan.withOpacity(0.2),
+                                color: colorScheme.primary.withOpacity(0.2),
                               ),
                             ),
                             Container(
                               margin: const EdgeInsets.symmetric(horizontal: 12),
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.black,
+                                color: colorScheme.surface,
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+                                border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
                               ),
                               child: Text(
                                 'SECURITY',
                                 style: TextStyle(
-                                  color: Colors.cyan.shade100,
+                                  color: colorScheme.primary,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w400,
                                   letterSpacing: 1.5,
@@ -120,7 +121,7 @@ class AboutPage extends StatelessWidget {
                             Expanded(
                               child: Container(
                                 height: 1,
-                                color: Colors.cyan.withOpacity(0.2),
+                                color: colorScheme.primary.withOpacity(0.2),
                               ),
                             ),
                           ],
@@ -132,15 +133,15 @@ class AboutPage extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
+                            color: colorScheme.surface.withOpacity(0.4),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.cyan.withOpacity(0.3),
+                              color: colorScheme.primary.withOpacity(0.3),
                               width: 1,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.cyan.withOpacity(0.05),
+                                color: colorScheme.primary.withOpacity(0.05),
                                 blurRadius: 10,
                                 spreadRadius: -2,
                               ),
@@ -153,7 +154,7 @@ class AboutPage extends StatelessWidget {
                                 children: [
                                   Icon(
                                     Icons.lock_outline,
-                                    color: Colors.cyan.shade300,
+                                    color: colorScheme.secondary,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 8),
@@ -162,7 +163,7 @@ class AboutPage extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.cyan.shade100,
+                                      color: colorScheme.primary,
                                       letterSpacing: 1.2,
                                     ),
                                   ),
@@ -172,7 +173,7 @@ class AboutPage extends StatelessWidget {
                               Text(
                                 'All messages are encrypted with AES-256 for content confidentiality, and the AES keys are exchanged securely using RSA-2048 encryption. We use self-signed X.509 certificates for public key distribution.',
                                 style: TextStyle(
-                                  color: Colors.grey.shade400,
+                                  color: theme.textTheme.bodyMedium?.color,
                                   fontSize: 13,
                                   height: 1.6,
                                   fontFamily: 'monospace',
@@ -191,10 +192,10 @@ class AboutPage extends StatelessWidget {
                           margin: const EdgeInsets.only(top: 30),
                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                           decoration: BoxDecoration(
-                            color: Colors.black,
+                            color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Colors.cyan.withOpacity(0.15),
+                              color: colorScheme.primary.withOpacity(0.15),
                               width: 1,
                             ),
                           ),
@@ -202,7 +203,7 @@ class AboutPage extends StatelessWidget {
                             '© 2025 RESPONSE PROJECT\nFOR ACADEMIC AND RESEARCH PURPOSES ONLY',
                             style: TextStyle(
                               fontSize: 10,
-                              color: Colors.cyan.shade100.withOpacity(0.4),
+                              color: colorScheme.primary.withOpacity(0.4),
                               letterSpacing: 1.0,
                               height: 1.7,
                             ),

@@ -24,14 +24,11 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isLoading = false;
-
   final AuthService _authService = serviceLocator<AuthService>();
   final StorageService _storageService = StorageService();
   late final AvatarService _avatarService;
-
-  // List of recent accounts stored as maps containing 'id' and 'username'
   List<Map<String, String>> _recentAccounts = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -130,16 +127,22 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colorScheme.surface,
       resizeToAvoidBottomInset: true,
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF101720)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
           ),
         ),
         child: SafeArea(
@@ -157,7 +160,7 @@ class _LoginPageState extends State<LoginPage> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.cyan.withOpacity(0.15),
+                        color: colorScheme.primary.withOpacity(0.15),
                         blurRadius: 30,
                         spreadRadius: 5,
                       ),
@@ -174,7 +177,7 @@ class _LoginPageState extends State<LoginPage> {
                 Text(
                   'SECURE ACCESS',
                   style: TextStyle(
-                    color: Colors.cyan.shade100,
+                    color: colorScheme.primary,
                     fontSize: 18,
                     fontWeight: FontWeight.w300,
                     letterSpacing: 3.0,
@@ -182,12 +185,12 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 30),
 
-                // Username field with cyber styling
+                // Username field with theme styling
                 Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF121A24),
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+                    border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.3),
@@ -200,15 +203,15 @@ class _LoginPageState extends State<LoginPage> {
                   child: TextField(
                     controller: _usernameController,
                     style: TextStyle(
-                      color: Colors.grey.shade300,
+                      color: theme.textTheme.bodyLarge?.color,
                       fontSize: 14,
                     ),
                     decoration: InputDecoration(
                       prefixIcon: Icon(Icons.person_outline,
-                          color: Colors.cyan.shade400, size: 20),
+                          color: colorScheme.primary, size: 20),
                       labelText: 'USERNAME',
                       labelStyle: TextStyle(
-                        color: Colors.grey.shade500,
+                        color: theme.textTheme.bodyMedium?.color,
                         fontSize: 12,
                         letterSpacing: 1.0,
                       ),
@@ -219,12 +222,12 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                // Password field with cyber styling
+                // Password field with theme styling
                 Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF121A24),
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.cyan.withOpacity(0.2)),
+                    border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.3),
@@ -238,16 +241,16 @@ class _LoginPageState extends State<LoginPage> {
                     controller: _passwordController,
                     obscureText: true,
                     style: TextStyle(
-                      color: Colors.grey.shade300,
+                      color: theme.textTheme.bodyLarge?.color,
                       fontSize: 14,
                       fontFamily: 'monospace',
                     ),
                     decoration: InputDecoration(
                       prefixIcon: Icon(Icons.lock_outline,
-                          color: Colors.cyan.shade400, size: 20),
+                          color: colorScheme.primary, size: 20),
                       labelText: 'PASSWORD',
                       labelStyle: TextStyle(
-                        color: Colors.grey.shade500,
+                        color: theme.textTheme.bodyMedium?.color,
                         fontSize: 12,
                         letterSpacing: 1.0,
                       ),
@@ -258,48 +261,48 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                // Login button with cyber styling
+                // Login button with theme styling
                 _isLoading
-                    ? const CircularProgressIndicator(color: Colors.cyanAccent)
+                    ? CircularProgressIndicator(color: colorScheme.secondary)
                     : Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.cyan.withOpacity(0.15),
-                              blurRadius: 12,
-                              spreadRadius: -2,
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _handleLogin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.cyan.shade900,
-                            minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                              side: BorderSide(
-                                color: Colors.cyan.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            'ACCESS SECURE NETWORK',
-                            style: TextStyle(
-                              color: Colors.cyan.shade100,
-                              fontSize: 12,
-                              letterSpacing: 1.5,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withOpacity(0.15),
+                        blurRadius: 12,
+                        spreadRadius: -2,
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _handleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        side: BorderSide(
+                          color: colorScheme.primary.withOpacity(0.3),
+                          width: 1,
                         ),
                       ),
+                    ),
+                    child: Text(
+                      'ACCESS SECURE NETWORK',
+                      style: TextStyle(
+                        color: colorScheme.onPrimary,
+                        fontSize: 12,
+                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 20),
 
-                // Register link with cyber styling
+                // Register link with theme styling
                 GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/register'),
                   child: Container(
@@ -309,14 +312,14 @@ class _LoginPageState extends State<LoginPage> {
                       color: Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: Colors.cyan.withOpacity(0.1),
+                        color: colorScheme.primary.withOpacity(0.1),
                         width: 1,
                       ),
                     ),
                     child: Text(
                       'CREATE SECURE IDENTITY',
                       style: TextStyle(
-                        color: Colors.cyan.withOpacity(0.7),
+                        color: colorScheme.primary.withOpacity(0.7),
                         fontSize: 10,
                         letterSpacing: 1.5,
                       ),
@@ -326,7 +329,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 50),
 
-                // Recent Accounts Section with cyber styling
+                // Recent Accounts Section with theme styling
                 if (_recentAccounts.isNotEmpty)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,12 +337,12 @@ class _LoginPageState extends State<LoginPage> {
                       Row(
                         children: [
                           Icon(Icons.security,
-                              size: 14, color: Colors.cyan.shade400),
+                              size: 14, color: colorScheme.primary),
                           const SizedBox(width: 8),
                           Text(
                             'AUTHORIZED IDENTITIES',
                             style: TextStyle(
-                              color: Colors.grey.shade400,
+                              color: theme.textTheme.bodyMedium?.color,
                               fontSize: 12,
                               fontWeight: FontWeight.w400,
                               letterSpacing: 1.5,
@@ -347,9 +350,9 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ],
                       ),
-                      Divider(color: Colors.cyan.withOpacity(0.1), height: 20),
+                      Divider(color: colorScheme.primary.withOpacity(0.1), height: 20),
                       const SizedBox(height: 10),
-                      ..._recentAccounts.map(_buildRecentAccountCard),
+                      ..._recentAccounts.map((account) => _buildRecentAccountCard(account, theme)),
                     ],
                   ),
               ],
@@ -360,13 +363,14 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildRecentAccountCard(Map<String, String> account) {
+  Widget _buildRecentAccountCard(Map<String, String> account, ThemeData theme) {
     final userId = account['id'];
+    final colorScheme = theme.colorScheme;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF121A24),
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.transparent),
         boxShadow: [
@@ -382,10 +386,10 @@ class _LoginPageState extends State<LoginPage> {
         leading: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.cyan.withOpacity(0.2), width: 1),
+            border: Border.all(color: colorScheme.primary.withOpacity(0.2), width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.cyan.withOpacity(0.05),
+                color: colorScheme.primary.withOpacity(0.05),
                 blurRadius: 8,
                 spreadRadius: 1,
               ),
@@ -395,33 +399,33 @@ class _LoginPageState extends State<LoginPage> {
             future: userId != null ? _avatarService.getAvatar(userId) : null,
             builder: (context, snapshot) {
               return CircleAvatar(
-                backgroundColor: Colors.black38,
+                backgroundColor: colorScheme.surface.withOpacity(0.8),
                 backgroundImage:
-                    snapshot.hasData ? MemoryImage(snapshot.data!) : null,
+                snapshot.hasData ? MemoryImage(snapshot.data!) : null,
                 child: snapshot.connectionState == ConnectionState.waiting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.cyanAccent,
-                        ),
-                      )
+                    ? SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: colorScheme.secondary,
+                  ),
+                )
                     : snapshot.hasData
-                        ? null
-                        : const Icon(Icons.person,
-                            color: Colors.cyanAccent, size: 20),
+                    ? null
+                    : Icon(Icons.person,
+                    color: colorScheme.secondary, size: 20),
               );
             },
           ),
         ),
         title: Text(
           account['username']?.toUpperCase() ?? 'UNKNOWN',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             letterSpacing: 0.5,
             fontWeight: FontWeight.w500,
-            color: Colors.white,
+            color: theme.textTheme.bodyLarge?.color,
           ),
         ),
         trailing: Row(
@@ -436,26 +440,25 @@ class _LoginPageState extends State<LoginPage> {
             Icon(
               Icons.arrow_forward_ios,
               size: 16,
-              color: Colors.cyan.shade300,
+              color: colorScheme.primary,
             ),
           ],
         ),
         subtitle: userId != null
             ? Text(
-                'ID: ${userId.substring(0, 8)}...',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  color: Colors.grey.shade500,
-                ),
-              )
+          'ID: ${userId.substring(0, 8)}...',
+          style: TextStyle(
+            fontSize: 11,
+            fontFamily: 'monospace',
+            color: theme.textTheme.bodyMedium?.color,
+          ),
+        )
             : null,
         onTap: () {
           setState(() {
             _usernameController.text = account['username'] ?? '';
           });
 
-          // Scroll to the top of the page with animation
           _scrollController.animateTo(
             0,
             duration: const Duration(milliseconds: 500),
