@@ -323,6 +323,12 @@ class _ChatPageState extends State<ChatPage> {
     return items;
   }
 
+  String _formatTime(DateTime dt) {
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
   Widget _buildMessagesList() {
     final chatItems = _buildChatItems();
 
@@ -347,67 +353,23 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildDateDivider(String label) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Horizontal line on left
-            Expanded(
-              child: Container(
-                height: 1,
-                color: Colors.white24,
-                margin: const EdgeInsets.only(right: 8),
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            // Horizontal line on right
-            Expanded(
-              child: Container(
-                height: 1,
-                color: Colors.white24,
-                margin: const EdgeInsets.only(left: 8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Utility to format hours/minutes
-  String _formatTime(DateTime dt) {
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: theme.surface,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: theme.secondary,
+        backgroundColor: colorScheme.surface,
         title: Row(
           children: [
             CircleAvatar(
-              backgroundColor: Colors.white10,
+              backgroundColor: colorScheme.primary.withOpacity(0.2),
               child: Text(
                 widget.chatUsername[0].toUpperCase(),
                 style: TextStyle(
-                  color: theme.onSecondary,
+                  color: colorScheme.primary,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -415,13 +377,13 @@ class _ChatPageState extends State<ChatPage> {
             const SizedBox(width: 12),
             Text(
               widget.chatUsername,
-              style: TextStyle(color: theme.onSecondary),
+              style: TextStyle(color: theme.textTheme.titleLarge?.color),
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline),
+            icon: Icon(Icons.info_outline, color: colorScheme.primary),
             onPressed: () async {
               final result = await Navigator.push(
                 context,
@@ -448,17 +410,63 @@ class _ChatPageState extends State<ChatPage> {
         children: [
           Expanded(
             child: _isInitializing || _isFetchingHistory
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(
+                    child:
+                        CircularProgressIndicator(color: colorScheme.secondary))
                 : _buildMessagesList(),
           ),
-          const Divider(height: 1, color: Colors.white24),
+          Divider(height: 1, color: colorScheme.onSurface.withOpacity(0.2)),
           _buildTextInput(),
         ],
       ),
     );
   }
 
+  Widget _buildDateDivider(String label) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Horizontal line on left
+            Expanded(
+              child: Container(
+                height: 1,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.2),
+                margin: const EdgeInsets.only(right: 8),
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            // Horizontal line on right
+            Expanded(
+              child: Container(
+                height: 1,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.2),
+                margin: const EdgeInsets.only(left: 8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTextInput() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     if (_isBlocked ||
         _amIBlocked ||
         _isCurrentUserAdmin ||
@@ -475,7 +483,9 @@ class _ChatPageState extends State<ChatPage> {
           child: Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white60, fontSize: 14),
+            style: TextStyle(
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                fontSize: 14),
           ),
         ),
       );
@@ -489,17 +499,20 @@ class _ChatPageState extends State<ChatPage> {
             Expanded(
               child: TextField(
                 controller: _messageController,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: theme.textTheme.bodyLarge?.color),
                 decoration: InputDecoration(
                   hintText: 'Message...',
-                  hintStyle: const TextStyle(color: Colors.white54),
+                  hintStyle: TextStyle(
+                      color:
+                          theme.textTheme.bodyMedium?.color?.withOpacity(0.5)),
                   filled: true,
-                  fillColor: Colors.white12,
+                  fillColor: colorScheme.surface.withOpacity(0.5),
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
+                    borderSide:
+                        BorderSide(color: colorScheme.primary.withOpacity(0.1)),
                   ),
                 ),
                 onSubmitted: (_) => _sendMessage(),
@@ -508,9 +521,9 @@ class _ChatPageState extends State<ChatPage> {
             const SizedBox(width: 8),
             CircleAvatar(
               radius: 24,
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: colorScheme.primary,
               child: IconButton(
-                icon: const Icon(Icons.send, color: Colors.white),
+                icon: Icon(Icons.send, color: colorScheme.onPrimary),
                 onPressed: _sendMessage,
               ),
             ),
@@ -521,13 +534,18 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildBubble(MessageDTO msg, bool isMine) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
         decoration: BoxDecoration(
-          color: isMine ? Colors.blueAccent.withOpacity(0.8) : Colors.white12,
+          color: isMine
+              ? colorScheme.primary.withOpacity(0.8)
+              : colorScheme.surface.withOpacity(0.7),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),
@@ -542,7 +560,9 @@ class _ChatPageState extends State<ChatPage> {
             Text(
               msg.plaintext ?? '[Encrypted]',
               style: TextStyle(
-                color: isMine ? Colors.white : Colors.white70,
+                color: isMine
+                    ? colorScheme.onPrimary
+                    : theme.textTheme.bodyLarge?.color,
                 fontSize: 15,
               ),
             ),
@@ -552,13 +572,19 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 Text(
                   _formatTime(msg.timestamp),
-                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  style: TextStyle(
+                      color: isMine
+                          ? colorScheme.onPrimary.withOpacity(0.7)
+                          : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                      fontSize: 11),
                 ),
                 if (isMine)
                   Icon(
                     msg.isRead ? Icons.done_all : Icons.done,
                     size: 16,
-                    color: Colors.white38,
+                    color: isMine
+                        ? colorScheme.onPrimary.withOpacity(0.7)
+                        : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                   ),
               ],
             ),

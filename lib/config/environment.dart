@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 enum Flavor {
@@ -13,7 +15,7 @@ class Environment {
   static const String _prodHost = 'api.productionserver.com';
 
   // Set the app flavor here
-  static Flavor appFlavor = Flavor.LOCAL; // Change as needed
+  static Flavor appFlavor = Flavor.TEST; // Change as needed
 
   // Returns the base API URL (with /api appended)
   static String get apiBaseUrl {
@@ -45,7 +47,11 @@ class Environment {
         // On mobile, if you’re testing locally, adjust accordingly:
         // For Android emulator, use 10.0.2.2, for iOS use localhost.
         // You could also use kIsWeb here if you set up conditional imports.
-          return 'http://$_localHost/api';
+          if (Platform.isAndroid) {
+            return 'http://10.0.2.2:8081/api'; // Android emulator
+          } else {
+            return 'http://$_localHost/api';// iOS simulator or others
+          }
       }
     }
     // Fallback in case none of the above match:
@@ -71,7 +77,11 @@ class Environment {
         case Flavor.PRODUCTION:
           return 'wss://$_prodHost/ws';
         case Flavor.LOCAL:
-          return 'ws://$_localHost/ws';
+          if (Platform.isAndroid) {
+            return 'ws://10.0.2.2:8081/ws'; // Android emulator
+          } else {
+            return 'ws://$_localHost/ws';// iOS simulator or others
+          }
       }
     }
     return 'wss://$_testHost/ws';

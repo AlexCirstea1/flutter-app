@@ -1,0 +1,2 @@
+/Users/alexcirstea/AndroidStudioProjects/vaultx_app/android/app/.cxx/Debug/f3w64285/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/alexcirstea/AndroidStudioProjects/vaultx_app/android/app/.cxx/Debug/f3w64285/armeabi-v7a/CMakeFiles/rebuild_cache.dir

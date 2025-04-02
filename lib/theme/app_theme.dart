@@ -1,6 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AppTheme {
+  // Define system UI overlay styles
+  static final SystemUiOverlayStyle darkOverlayStyle =
+      SystemUiOverlayStyle.light.copyWith(
+    statusBarColor: Colors.transparent,
+    statusBarBrightness: Brightness.dark, // iOS: white status bar icons
+    statusBarIconBrightness:
+        Brightness.light, // Android: white status bar icons
+  );
+
+  static final SystemUiOverlayStyle lightOverlayStyle =
+      SystemUiOverlayStyle.dark.copyWith(
+    statusBarColor: Colors.transparent,
+    statusBarBrightness: Brightness.light, // iOS: dark status bar icons
+    statusBarIconBrightness: Brightness.dark, // Android: dark status bar icons
+  );
+
   static final ThemeData darkTheme = ThemeData.dark().copyWith(
     scaffoldBackgroundColor: Colors.black,
     colorScheme: const ColorScheme.dark(

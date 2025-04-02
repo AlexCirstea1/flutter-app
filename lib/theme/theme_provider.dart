@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/ui_overlay_helper.dart';
+
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system; // Default to system theme
 
@@ -19,6 +21,11 @@ class ThemeProvider extends ChangeNotifier {
     } else {
       _themeMode = ThemeMode.system;
     }
+
+    // Apply UI style using the helper
+    final brightness = WidgetsBinding.instance.window.platformBrightness;
+    UIOverlayHelper.refreshStatusBarIconsForTheme(_themeMode, brightness);
+
     _saveThemeToPrefs();
     notifyListeners();
   }
@@ -26,6 +33,11 @@ class ThemeProvider extends ChangeNotifier {
   // Set theme directly to a specific mode
   void setTheme(ThemeMode mode) {
     _themeMode = mode;
+
+    // Apply UI style using the helper
+    final brightness = WidgetsBinding.instance.window.platformBrightness;
+    UIOverlayHelper.refreshStatusBarIconsForTheme(mode, brightness);
+
     _saveThemeToPrefs();
     notifyListeners();
   }
@@ -44,6 +56,10 @@ class ThemeProvider extends ChangeNotifier {
       default:
         _themeMode = ThemeMode.system;
     }
+
+    // Apply UI style using the helper
+    final brightness = WidgetsBinding.instance.window.platformBrightness;
+    UIOverlayHelper.refreshStatusBarIconsForTheme(_themeMode, brightness);
 
     notifyListeners();
   }
