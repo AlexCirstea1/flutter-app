@@ -9,6 +9,8 @@ import '../services/storage_service.dart';
 import '../theme/theme_provider.dart';
 import '../utils/key_cert_helper.dart';
 import '../widget/bottom_nav_bar.dart';
+import '../widget/consent_dialog.dart';
+import 'learn_more_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -107,6 +109,87 @@ class _SettingsPageState extends State<SettingsPage> {
       }
     } finally {
       setState(() => _isGeneratingKeys = false);
+    }
+  }
+
+  Future<void> _showBlockchainConsentDialog() async {
+    // First get the current consent status to show the initial state
+    final currentConsent =
+        await _storageService.getFromStorage('blockchainConsent');
+    final initialConsent = currentConsent == 'true';
+
+    try {
+      // Show the consent dialog and wait for user decision
+      final consentGiven = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false, // Force the user to decide
+        builder: (context) => ConsentDialog(
+          onConsentGiven: () {
+            Navigator.of(context).pop(true);
+          },
+          onConsentDenied: () {
+            Navigator.of(context).pop(false);
+          },
+          onLearnMore: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LearnMorePage()),
+            );
+          },
+        ),
+      );
+
+      // Default to current consent if dialog is dismissed unexpectedly
+      final bool consent = consentGiven ?? initialConsent;
+
+      // Only update if consent changed
+      if (consent != initialConsent) {
+        // Update consent on backend
+        await _updateBlockchainConsent(consent);
+
+        // Save consent locally
+        await _storageService.saveInStorage(
+            'blockchainConsent', consent ? 'true' : 'false');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Blockchain consent ${consent ? 'enabled' : 'disabled'}'),
+              backgroundColor: Colors.green.shade800,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update consent: $e'),
+            backgroundColor: Colors.red.shade800,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateBlockchainConsent(bool consent) async {
+    final token = await _storageService.getAccessToken();
+    if (token == null) {
+      throw Exception('Authentication required');
+    }
+
+    final url = Uri.parse(
+        '${Environment.apiBaseUrl}/user/blockchain-consent?consent=$consent');
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Failed to update consent status: ${response.statusCode}');
     }
   }
 
@@ -235,9 +318,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: 'BLOCKCHAIN CONSENT',
                     subtitle: 'Manage your consent for blockchain features',
                     icon: Icons.link,
-                    onTap: () {
-                      Navigator.pushNamed(context, '/blockchain-consent');
-                    },
+                    onTap: _showBlockchainConsentDialog,
                   ),
                 ],
               ),

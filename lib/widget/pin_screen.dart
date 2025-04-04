@@ -48,7 +48,7 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
 
-    _tryBiometricAuth();
+    // _tryBiometricAuth();
   }
 
   void _onNumberPress(String number) {

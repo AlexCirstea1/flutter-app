@@ -130,10 +130,25 @@ class AuthService {
   // Save PIN
   Future<bool> savePin(String pin, String accessToken) async {
     try {
-      await _apiService.post('/auth/pin/save?pin=$pin', null);
-      return true;
+      final response = await http.post(
+        Uri.parse('${Environment.apiBaseUrl}/auth/pin/save?pin=$pin'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 302) {
+        LoggerService.logError('Failed to save PIN: Redirection detected');
+        // Handle redirection if necessary
+        return false;
+      } else {
+        LoggerService.logError('Failed to save PIN: ${response.reasonPhrase}');
+        return false;
+      }
     } catch (error) {
-      LoggerService.logError('PIN saving error: $error');
+      LoggerService.logError('Error saving PIN: $error');
       return false;
     }
   }
