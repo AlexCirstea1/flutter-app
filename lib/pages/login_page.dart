@@ -190,7 +190,8 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: BoxDecoration(
                     color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+                    border:
+                        Border.all(color: colorScheme.primary.withOpacity(0.2)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.3),
@@ -227,7 +228,8 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: BoxDecoration(
                     color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+                    border:
+                        Border.all(color: colorScheme.primary.withOpacity(0.2)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.3),
@@ -265,40 +267,40 @@ class _LoginPageState extends State<LoginPage> {
                 _isLoading
                     ? CircularProgressIndicator(color: colorScheme.secondary)
                     : Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorScheme.primary.withOpacity(0.15),
-                        blurRadius: 12,
-                        spreadRadius: -2,
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        side: BorderSide(
-                          color: colorScheme.primary.withOpacity(0.3),
-                          width: 1,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.primary.withOpacity(0.15),
+                              blurRadius: 12,
+                              spreadRadius: -2,
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colorScheme.primary,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              side: BorderSide(
+                                color: colorScheme.primary.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            'ACCESS SECURE NETWORK',
+                            style: TextStyle(
+                              color: colorScheme.onPrimary,
+                              fontSize: 12,
+                              letterSpacing: 1.5,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    child: Text(
-                      'ACCESS SECURE NETWORK',
-                      style: TextStyle(
-                        color: colorScheme.onPrimary,
-                        fontSize: 12,
-                        letterSpacing: 1.5,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
 
                 const SizedBox(height: 20),
 
@@ -350,9 +352,12 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ],
                       ),
-                      Divider(color: colorScheme.primary.withOpacity(0.1), height: 20),
+                      Divider(
+                          color: colorScheme.primary.withOpacity(0.1),
+                          height: 20),
                       const SizedBox(height: 10),
-                      ..._recentAccounts.map((account) => _buildRecentAccountCard(account, theme)),
+                      ..._recentAccounts.map(
+                          (account) => _buildRecentAccountCard(account, theme)),
                     ],
                   ),
               ],
@@ -386,7 +391,8 @@ class _LoginPageState extends State<LoginPage> {
         leading: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: colorScheme.primary.withOpacity(0.2), width: 1),
+            border: Border.all(
+                color: colorScheme.primary.withOpacity(0.2), width: 1),
             boxShadow: [
               BoxShadow(
                 color: colorScheme.primary.withOpacity(0.05),
@@ -401,20 +407,20 @@ class _LoginPageState extends State<LoginPage> {
               return CircleAvatar(
                 backgroundColor: colorScheme.surface.withOpacity(0.8),
                 backgroundImage:
-                snapshot.hasData ? MemoryImage(snapshot.data!) : null,
+                    snapshot.hasData ? MemoryImage(snapshot.data!) : null,
                 child: snapshot.connectionState == ConnectionState.waiting
                     ? SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: colorScheme.secondary,
-                  ),
-                )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colorScheme.secondary,
+                        ),
+                      )
                     : snapshot.hasData
-                    ? null
-                    : Icon(Icons.person,
-                    color: colorScheme.secondary, size: 20),
+                        ? null
+                        : Icon(Icons.person,
+                            color: colorScheme.secondary, size: 20),
               );
             },
           ),
@@ -446,13 +452,13 @@ class _LoginPageState extends State<LoginPage> {
         ),
         subtitle: userId != null
             ? Text(
-          'ID: ${userId.substring(0, 8)}...',
-          style: TextStyle(
-            fontSize: 11,
-            fontFamily: 'monospace',
-            color: theme.textTheme.bodyMedium?.color,
-          ),
-        )
+                'ID: ${userId.substring(0, 8)}...',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  color: theme.textTheme.bodyMedium?.color,
+                ),
+              )
             : null,
         onTap: () {
           setState(() {

@@ -18,24 +18,22 @@ import 'package:vaultx_app/utils/ui_overlay_helper.dart';
 import 'package:vaultx_app/widget/pin_screen.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
-RouteObserver<ModalRoute<void>>();
+    RouteObserver<ModalRoute<void>>();
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setupServiceLocator();
-  
+
   // Enable secure mode to prevent screenshots and screen recordings
   await UIOverlayHelper.enableSecureMode();
 
   // Set initial UI style based on system brightness
   final brightness = WidgetsBinding.instance.window.platformBrightness;
-  SystemChrome.setSystemUIOverlayStyle(
-      brightness == Brightness.dark
-          ? AppTheme.darkOverlayStyle
-          : AppTheme.lightOverlayStyle
-  );
+  SystemChrome.setSystemUIOverlayStyle(brightness == Brightness.dark
+      ? AppTheme.darkOverlayStyle
+      : AppTheme.lightOverlayStyle);
 
   runApp(
     ChangeNotifierProvider(
@@ -51,9 +49,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
-
         final brightness = WidgetsBinding.instance.window.platformBrightness;
-        UIOverlayHelper.refreshStatusBarIconsForTheme(themeProvider.themeMode, brightness);
+        UIOverlayHelper.refreshStatusBarIconsForTheme(
+            themeProvider.themeMode, brightness);
 
         return MaterialApp(
           title: 'Response',
@@ -84,6 +82,7 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 class _StatusBarObserver extends NavigatorObserver {
   final ThemeMode themeMode;
 

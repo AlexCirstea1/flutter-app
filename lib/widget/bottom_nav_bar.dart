@@ -91,24 +91,28 @@ class BottomNavBar extends StatelessWidget {
             const SizedBox(height: 8),
             Icon(
               icon,
-              color: isSelected ? colorScheme.primary : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+              color: isSelected
+                  ? colorScheme.primary
+                  : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
               size: 24,
             ),
             const SizedBox(height: 5),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? colorScheme.primary.withOpacity(0.9) : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                color: isSelected
+                    ? colorScheme.primary.withOpacity(0.9)
+                    : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 letterSpacing: 1.0,
                 shadows: isSelected
                     ? [
-                  Shadow(
-                    color: colorScheme.primary.withOpacity(0.3),
-                    blurRadius: 5,
-                  )
-                ]
+                        Shadow(
+                          color: colorScheme.primary.withOpacity(0.3),
+                          blurRadius: 5,
+                        )
+                      ]
                     : null,
               ),
             ),

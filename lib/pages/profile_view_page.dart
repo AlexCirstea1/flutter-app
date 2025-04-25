@@ -412,26 +412,26 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
         ),
         child: _isLoading
             ? Center(
-          child: CircularProgressIndicator(
-            color: colorScheme.secondary,
-          ),
-        )
+                child: CircularProgressIndicator(
+                  color: colorScheme.secondary,
+                ),
+              )
             : SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildProfileHeader(),
-              const SizedBox(height: 30),
-              _buildUserInfoSection(),
-              const SizedBox(height: 24),
-              _buildSecuritySection(),
-              const SizedBox(height: 24),
-              _buildActionsSection(),
-            ],
-          ),
-        ),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildProfileHeader(),
+                    const SizedBox(height: 30),
+                    _buildUserInfoSection(),
+                    const SizedBox(height: 24),
+                    _buildSecuritySection(),
+                    const SizedBox(height: 24),
+                    _buildActionsSection(),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -447,7 +447,8 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
           width: 120,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: colorScheme.primary.withOpacity(0.4), width: 2),
+            border: Border.all(
+                color: colorScheme.primary.withOpacity(0.4), width: 2),
             boxShadow: [
               BoxShadow(
                 color: colorScheme.primary.withOpacity(0.2),
@@ -459,9 +460,10 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
           child: _userAvatar != null
               ? CircleAvatar(backgroundImage: MemoryImage(_userAvatar!))
               : CircleAvatar(
-            backgroundColor: colorScheme.surface.withOpacity(0.7),
-            child: Icon(Icons.person, color: colorScheme.primary, size: 50),
-          ),
+                  backgroundColor: colorScheme.surface.withOpacity(0.7),
+                  child:
+                      Icon(Icons.person, color: colorScheme.primary, size: 50),
+                ),
         ),
         const SizedBox(height: 20),
         Text(
@@ -597,7 +599,8 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: _blockchainConsent
                       ? colorScheme.primary.withOpacity(0.1)
@@ -680,7 +683,8 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
           Divider(color: colorScheme.primary.withOpacity(0.1), height: 30),
           ListTile(
             leading: Icon(Icons.report, color: colorScheme.error),
-            title: Text('Report', style: TextStyle(color: theme.textTheme.bodyLarge?.color)),
+            title: Text('Report',
+                style: TextStyle(color: theme.textTheme.bodyLarge?.color)),
             enabled: !_isAdmin,
             onTap: _isAdmin ? null : _reportUser,
           ),

@@ -233,10 +233,12 @@ class _RegisterPageState extends State<RegisterPage> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - 48, // Account for padding
+                    minHeight:
+                        constraints.maxHeight - 48, // Account for padding
                   ),
                   child: IntrinsicHeight(
                     child: Column(
@@ -283,7 +285,8 @@ class _RegisterPageState extends State<RegisterPage> {
                           decoration: BoxDecoration(
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+                            border: Border.all(
+                                color: colorScheme.primary.withOpacity(0.2)),
                             boxShadow: [
                               BoxShadow(
                                 color: colorScheme.primary.withOpacity(0.05),
@@ -318,7 +321,8 @@ class _RegisterPageState extends State<RegisterPage> {
                           decoration: BoxDecoration(
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+                            border: Border.all(
+                                color: colorScheme.primary.withOpacity(0.2)),
                             boxShadow: [
                               BoxShadow(
                                 color: colorScheme.primary.withOpacity(0.05),
@@ -356,7 +360,8 @@ class _RegisterPageState extends State<RegisterPage> {
                           decoration: BoxDecoration(
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+                            border: Border.all(
+                                color: colorScheme.primary.withOpacity(0.2)),
                             boxShadow: [
                               BoxShadow(
                                 color: colorScheme.primary.withOpacity(0.05),
@@ -395,7 +400,8 @@ class _RegisterPageState extends State<RegisterPage> {
                           decoration: BoxDecoration(
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+                            border: Border.all(
+                                color: colorScheme.primary.withOpacity(0.2)),
                             boxShadow: [
                               BoxShadow(
                                 color: colorScheme.primary.withOpacity(0.05),
@@ -433,46 +439,47 @@ class _RegisterPageState extends State<RegisterPage> {
                         // Register button with theme styling
                         _isLoading
                             ? Center(
-                            child: CircularProgressIndicator(
-                                color: colorScheme.secondary))
+                                child: CircularProgressIndicator(
+                                    color: colorScheme.secondary))
                             : Container(
-                          height: 54,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                colorScheme.primary,
-                                colorScheme.primary.withOpacity(0.8),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colorScheme.primary.withOpacity(0.3),
-                                blurRadius: 12,
-                                spreadRadius: -6,
+                                height: 54,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      colorScheme.primary,
+                                      colorScheme.primary.withOpacity(0.8),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          colorScheme.primary.withOpacity(0.3),
+                                      blurRadius: 12,
+                                      spreadRadius: -6,
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: _register,
+                                  style: ElevatedButton.styleFrom(
+                                    foregroundColor: colorScheme.onPrimary,
+                                    backgroundColor: Colors.transparent,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'SECURE REGISTRATION',
+                                    style: TextStyle(
+                                      letterSpacing: 1.5,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _register,
-                            style: ElevatedButton.styleFrom(
-                              foregroundColor: colorScheme.onPrimary,
-                              backgroundColor: Colors.transparent,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text(
-                              'SECURE REGISTRATION',
-                              style: TextStyle(
-                                letterSpacing: 1.5,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
 
                         const SizedBox(height: 20),
 
@@ -480,7 +487,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.transparent,
-                            border: Border.all(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.2) ?? Colors.grey.withOpacity(0.2)),
+                            border: Border.all(
+                                color: theme.textTheme.bodyMedium?.color
+                                        ?.withOpacity(0.2) ??
+                                    Colors.grey.withOpacity(0.2)),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: TextButton(
@@ -531,7 +541,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                   color: colorScheme.surface.withOpacity(0.4),
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
-                                      color: colorScheme.primary.withOpacity(0.15)),
+                                      color: colorScheme.primary
+                                          .withOpacity(0.15)),
                                 ),
                                 child: Text(
                                   'BACK TO LOGIN',

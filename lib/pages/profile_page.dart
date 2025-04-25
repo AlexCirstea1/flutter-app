@@ -106,97 +106,100 @@ class _ProfilePageState extends State<ProfilePage> {
         automaticallyImplyLeading: false,
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: colorScheme.secondary))
+          ? Center(
+              child: CircularProgressIndicator(color: colorScheme.secondary))
           : Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.surface,
-              colorScheme.surface,
-            ],
-          ),
-        ),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colorScheme.secondary, width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colorScheme.secondary.withOpacity(0.15),
-                          blurRadius: 20,
-                          spreadRadius: 5,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    colorScheme.surface,
+                    colorScheme.surface,
+                  ],
+                ),
+              ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 110,
+                          height: 110,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: colorScheme.secondary, width: 1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorScheme.secondary.withOpacity(0.15),
+                                blurRadius: 20,
+                                spreadRadius: 5,
+                              ),
+                            ],
+                          ),
+                        ),
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: colorScheme.surface.withOpacity(0.5),
+                          backgroundImage: _avatarBytes != null
+                              ? MemoryImage(_avatarBytes!)
+                              : null,
+                          child: _avatarBytes == null
+                              ? Icon(Icons.person,
+                                  size: 50, color: colorScheme.secondary)
+                              : null,
                         ),
                       ],
                     ),
-                  ),
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: colorScheme.surface.withOpacity(0.5),
-                    backgroundImage: _avatarBytes != null
-                        ? MemoryImage(_avatarBytes!)
-                        : null,
-                    child: _avatarBytes == null
-                        ? Icon(Icons.person, size: 50, color: colorScheme.secondary)
-                        : null,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Text(
-                _username,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w300,
-                  letterSpacing: 1.5,
-                  color: theme.textTheme.bodyLarge?.color,
+                    const SizedBox(height: 20),
+                    Text(
+                      _username,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 1.5,
+                        color: theme.textTheme.bodyLarge?.color,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    UserRoleChip(userId: _userId),
+                    const SizedBox(height: 8),
+                    Text(
+                      _email,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: theme.textTheme.bodyMedium?.color,
+                      ),
+                    ),
+                    _buildBlockchainConsentIndicator(),
+                    const SizedBox(height: 30),
+                    _buildCertificateSection(),
+                    const SizedBox(height: 60),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushNamed(context, '/about');
+                      },
+                      child: Text(
+                        '// ABOUT THIS APP',
+                        style: TextStyle(
+                          color: colorScheme.primary.withOpacity(0.7),
+                          fontSize: 12,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              UserRoleChip(userId: _userId),
-              const SizedBox(height: 8),
-              Text(
-                _email,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: theme.textTheme.bodyMedium?.color,
-                ),
-              ),
-              _buildBlockchainConsentIndicator(),
-              const SizedBox(height: 30),
-              _buildCertificateSection(),
-              const SizedBox(height: 60),
-              GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, '/about');
-                },
-                child: Text(
-                  '// ABOUT THIS APP',
-                  style: TextStyle(
-                    color: colorScheme.primary.withOpacity(0.7),
-                    fontSize: 12,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-            ],
-          ),
-        ),
-      ),
+            ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -218,12 +221,14 @@ class _ProfilePageState extends State<ProfilePage> {
       decoration: BoxDecoration(
         color: _blockchainConsent
             ? colorScheme.secondary.withOpacity(0.15)
-            : theme.textTheme.bodyMedium?.color?.withOpacity(0.05) ?? Colors.transparent,
+            : theme.textTheme.bodyMedium?.color?.withOpacity(0.05) ??
+                Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: _blockchainConsent
               ? colorScheme.secondary.withOpacity(0.3)
-              : theme.textTheme.bodyMedium?.color?.withOpacity(0.1) ?? Colors.transparent,
+              : theme.textTheme.bodyMedium?.color?.withOpacity(0.1) ??
+                  Colors.transparent,
           width: 1,
         ),
       ),
@@ -297,7 +302,8 @@ class _ProfilePageState extends State<ProfilePage> {
           _buildCertInfoRow('Organization', dn.organization ?? 'N/A'),
           _buildCertInfoRow('Department', dn.organizationalUnit ?? 'N/A'),
           _buildCertInfoRow('State', dn.state ?? 'N/A'),
-          _buildCertInfoRow('RSA Key Size', '${_certificateInfo!.keySize} bits'),
+          _buildCertInfoRow(
+              'RSA Key Size', '${_certificateInfo!.keySize} bits'),
           _buildCertInfoRow(
             'Expires In',
             _certificateInfo!.isExpired
@@ -306,8 +312,8 @@ class _ProfilePageState extends State<ProfilePage> {
             textColor: _certificateInfo!.daysRemaining < 30
                 ? colorScheme.error
                 : _certificateInfo!.daysRemaining < 90
-                ? Colors.orange
-                : colorScheme.secondary,
+                    ? Colors.orange
+                    : colorScheme.secondary,
           ),
         ],
       ),

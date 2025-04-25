@@ -244,7 +244,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
 
     setState(() => _isLoadingRequests = true);
     try {
-      final requests = await _chatService.fetchChatRequests();
+      final requests = await _chatService.fetchPendingChatRequests();
       setState(() {
         _pendingRequestsCount = requests.length;
       });
@@ -326,13 +326,15 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Divider(color: colorScheme.primary.withOpacity(0.1), height: 1),
+                child: Divider(
+                    color: colorScheme.primary.withOpacity(0.1), height: 1),
               ),
               // Chat requests section
               InkWell(
                 onTap: _navigateToChatRequests,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   decoration: BoxDecoration(
                     color: colorScheme.surface,
@@ -380,11 +382,13 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                         )
                       else if (_pendingRequestsCount > 0)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: colorScheme.primary.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
+                            border: Border.all(
+                                color: colorScheme.primary.withOpacity(0.3)),
                           ),
                           child: Text(
                             '$_pendingRequestsCount',
@@ -419,7 +423,8 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: colorScheme.primary.withOpacity(0.3), width: 1),
+          border:
+              Border.all(color: colorScheme.primary.withOpacity(0.3), width: 1),
           boxShadow: [
             BoxShadow(
               color: colorScheme.primary.withOpacity(0.1),
@@ -431,8 +436,8 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
         child: _userAvatar != null
             ? CircleAvatar(backgroundImage: MemoryImage(_userAvatar!))
             : CircleAvatar(
-            backgroundColor: colorScheme.surface,
-            child: Icon(Icons.person, color: colorScheme.primary)),
+                backgroundColor: colorScheme.surface,
+                child: Icon(Icons.person, color: colorScheme.primary)),
       ),
     );
   }
@@ -449,7 +454,9 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.lock, size: 50, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.3)),
+            Icon(Icons.lock,
+                size: 50,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
               'NO CONVERSATIONS YET',
@@ -487,9 +494,11 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
           final difference = now.difference(timestamp);
 
           if (difference.inDays > 0) {
-            timeString = '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+            timeString =
+                '${timestamp.day}/${timestamp.month}/${timestamp.year}';
           } else {
-            timeString = '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+            timeString =
+                '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
           }
         }
 
@@ -512,7 +521,8 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
             ],
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             leading: _buildChatAvatar(chat.participant, theme, colorScheme),
             title: Row(
               children: [
@@ -530,11 +540,13 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                 const SizedBox(width: 8),
                 if (chat.unreadCount > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: colorScheme.primary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
+                      border: Border.all(
+                          color: colorScheme.primary.withOpacity(0.3)),
                     ),
                     child: Text(
                       '${chat.unreadCount}',
@@ -563,7 +575,8 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                         style: TextStyle(
                           color: theme.textTheme.bodyMedium?.color,
                           fontSize: 12,
-                          fontFamily: lastMsg?.plaintext == null ? 'monospace' : null,
+                          fontFamily:
+                              lastMsg?.plaintext == null ? 'monospace' : null,
                         ),
                       ),
                     ),
@@ -571,7 +584,8 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                       Text(
                         timeString,
                         style: TextStyle(
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                          color: theme.textTheme.bodyMedium?.color
+                              ?.withOpacity(0.7),
                           fontSize: 10,
                           fontFamily: 'monospace',
                         ),
@@ -587,11 +601,13 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     );
   }
 
-  Widget _buildChatAvatar(String userId, ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildChatAvatar(
+      String userId, ThemeData theme, ColorScheme colorScheme) {
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: colorScheme.primary.withOpacity(0.2), width: 1),
+        border:
+            Border.all(color: colorScheme.primary.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
             color: colorScheme.primary.withOpacity(0.05),
@@ -609,16 +625,16 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
             backgroundImage: snap.hasData ? MemoryImage(snap.data!) : null,
             child: snap.connectionState == ConnectionState.waiting
                 ? SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: colorScheme.secondary,
-              ),
-            )
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colorScheme.secondary,
+                    ),
+                  )
                 : snap.hasData
-                ? null
-                : Icon(Icons.person, color: colorScheme.primary, size: 20),
+                    ? null
+                    : Icon(Icons.person, color: colorScheme.primary, size: 20),
           );
         },
       ),

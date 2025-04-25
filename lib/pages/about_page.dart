@@ -39,7 +39,8 @@ class AboutPage extends StatelessWidget {
                 padding: const EdgeInsets.all(24),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - 48, // Account for padding
+                    minHeight:
+                        constraints.maxHeight - 48, // Account for padding
                   ),
                   child: IntrinsicHeight(
                     child: Column(
@@ -101,12 +102,16 @@ class AboutPage extends StatelessWidget {
                               ),
                             ),
                             Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 12),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
                                 color: colorScheme.surface,
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
+                                border: Border.all(
+                                    color:
+                                        colorScheme.primary.withOpacity(0.3)),
                               ),
                               child: Text(
                                 'SECURITY',
@@ -190,7 +195,8 @@ class AboutPage extends StatelessWidget {
                         // Footer with cyberpunk styling
                         Container(
                           margin: const EdgeInsets.only(top: 30),
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 20),
                           decoration: BoxDecoration(
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(8),

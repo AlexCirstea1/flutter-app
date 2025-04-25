@@ -12,8 +12,8 @@ import 'package:uuid/uuid.dart';
 import '../config/environment.dart';
 import '../config/logger_config.dart';
 import '../models/chat_history_dto.dart';
-import '../models/message_dto.dart';
 import '../models/chat_request_dto.dart';
+import '../models/message_dto.dart';
 import '../services/storage_service.dart';
 import '../utils/crypto_helper.dart';
 
@@ -454,6 +454,7 @@ class ChatService {
     required String currentUserId,
     required String chatUserId,
     required String content,
+    required bool oneTime,
     required Function(MessageDTO ephemeral) onEphemeralAdded,
     required void Function(Map<String, dynamic> msgMap) stompSend,
   }) async {
@@ -473,6 +474,7 @@ class ChatService {
       recipientKeyVersion: '',
       timestamp: now,
       isRead: false,
+      oneTime: oneTime,
       clientTempId: tempId,
       type: 'SENT_MESSAGE',
       plaintext: content,
@@ -517,6 +519,7 @@ class ChatService {
       'clientTempId': tempId,
       'timestamp': now.toIso8601String(),
       'type': 'SENT_MESSAGE',
+      'oneTime': oneTime,
     };
     stompSend(msgMap);
   }
@@ -669,165 +672,120 @@ class ChatService {
       onMessagesUpdated();
     }
   }
+}
 
-  // ---------------------------
-  // (I) Chat Requests Feature
-  // ---------------------------
-  /// Sends a chat request to start a conversation.
-  /// The sender’s message is immediately shown as plaintext locally.
-  Future<void> sendChatRequest({
-    required String currentUserId,
-    required String chatUserId,
-    required String content,
-    required Function(ChatRequestDTO ephemeral) onEphemeralAdded,
-    required void Function(Map<String, dynamic> msgMap) stompSend,
-  }) async {
-    final now = DateTime.now();
-    final tempId = const Uuid().v4();
-    // Locally show the request (plaintext is immediately visible for sender)
-    final ephemeralRequest = ChatRequestDTO(
-      id: tempId,
-      requester: currentUserId,
-      recipient: chatUserId,
-      ciphertext: '', // sender’s message is shown in plain text locally
-      iv: '',
-      encryptedKeyForSender: '',
-      encryptedKeyForRecipient: '',
-      senderKeyVersion: '',
-      recipientKeyVersion: '',
-      timestamp: now,
-      status: "PENDING",
-    );
-    onEphemeralAdded(ephemeralRequest);
-
-    // Fetch public keys and versions for sender and recipient
-    final senderData = await _getOrFetchPublicKeyAndVersion(currentUserId);
-    if (senderData == null || senderData.keyVersion.isEmpty) {
-      LoggerService.logError("No sender public key or version found.");
-      return;
-    }
-    final recipientData = await _getOrFetchPublicKeyAndVersion(chatUserId);
-    if (recipientData == null || recipientData.keyVersion.isEmpty) {
-      LoggerService.logError("No recipient public key or version found.");
-      return;
-    }
-
-    // Generate ephemeral AES key and IV for encrypting the message that will be sent
-    final aesKeyBytes = _makeFortunaRandom().nextBytes(32);
-    final aesKey = encrypt.Key(aesKeyBytes);
-    final ivBytes = _makeFortunaRandom().nextBytes(16);
-    final ivObj = encrypt.IV(ivBytes);
-    final encrypter =
-        encrypt.Encrypter(encrypt.AES(aesKey, mode: encrypt.AESMode.cbc));
-    final cipher = encrypter.encrypt(content, iv: ivObj);
-    final ciphertextB64 = base64.encode(cipher.bytes);
-    final ivB64 = base64.encode(ivBytes);
-
-    // Encrypt the AES key for both sender and recipient
-    final aesKeyB64 = base64.encode(aesKeyBytes);
-    final encForSender =
-        CryptoHelper.rsaEncrypt(aesKeyB64, senderData.publicKey);
-    final encForRecipient =
-        CryptoHelper.rsaEncrypt(aesKeyB64, recipientData.publicKey);
-
-    final msgMap = {
-      'requester': currentUserId,
-      'recipient': chatUserId,
-      'ciphertext': ciphertextB64,
-      'iv': ivB64,
-      'encryptedKeyForSender': encForSender,
-      'encryptedKeyForRecipient': encForRecipient,
-      'senderKeyVersion': senderData.keyVersion,
-      'recipientKeyVersion': recipientData.keyVersion,
-      'clientTempId': tempId,
-      'timestamp': now.toIso8601String(),
-      'type': 'CHAT_REQUEST',
-    };
-
-    stompSend(msgMap);
-  }
-
-  /// Fetch pending chat requests for the current user.
-  Future<List<ChatRequestDTO>> fetchChatRequests() async {
+extension ChatRequestsApi on ChatService {
+  // GET /chat-requests  (pending only)
+  Future<List<ChatRequestDTO>> fetchPendingChatRequests() async {
     final accessToken = await storageService.getAccessToken();
-    if (accessToken == null) {
-      LoggerService.logError('No access token for fetchChatRequests');
-      return [];
-    }
+    if (accessToken == null) return [];
+
     final url = Uri.parse('${Environment.apiBaseUrl}/chat-requests');
     try {
-      final resp = await http
-          .get(url, headers: {'Authorization': 'Bearer $accessToken'});
+      final resp = await http.get(url, headers: {
+        'Authorization': 'Bearer $accessToken',
+      });
       if (resp.statusCode == 200) {
-        final rawBody = utf8.decode(resp.bodyBytes);
-        final List<dynamic> rawList = jsonDecode(rawBody);
-        return rawList.map((e) => ChatRequestDTO.fromJson(e)).toList();
-      } else {
-        LoggerService.logError(
-            'Fetch chat requests error. Code=${resp.statusCode}');
-        return [];
+        final body = utf8.decode(resp.bodyBytes);
+        final List<dynamic> raw = jsonDecode(body);
+        return raw.map((e) => ChatRequestDTO.fromJson(e)).toList();
       }
     } catch (e) {
-      LoggerService.logError('Exception fetching chat requests: $e');
-      return [];
+      LoggerService.logError('fetchPendingChatRequests failed', e);
     }
+    return [];
   }
 
-  /// Accept a chat request. The backend converts the request into a normal chat message.
-  Future<void> acceptChatRequest({
-    required String requestId,
-    required VoidCallback onAccepted,
-  }) async {
+  Future<void> acceptChatRequest({required String requestId}) async {
     final accessToken = await storageService.getAccessToken();
-    if (accessToken == null) {
-      LoggerService.logError('No access token for acceptChatRequest');
-      return;
-    }
+    if (accessToken == null) return;
     final url =
         Uri.parse('${Environment.apiBaseUrl}/chat-requests/$requestId/accept');
-    try {
-      final resp = await http.post(url, headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      });
-      if (resp.statusCode == 200) {
-        LoggerService.logInfo('Chat request accepted.');
-        onAccepted();
-      } else {
-        LoggerService.logError(
-            'Failed to accept chat request. Code=${resp.statusCode}');
-      }
-    } catch (e) {
-      LoggerService.logError('Exception accepting chat request: $e');
-    }
+    await http.post(url, headers: {
+      'Authorization': 'Bearer $accessToken',
+    });
   }
 
-  /// Reject a chat request.
-  Future<void> rejectChatRequest({
-    required String requestId,
-    required VoidCallback onRejected,
-  }) async {
+  Future<void> rejectChatRequest({required String requestId}) async {
     final accessToken = await storageService.getAccessToken();
-    if (accessToken == null) {
-      LoggerService.logError('No access token for rejectChatRequest');
-      return;
-    }
+    if (accessToken == null) return;
     final url =
         Uri.parse('${Environment.apiBaseUrl}/chat-requests/$requestId/reject');
-    try {
-      final resp = await http.post(url, headers: {
+    await http.post(url, headers: {
+      'Authorization': 'Bearer $accessToken',
+    });
+  }
+
+  /// Creates a **chat request** (POST /chat-requests).
+  ///
+  /// The `content` is encrypted with a fresh AES-256 key that is
+  /// RSA-encrypted for both sender and recipient, mirroring `sendMessage`.
+  ///
+  /// Returns the created `ChatRequestDTO` on success, or `null` on error.
+  Future<ChatRequestDTO?> sendChatRequest({
+    required String chatUserId,
+    required String content,
+  }) async {
+    final accessToken   = await storageService.getAccessToken();
+    final currentUserId = await storageService.getUserId();
+    if (accessToken == null || currentUserId == null) {
+      LoggerService.logError('Auth missing – cannot send chat request');
+      return null;
+    }
+
+    // ── 1.  Fetch RSA public keys & key versions for both users ─────────
+    final meKey   = await _getOrFetchPublicKeyAndVersion(currentUserId);
+    final themKey = await _getOrFetchPublicKeyAndVersion(chatUserId);
+    if (meKey == null || themKey == null) {
+      LoggerService.logError('Public key lookup failed');
+      return null;
+    }
+
+    // ── 2.  Symmetric key + IV  ─────────────────────────────────────────
+    final aesKeyBytes = _makeFortunaRandom().nextBytes(32);   // 256-bit
+    final ivBytes     = _makeFortunaRandom().nextBytes(16);   // 128-bit IV
+
+    final encrypter = encrypt.Encrypter(
+      encrypt.AES(encrypt.Key(aesKeyBytes), mode: encrypt.AESMode.cbc),
+    );
+    final cipher = encrypter.encrypt(content, iv: encrypt.IV(ivBytes));
+
+    // ── 3.  RSA-encrypt AES key for both parties ────────────────────────
+    final aesKeyB64      = base64.encode(aesKeyBytes);
+    final encForSender   = CryptoHelper.rsaEncrypt(aesKeyB64, meKey.publicKey);
+    final encForRecipient= CryptoHelper.rsaEncrypt(aesKeyB64, themKey.publicKey);
+
+    // ── 4.  Build request body (ChatMessageDTO shape) ───────────────────
+    final body = {
+      'sender'                 : currentUserId,         // optional but harmless
+      'recipient'              : chatUserId,
+      'ciphertext'             : base64.encode(cipher.bytes),
+      'iv'                     : base64.encode(ivBytes),
+      'encryptedKeyForSender'  : encForSender,
+      'encryptedKeyForRecipient': encForRecipient,
+      'senderKeyVersion'       : meKey.keyVersion,
+      'recipientKeyVersion'    : themKey.keyVersion,
+      'type'                   : 'CHAT_REQUEST',
+    };
+
+    // ── 5.  POST /chat-requests  ────────────────────────────────────────
+    final url  = Uri.parse('${Environment.apiBaseUrl}/chat-requests');
+    final resp = await http.post(
+      url,
+      headers: {
         'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      });
-      if (resp.statusCode == 200) {
-        LoggerService.logInfo('Chat request rejected.');
-        onRejected();
-      } else {
-        LoggerService.logError(
-            'Failed to reject chat request. Code=${resp.statusCode}');
-      }
-    } catch (e) {
-      LoggerService.logError('Exception rejecting chat request: $e');
+        'Content-Type' : 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (resp.statusCode == 200) {
+      LoggerService.logInfo('Chat request sent successfully');
+      return ChatRequestDTO.fromJson(jsonDecode(resp.body));
+    } else {
+      LoggerService.logError(
+          'sendChatRequest failed (code ${resp.statusCode})  body=${resp.body}');
+      return null;
     }
   }
 }

@@ -165,13 +165,13 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
                                   shape: BoxShape.circle,
                                   boxShadow: filled
                                       ? [
-                                    BoxShadow(
-                                      color: colorScheme.primary
-                                          .withOpacity(0.4),
-                                      blurRadius: 8,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
+                                          BoxShadow(
+                                            color: colorScheme.primary
+                                                .withOpacity(0.4),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
                                       : [],
                                 ),
                               ),
@@ -211,7 +211,8 @@ class _PinScreenState extends State<PinScreen> with TickerProviderStateMixin {
               },
               child: Text(
                 'Forgot your PIN?',
-                style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
+                style: TextStyle(
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
               ),
             ),
           ],

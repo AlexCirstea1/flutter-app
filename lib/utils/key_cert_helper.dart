@@ -121,7 +121,7 @@ class KeyCertHelper {
     if (data.subject.containsKey("1.2.840.113549.1.9.1")) {
       dnMap["EMAIL"] = data.subject["1.2.840.113549.1.9.1"]!;
     }
-  
+
     // Extract the key size from the public key data, if available.
     int keySize = 2048; // default value
     if (data.publicKeyData.length != null) {
@@ -133,7 +133,7 @@ class KeyCertHelper {
     DateTime validUntil = DateTime.now();
     issuedOn = data.validity.notBefore;
     validUntil = data.validity.notAfter;
-  
+
     return CertificateInfo(
       distinguishedName: DistinguishedName.fromMap(dnMap),
       keySize: keySize,
@@ -141,5 +141,4 @@ class KeyCertHelper {
       validUntil: validUntil,
     );
   }
-
 }

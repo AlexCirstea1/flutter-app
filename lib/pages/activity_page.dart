@@ -36,7 +36,7 @@ class _ActivityPageState extends State<ActivityPage> {
 
       final data = await _apiService.get(endpoint);
       final List<ActivityLog> activities =
-      (data as List).map((item) => ActivityLog.fromJson(item)).toList();
+          (data as List).map((item) => ActivityLog.fromJson(item)).toList();
 
       setState(() {
         _activities = activities;
@@ -79,7 +79,8 @@ class _ActivityPageState extends State<ActivityPage> {
           Container(
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              border: Border.all(color: colorScheme.primary.withOpacity(0.3), width: 1),
+              border: Border.all(
+                  color: colorScheme.primary.withOpacity(0.3), width: 1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: PopupMenuButton<String>(
@@ -102,9 +103,12 @@ class _ActivityPageState extends State<ActivityPage> {
                 _buildPopupMenuItem('Login', 'LOGINS', Icons.login),
                 _buildPopupMenuItem('Key', 'KEY ROTATIONS', Icons.key),
                 _buildPopupMenuItem('Pin', 'PIN CHANGES', Icons.pin),
-                _buildPopupMenuItem('Consent', 'CONSENT CHANGES', Icons.handshake),
-                _buildPopupMenuItem('Blockchain', 'BLOCKCHAIN TRANSACTIONS', Icons.link),
-                _buildPopupMenuItem('User_action', 'USER ACTIONS', Icons.person_outline),
+                _buildPopupMenuItem(
+                    'Consent', 'CONSENT CHANGES', Icons.handshake),
+                _buildPopupMenuItem(
+                    'Blockchain', 'BLOCKCHAIN TRANSACTIONS', Icons.link),
+                _buildPopupMenuItem(
+                    'User_action', 'USER ACTIONS', Icons.person_outline),
               ],
             ),
           ),
@@ -124,10 +128,12 @@ class _ActivityPageState extends State<ActivityPage> {
         ),
         child: SafeArea(
           child: _isLoading
-              ? Center(child: CircularProgressIndicator(color: colorScheme.secondary))
+              ? Center(
+                  child:
+                      CircularProgressIndicator(color: colorScheme.secondary))
               : _activities.isEmpty
-              ? _buildEmptyState()
-              : _buildActivityList(),
+                  ? _buildEmptyState()
+                  : _buildActivityList(),
         ),
       ),
       bottomNavigationBar: BottomNavBar(
@@ -137,7 +143,8 @@ class _ActivityPageState extends State<ActivityPage> {
     );
   }
 
-  PopupMenuItem<String> _buildPopupMenuItem(String value, String label, IconData icon) {
+  PopupMenuItem<String> _buildPopupMenuItem(
+      String value, String label, IconData icon) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return PopupMenuItem<String>(
@@ -204,7 +211,8 @@ class _ActivityPageState extends State<ActivityPage> {
               onPressed: () => _fetchActivities(),
               style: TextButton.styleFrom(
                 backgroundColor: colorScheme.primary.withOpacity(0.1),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(color: colorScheme.primary.withOpacity(0.3)),
@@ -256,8 +264,7 @@ class CyberActivityTile extends StatelessWidget {
         border: Border.all(
             color: activity.isUnusual
                 ? colorScheme.error.withOpacity(0.5)
-                : primaryColor.withOpacity(0.2)
-        ),
+                : primaryColor.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: activity.isUnusual
@@ -313,9 +320,7 @@ class CyberActivityTile extends StatelessWidget {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2
-                            ),
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: primaryColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
@@ -358,7 +363,8 @@ class CyberActivityTile extends StatelessWidget {
                       Text(
                         _formatDate(activity.timestamp),
                         style: TextStyle(
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                          color: theme.textTheme.bodyMedium?.color
+                              ?.withOpacity(0.7),
                           fontSize: 12,
                           fontFamily: 'monospace',
                           letterSpacing: 0.5,
@@ -463,12 +469,8 @@ class CyberActivityTile extends StatelessWidget {
             const SizedBox(height: 12),
             _buildDetailRow(context, 'DESCRIPTION', activity.description),
             const SizedBox(height: 12),
-            _buildDetailRow(
-                context,
-                'TIMESTAMP',
-                activity.timestamp.toString(),
-                isMonospace: true
-            ),
+            _buildDetailRow(context, 'TIMESTAMP', activity.timestamp.toString(),
+                isMonospace: true),
             if (activity.details != null) ...[
               const SizedBox(height: 12),
               _buildDetailRow(context, 'DETAILS', activity.details!),
@@ -533,7 +535,8 @@ class CyberActivityTile extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(BuildContext context, String label, String value, {bool isMonospace = false}) {
+  Widget _buildDetailRow(BuildContext context, String label, String value,
+      {bool isMonospace = false}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

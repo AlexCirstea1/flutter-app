@@ -50,8 +50,11 @@ class _ChatPageState extends State<ChatPage> {
   bool _amIBlocked = false;
   bool _isCurrentUserAdmin = false;
   bool _isChatPartnerAdmin = false;
-  final TextEditingController _messageController = TextEditingController();
+  bool _chatAuthorized = false; // once a message exists
+  bool _chatRequestSent = false; // optimistic after send
 
+  final TextEditingController _requestController = TextEditingController();
+  final TextEditingController _messageController = TextEditingController();
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
@@ -62,8 +65,11 @@ class _ChatPageState extends State<ChatPage> {
 
   StreamSubscription<Map<String, dynamic>>? _messageSubscription;
   StreamSubscription<bool>? _connectionStatusSubscription;
+  bool get _isFetchingHistory => _chatService?.isFetchingHistory ?? false;
+  List<MessageDTO> get _messages => _chatService?.messages ?? [];
 
   String? _currentUserId;
+  bool _isEphemeral = false;
 
   @override
   void initState() {
@@ -71,6 +77,14 @@ class _ChatPageState extends State<ChatPage> {
     _initializeChat();
     _checkBlockStatus();
     _checkAdminStatus();
+  }
+
+  @override
+  void dispose() {
+    _messageSubscription?.cancel();
+    _connectionStatusSubscription?.cancel();
+    _messageController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkAdminStatus() async {
@@ -164,12 +178,11 @@ class _ChatPageState extends State<ChatPage> {
         onMessagesUpdated: _onMessagesUpdated,
       );
 
-      final ws = WebSocketService();
-      if (!ws.isConnected) {
-        await ws.connect();
-      }
+      _chatAuthorized = _chatService!.messages.isNotEmpty; // NEW
 
-      // Listen for real-time message updates
+      final ws = WebSocketService();
+      if (!ws.isConnected) await ws.connect();
+
       _messageSubscription = ws.messages.listen((message) {
         final type = message['type'] ?? '';
         switch (type) {
@@ -180,26 +193,25 @@ class _ChatPageState extends State<ChatPage> {
               _currentUserId!,
               _onMessagesUpdated,
             );
+            if (!_chatAuthorized)
+              setState(() => _chatAuthorized = true); // unlock
+            break;
+          case 'CHAT_REQUEST': // incoming notification (optional usage)
+            // If I just sent it, we already flipped flag. If I am recipient,
+            // show banner in Requests screen; nothing done here.
             break;
           case 'READ_RECEIPT':
             _chatService?.handleReadReceipt(
-              message,
-              widget.chatUserId,
-              _onMessagesUpdated,
-            );
+                message, widget.chatUserId, _onMessagesUpdated);
             break;
           default:
             LoggerService.logInfo('Ignoring unknown msg type: $type');
         }
       });
 
-      // Listen for connection changes
       _connectionStatusSubscription = ws.connectionStatus.listen((ok) {
-        if (!ok) {
-          LoggerService.logInfo('WebSocket disconnected');
-        } else {
-          LoggerService.logInfo('WebSocket reconnected');
-        }
+        LoggerService.logInfo(
+            ok ? 'WebSocket reconnected' : 'WebSocket disconnected');
       });
     } catch (err) {
       LoggerService.logError('Error initializing chat', err);
@@ -212,17 +224,6 @@ class _ChatPageState extends State<ChatPage> {
     if (mounted) setState(() {});
   }
 
-  @override
-  void dispose() {
-    _messageSubscription?.cancel();
-    _connectionStatusSubscription?.cancel();
-    _messageController.dispose();
-    super.dispose();
-  }
-
-  bool get _isFetchingHistory => _chatService?.isFetchingHistory ?? false;
-  List<MessageDTO> get _messages => _chatService?.messages ?? [];
-
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty || _chatService == null || _currentUserId == null) return;
@@ -234,17 +235,30 @@ class _ChatPageState extends State<ChatPage> {
       currentUserId: _currentUserId!,
       chatUserId: widget.chatUserId,
       content: text,
+      oneTime: _isEphemeral, // pass ephemeral setting
       onEphemeralAdded: (MessageDTO ephemeral) {
-        if (!mounted) return;
         setState(() {
           _messages.add(ephemeral);
           _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
         });
       },
-      stompSend: (map) {
-        ws.sendMessage('/app/sendPrivateMessage', map);
-      },
+      stompSend: (map) => ws.sendMessage('/app/sendPrivateMessage', map),
     );
+  }
+
+  Future<void> _sendChatRequest() async {
+    final text = _requestController.text.trim();
+    if (text.isEmpty || _chatService == null || _currentUserId == null) return;
+    _requestController.clear();
+
+    final result = await _chatService!.sendChatRequest(
+      chatUserId: widget.chatUserId,
+      content: text,
+    );
+
+    if (mounted) setState(() => _chatRequestSent = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request sent – waiting for approval')));
   }
 
   /// A helper to decide how to label a date header
@@ -356,71 +370,74 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final cs = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: colorScheme.surface,
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: colorScheme.primary.withOpacity(0.2),
-              child: Text(
-                widget.chatUsername[0].toUpperCase(),
-                style: TextStyle(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              widget.chatUsername,
-              style: TextStyle(color: theme.textTheme.titleLarge?.color),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.info_outline, color: colorScheme.primary),
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProfileViewPage(
-                    userId: widget.chatUserId,
-                    username: widget.chatUsername,
-                  ),
-                ),
-              );
-
-              if (result == 'deleted' || result == 'reported') {
-                Navigator.pop(context);
-              }
-
-              if (result == 'blocked' || result == 'unblocked') {
-                _checkBlockStatus();
-              }
-            },
-          ),
-        ],
-      ),
+      backgroundColor: cs.surface,
+      appBar: _buildAppBar(theme, cs),
       body: Column(
         children: [
+          if (!_chatAuthorized) _buildRequestGate(), // NEW
           Expanded(
             child: _isInitializing || _isFetchingHistory
-                ? Center(
-                    child:
-                        CircularProgressIndicator(color: colorScheme.secondary))
-                : _buildMessagesList(),
+                ? Center(child: CircularProgressIndicator(color: cs.secondary))
+                : _chatAuthorized
+                    ? _buildMessagesList()
+                    : const SizedBox.shrink(),
           ),
-          Divider(height: 1, color: colorScheme.onSurface.withOpacity(0.2)),
-          _buildTextInput(),
+          Divider(height: 1, color: cs.onSurface.withOpacity(0.2)),
+          _chatAuthorized ? _buildTextInput() : _buildLockedInput(), // NEW
         ],
       ),
     );
   }
+
+  AppBar _buildAppBar(ThemeData theme, ColorScheme cs) {
+    return AppBar(
+      backgroundColor: cs.surface,
+      title: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: cs.primary.withOpacity(0.2),
+            child: Text(widget.chatUsername[0].toUpperCase(),
+                style:
+                    TextStyle(color: cs.primary, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 12),
+          Text(widget.chatUsername,
+              style: TextStyle(color: theme.textTheme.titleLarge?.color)),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.info_outline, color: cs.primary),
+          onPressed: () async {
+            final r = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => ProfileViewPage(
+                        userId: widget.chatUserId,
+                        username: widget.chatUsername)));
+            if (r == 'blocked' || r == 'unblocked') _checkBlockStatus();
+            if (r == 'deleted' || r == 'reported') Navigator.pop(context);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLockedInput() => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text('Chat locked – send a request first.',
+              style: TextStyle(
+                  color: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.color
+                      ?.withOpacity(0.6))),
+        ),
+      );
 
   Widget _buildDateDivider(String label) {
     final theme = Theme.of(context);
@@ -496,6 +513,20 @@ class _ChatPageState extends State<ChatPage> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
+            IconButton(
+              icon: Icon(
+                Icons.whatshot,
+                color: _isEphemeral
+                    ? colorScheme.primary
+                    : theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+              ),
+              tooltip: 'One-time message',
+              onPressed: () {
+                setState(() {
+                  _isEphemeral = !_isEphemeral;
+                });
+              },
+            ),
             Expanded(
               child: TextField(
                 controller: _messageController,
@@ -570,6 +601,18 @@ class _ChatPageState extends State<ChatPage> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Add one-time indicator if needed
+                if (msg.oneTime)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Icon(
+                      Icons.timer,
+                      size: 12,
+                      color: isMine
+                          ? colorScheme.onPrimary.withOpacity(0.7)
+                          : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                    ),
+                  ),
                 Text(
                   _formatTime(msg.timestamp),
                   style: TextStyle(
@@ -591,6 +634,49 @@ class _ChatPageState extends State<ChatPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRequestGate() {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    if (_chatRequestSent) {
+      return Container(
+        color: cs.surfaceVariant,
+        padding: const EdgeInsets.all(16),
+        child: Row(children: [
+          const Icon(Icons.hourglass_bottom, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Text(
+                  'Request pending – the chat will unlock once ${widget.chatUsername} accepts.',
+                  style: theme.textTheme.bodyMedium)),
+        ]),
+      );
+    }
+
+    return Container(
+      color: cs.surfaceVariant,
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Start a secure chat with ${widget.chatUsername}',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _requestController,
+          decoration: const InputDecoration(hintText: 'Say hello…'),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton.icon(
+            onPressed: _sendChatRequest,
+            icon: const Icon(Icons.lock_open),
+            label: const Text('Send request'),
+          ),
+        ),
+      ]),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../config/logger_config.dart';
 import '../services/auth_service.dart';
 import '../services/service_locator.dart';

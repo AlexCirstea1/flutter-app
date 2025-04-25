@@ -35,6 +35,9 @@ class MessageDTO {
   bool isDelivered;
   DateTime? deliveredTimestamp;
 
+  /// Whether this is a one-time/ephemeral message that should be deleted after reading
+  bool oneTime;
+
   /// The temporary client-side ID (for matching ephemeral messages).
   String? clientTempId;
 
@@ -61,6 +64,7 @@ class MessageDTO {
     this.readTimestamp,
     this.isDelivered = false,
     this.deliveredTimestamp,
+    this.oneTime = false,
     this.clientTempId,
     this.type,
     this.plaintext, // Not serialized

@@ -30,7 +30,10 @@ class WebSocketService {
   // Getters for external listeners
   Stream<Map<String, dynamic>> get messages => _messageController.stream;
   Stream<bool> get connectionStatus => _connectionStatusController.stream;
-
+  final StreamController<Map<String, dynamic>> _chatRequestController =
+      StreamController.broadcast();
+  Stream<Map<String, dynamic>> get chatRequests =>
+      _chatRequestController.stream;
   bool get isConnected => _stompClient?.connected ?? false;
 
   Future<void> connect() async {
@@ -118,16 +121,17 @@ class WebSocketService {
 
   void _handleIncomingFrame(StompFrame frame, {required String tag}) {
     if (frame.body == null) return;
-    LoggerService.logInfo("Received [$tag]: ${frame.body}");
     try {
       final data = jsonDecode(frame.body!);
-
-      // Instead of forcing data['type'] = tag,
-      // we only set it if it's missing. That way your Java code
-      // (which sets "INCOMING_MESSAGE" or "SENT_MESSAGE") remains intact:
       data['type'] ??= tag;
 
+      // broadcast to generic stream
       _messageController.add(data);
+
+      // if it is a chat-request push it to dedicated controller
+      if (tag == 'CHAT_REQUEST') {
+        _chatRequestController.add(data as Map<String, dynamic>);
+      }
     } catch (e) {
       LoggerService.logError('Error parsing STOMP frame ($tag)', e);
     }
@@ -148,6 +152,10 @@ class WebSocketService {
     }
   }
 
+  void ensureConnected() async {
+    if (!isConnected) await connect();
+  }
+
   void disconnect() {
     _stompClient?.deactivate();
     _connectionStatusController.add(false);
@@ -158,6 +166,7 @@ class WebSocketService {
     _stompClient?.deactivate();
     _messageController.close();
     _connectionStatusController.close();
+    _chatRequestController.close();
     LoggerService.logInfo('WebSocketService disposed');
   }
 }
