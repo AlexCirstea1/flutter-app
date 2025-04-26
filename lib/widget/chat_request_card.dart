@@ -8,16 +8,15 @@ import '../config/environment.dart';
 import '../config/logger_config.dart';
 import '../models/chat_request_dto.dart';
 import '../services/avatar_service.dart';
-import '../services/storage_service.dart';
 
 class ChatRequestCard extends StatefulWidget {
   const ChatRequestCard({
-    Key? key,
+    super.key,
     required this.dto,
     required this.avatarService,
     required this.onAccept,
     required this.onReject,
-  }) : super(key: key);
+  });
   final ChatRequestDTO dto;
   final AvatarService avatarService;
   final Future<void> Function() onAccept;

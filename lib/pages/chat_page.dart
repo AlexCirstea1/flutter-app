@@ -12,6 +12,7 @@ import '../models/message_dto.dart';
 import '../services/chat_service.dart';
 import '../services/storage_service.dart';
 import '../services/websocket_service.dart';
+import '../widget/chat_request_widget.dart';
 
 /// We'll define an internal enum to label whether an item is a date header or a normal message.
 enum ChatItemType { dateHeader, message }
@@ -193,8 +194,9 @@ class _ChatPageState extends State<ChatPage> {
               _currentUserId!,
               _onMessagesUpdated,
             );
-            if (!_chatAuthorized)
+            if (!_chatAuthorized) {
               setState(() => _chatAuthorized = true); // unlock
+            }
             break;
           case 'CHAT_REQUEST': // incoming notification (optional usage)
             // If I just sent it, we already flipped flag. If I am recipient,
@@ -426,18 +428,46 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildLockedInput() => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text('Chat locked – send a request first.',
-              style: TextStyle(
-                  color: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.color
-                      ?.withOpacity(0.6))),
+  Widget _buildLockedInput() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          border: Border(
+            top: BorderSide(
+              color: colorScheme.primary.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
         ),
-      );
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.lock_outline,
+                size: 18,
+                color: colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Chat locked – send a request first',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildDateDivider(String label) {
     final theme = Theme.of(context);
@@ -638,45 +668,19 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildRequestGate() {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    if (_chatRequestSent) {
-      return Container(
-        color: cs.surfaceVariant,
-        padding: const EdgeInsets.all(16),
-        child: Row(children: [
-          const Icon(Icons.hourglass_bottom, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Text(
-                  'Request pending – the chat will unlock once ${widget.chatUsername} accepts.',
-                  style: theme.textTheme.bodyMedium)),
-        ]),
-      );
-    }
+    return ChatRequestWidget(
+      recipientUsername: widget.chatUsername,
+      requestSent: _chatRequestSent,
+      onSendRequest: (String message) async {
+        final result = await _chatService!.sendChatRequest(
+          chatUserId: widget.chatUserId,
+          content: message,
+        );
 
-    return Container(
-      color: cs.surfaceVariant,
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Start a secure chat with ${widget.chatUsername}',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _requestController,
-          decoration: const InputDecoration(hintText: 'Say hello…'),
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: ElevatedButton.icon(
-            onPressed: _sendChatRequest,
-            icon: const Icon(Icons.lock_open),
-            label: const Text('Send request'),
-          ),
-        ),
-      ]),
+        if (mounted) setState(() => _chatRequestSent = true);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Request sent – waiting for approval')));
+      },
     );
   }
 }
