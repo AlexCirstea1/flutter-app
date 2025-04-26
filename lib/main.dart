@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:vaultx_app/pages/about_page.dart';
-import 'package:vaultx_app/pages/activity_page.dart';
-import 'package:vaultx_app/pages/blockchain_page.dart';
-import 'package:vaultx_app/pages/home_page.dart';
-import 'package:vaultx_app/pages/login_page.dart';
-import 'package:vaultx_app/pages/profile_page.dart';
-import 'package:vaultx_app/pages/register_page.dart';
-import 'package:vaultx_app/pages/setpin_page.dart';
-import 'package:vaultx_app/pages/settings_page.dart';
-import 'package:vaultx_app/pages/splash_screen.dart';
-import 'package:vaultx_app/services/service_locator.dart';
-import 'package:vaultx_app/theme/app_theme.dart';
-import 'package:vaultx_app/theme/theme_provider.dart';
-import 'package:vaultx_app/utils/ui_overlay_helper.dart';
-import 'package:vaultx_app/widget/pin_screen.dart';
+import 'package:vaultx_app/features/activity/presentation/pages/activity_page.dart';
+import 'package:vaultx_app/features/auth/presentation/pages/login_page.dart';
+import 'package:vaultx_app/features/auth/presentation/pages/splash_screen.dart';
+import 'package:vaultx_app/features/blockchain/presentation/pages/blockchain_page.dart';
+import 'package:vaultx_app/features/home/presentation/pages/home_page.dart';
+import 'package:vaultx_app/features/profile/presentation/pages/profile_page.dart';
+import 'package:vaultx_app/features/settings/presentation/pages/setpin_page.dart';
+import 'package:vaultx_app/features/settings/presentation/pages/settings_page.dart';
+
+import 'core/data/services/service_locator.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
+import 'core/utils/ui_overlay_helper.dart';
+import 'core/widget/pin_screen.dart';
+import 'features/auth/presentation/pages/register_page.dart';
+import 'features/settings/presentation/pages/about_page.dart';
+import 'features/settings/presentation/pages/notifications_page.dart';
+import 'features/settings/presentation/pages/privacy_policy_page.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
@@ -26,56 +29,75 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   setupServiceLocator();
 
-  // Enable secure mode to prevent screenshots and screen recordings
+  // ── block screenshots / recordings ────────────────────────────────
   await UIOverlayHelper.enableSecureMode();
 
-  // Set initial UI style based on system brightness
+  // ── set the initial overlay style (system-brightness based) ───────
   final brightness = WidgetsBinding.instance.window.platformBrightness;
-  SystemChrome.setSystemUIOverlayStyle(brightness == Brightness.dark
-      ? AppTheme.darkOverlayStyle
-      : AppTheme.lightOverlayStyle);
+  SystemChrome.setSystemUIOverlayStyle(
+    brightness == Brightness.dark
+        ? AppTheme.darkOverlayStyle
+        : AppTheme.lightOverlayStyle,
+  );
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
-      child: const MyApp(),
-    ),
+        create: (_) => ThemeProvider(), child: const MyApp()),
   );
 }
 
+/*─────────────────────────────────────────────────────────────────*/
+/*                         MaterialApp                             */
+/*─────────────────────────────────────────────────────────────────*/
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
-        final brightness = WidgetsBinding.instance.window.platformBrightness;
+      builder: (_, tp, __) {
+        // update status-bar icons each rebuild
+        final sysBrightness = WidgetsBinding.instance.window.platformBrightness;
         UIOverlayHelper.refreshStatusBarIconsForTheme(
-            themeProvider.themeMode, brightness);
+          tp.isCyber ? ThemeMode.dark : tp.themeMode,
+          sysBrightness,
+        );
 
         return MaterialApp(
           title: 'Response',
           navigatorKey: navigatorKey,
+
+          /*── base themes ──────────────────────────────────────────*/
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: themeProvider.themeMode,
+          // use dark mode whenever the cyber option is active
+          themeMode: tp.isCyber ? ThemeMode.dark : tp.themeMode,
+
+          /*── if “Cyber” is active, override the dark theme here ──*/
+          builder: (ctx, child) => tp.isCyber
+              ? Theme(data: AppTheme.cyberTheme, child: child!)
+              : child!,
+
+          /*── navigation / routes ────────────────────────────────*/
           initialRoute: '/',
           navigatorObservers: [
             routeObserver,
-            _StatusBarObserver(themeProvider.themeMode),
+            _StatusBarObserver(tp.isCyber ? ThemeMode.dark : tp.themeMode),
           ],
           routes: {
-            '/': (context) => const SplashScreen(),
-            '/login': (context) => const LoginPage(),
-            '/register': (context) => const RegisterPage(),
-            '/home': (context) => const MyHomePage(),
-            '/profile': (context) => const ProfilePage(),
-            '/settings': (context) => const SettingsPage(),
-            '/pin': (context) => const PinScreen(),
-            '/set-pin': (context) => const SetPinPage(),
-            '/about': (context) => const AboutPage(),
-            '/activity': (context) => const ActivityPage(),
-            '/blockchain': (context) => const BlockchainPage(),
+            '/': (_) => const SplashScreen(),
+            '/login': (_) => const LoginPage(),
+            '/register': (_) => const RegisterPage(),
+            '/home': (_) => const MyHomePage(),
+            '/profile': (_) => const ProfilePage(),
+            '/settings': (_) => const SettingsPage(),
+            '/pin': (_) => const PinScreen(),
+            '/set-pin': (_) => const SetPinPage(),
+            '/about': (_) => const AboutPage(),
+            '/activity': (_) => const ActivityPage(),
+            '/blockchain': (_) => const BlockchainPage(),
+            '/notifications': (_) => const NotificationsPage(),
+            '/privacy-policy': (_) => const PrivacyPolicyPage(),
           },
         );
       },
@@ -83,25 +105,27 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/*─────────────────────────────────────────────────────────────────*/
+/*      keeps the status-bar icons in sync when navigating         */
+/*─────────────────────────────────────────────────────────────────*/
 class _StatusBarObserver extends NavigatorObserver {
-  final ThemeMode themeMode;
-
-  _StatusBarObserver(this.themeMode);
+  final ThemeMode _mode;
+  _StatusBarObserver(this._mode);
 
   @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    super.didPush(route, previousRoute);
+  void didPush(Route<dynamic> route, Route<dynamic>? prev) {
+    super.didPush(route, prev);
     _refreshStatusBar();
   }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    super.didPop(route, previousRoute);
+  void didPop(Route<dynamic> route, Route<dynamic>? prev) {
+    super.didPop(route, prev);
     _refreshStatusBar();
   }
 
   void _refreshStatusBar() {
     final brightness = WidgetsBinding.instance.window.platformBrightness;
-    UIOverlayHelper.refreshStatusBarIconsForTheme(themeMode, brightness);
+    UIOverlayHelper.refreshStatusBarIconsForTheme(_mode, brightness);
   }
 }

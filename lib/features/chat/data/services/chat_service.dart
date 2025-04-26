@@ -1,0 +1,265 @@
+/// High-level façade used by the UI.
+/// Heavy lifting is delegated to the injected helpers.
+///
+/// ──────────────────────────────────────────────────────────────
+library;
+
+import 'dart:ui';
+
+import 'package:uuid/uuid.dart';
+
+import '../../../../core/config/logger_config.dart';
+import '../../../../core/data/services/storage_service.dart';
+import '../../domain/models/chat_history_dto.dart';
+import '../../domain/models/chat_request_dto.dart';
+import '../../domain/models/message_dto.dart';
+import '../repositories/chat_request_repository.dart';
+import '../repositories/message_repository.dart';
+import 'key_management_service.dart';
+import 'message_crypto_service.dart';
+
+class ChatService {
+  /* ─────────────── dependencies ─────────────── */
+  final StorageService _storage;
+  final KeyManagementService _keyMgr;
+  final MessageCryptoService _crypto;
+  final MessageRepository _repo;
+  final ChatRequestRepository _requestRepo;
+
+  ChatService({
+    required StorageService storageService,
+    required KeyManagementService keyManagement,
+    required MessageCryptoService cryptoService,
+    required MessageRepository messageRepository,
+    required ChatRequestRepository requestRepository,
+  })  : _storage = storageService,
+        _keyMgr = keyManagement,
+        _crypto = cryptoService,
+        _repo = messageRepository,
+        _requestRepo = requestRepository;
+
+  /* ───────────── public read-only ───────────── */
+  List<MessageDTO> get messages => _repo.messages;
+  bool get isFetchingHistory => _repo.isFetchingHistory;
+
+  /* ──────────── history / reading ───────────── */
+  Future<void> fetchChatHistory({
+    required String chatUserId,
+    required VoidCallback onMessagesUpdated,
+  }) =>
+      _repo.fetchChatHistory(
+        chatUserId: chatUserId,
+        onMessagesUpdated: onMessagesUpdated,
+      );
+
+  Future<void> markSingleMessageAsRead(String id) =>
+      _repo.markSingleMessageAsRead(id);
+
+  /* ───────────────── sending ─────────────────── */
+  Future<void> sendMessage({
+    required String currentUserId,
+    required String chatUserId,
+    required String content,
+    required bool oneTime,
+    required void Function(MessageDTO) onEphemeralAdded,
+    required void Function(Map<String, dynamic>) stompSend,
+  }) async {
+    /* 1️⃣ local echo */
+    final now = DateTime.now();
+    final tempId = const Uuid().v4();
+    onEphemeralAdded(
+      MessageDTO(
+        id: tempId,
+        sender: currentUserId,
+        recipient: chatUserId,
+        timestamp: now,
+        clientTempId: tempId,
+        type: 'SENT_MESSAGE',
+        plaintext: content,
+        oneTime: oneTime,
+        // crypto placeholders
+        ciphertext: '',
+        iv: '',
+        encryptedKeyForSender: '',
+        encryptedKeyForRecipient: '',
+        senderKeyVersion: '',
+        recipientKeyVersion: '',
+      ),
+    );
+
+    /* 2️⃣ keys */
+    final senderKey =
+        await _keyMgr.getOrFetchPublicKeyAndVersion(currentUserId);
+    final recipientKey =
+        await _keyMgr.getOrFetchPublicKeyAndVersion(chatUserId);
+    if (senderKey == null || recipientKey == null) {
+      LoggerService.logError('Missing public key(s) – aborting send');
+      return;
+    }
+
+    /* 3️⃣ encrypt */
+    final enc = await _crypto.encryptMessage(
+      content: content,
+      senderKey: senderKey,
+      recipientKey: recipientKey,
+    );
+
+    /* 4️⃣ STOMP payload */
+    final map = {
+      'sender': currentUserId,
+      'recipient': chatUserId,
+      'clientTempId': tempId,
+      'timestamp': now.toIso8601String(),
+      'type': 'SENT_MESSAGE',
+      'oneTime': oneTime,
+      ...enc,
+    };
+    stompSend(map);
+  }
+
+  /* ───────────── real-time events ───────────── */
+  Future<void> handleIncomingOrSentMessage(
+    Map<String, dynamic> raw,
+    String currentUserId,
+    VoidCallback onMessagesUpdated,
+  ) async {
+    final msg = _repo.parseMessageFromJson(raw);
+
+    // not my chat ➜ ignore
+    if (msg.sender != currentUserId && msg.recipient != currentUserId) return;
+
+    // ── A. merge the server copy with the local echo ───────────────────
+    if (msg.sender == currentUserId && msg.clientTempId != null) {
+      final idx = messages.indexWhere((m) => m.id == msg.clientTempId);
+      if (idx >= 0) {
+        msg.plaintext = messages[idx].plaintext; // keep the clear-text
+        messages[idx] = msg; // replace echo with final
+      } else {
+        _upsert(msg); // fallback (shouldn’t happen)
+      }
+    } else {
+      // ── B. decrypt incoming copy when I’m the recipient ───────────────
+      final isRecpt = msg.recipient == currentUserId;
+      final version = isRecpt ? msg.recipientKeyVersion : msg.senderKeyVersion;
+      final privKey = await _storage.getPrivateKey(version);
+      final encKey =
+          isRecpt ? msg.encryptedKeyForRecipient : msg.encryptedKeyForSender;
+      if (privKey != null && encKey.isNotEmpty) {
+        msg.plaintext = _crypto.decryptMessage(
+          ciphertext: msg.ciphertext,
+          iv: msg.iv,
+          encryptedKey: encKey,
+          privateKey: privKey,
+        );
+      }
+      _upsert(msg); // <── missing before
+    }
+
+    messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    onMessagesUpdated();
+
+    if (msg.recipient == currentUserId && !msg.isRead) {
+      _repo.markSingleMessageAsRead(msg.id);
+    }
+  }
+
+  /// Re-insert or update by **server id** (avoids multi-dupes)
+  void _upsert(MessageDTO m) {
+    final i = messages.indexWhere((e) => e.id == m.id);
+    if (i >= 0) {
+      // preserve existing clear-text if the newcomer is still encrypted
+      if ((messages[i].plaintext?.isNotEmpty ?? false) &&
+          (m.plaintext == null || m.plaintext!.isEmpty)) {
+        m.plaintext = messages[i].plaintext;
+      }
+      messages[i] = m;
+    } else {
+      messages.add(m);
+    }
+  }
+
+  /* ───────────── chat listing ───────────── */
+  Future<List<ChatHistoryDTO>> fetchAllChats() => _repo.fetchAllChats();
+
+  List<ChatHistoryDTO> buildChatHistorySnapshot(String currentUserId) {
+    final Map<String, ChatHistoryDTO> map = {};
+
+    for (final m in messages) {
+      final other = m.sender == currentUserId ? m.recipient : m.sender;
+
+      map.putIfAbsent(
+          other,
+          () => ChatHistoryDTO(
+                participant: other,
+                participantUsername: '',
+                messages: [],
+                unreadCount: 0,
+              ));
+
+      map[other]!.messages.add(m);
+
+      if (m.recipient == currentUserId && !m.isRead) {
+        map[other]!.unreadCount += 1;
+      }
+    }
+
+    // sort messages inside each chat
+    for (final c in map.values) {
+      c.messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    }
+
+    // sort chats by “last activity desc”
+    final list = map.values.toList()
+      ..sort((a, b) =>
+          b.messages.last.timestamp.compareTo(a.messages.last.timestamp));
+
+    return list;
+  }
+
+  /* ─────────── chat-request API ─────────── */
+  Future<List<ChatRequestDTO>> fetchPendingChatRequests() =>
+      _requestRepo.fetchPendingChatRequests();
+
+  Future<void> acceptChatRequest(String id) =>
+      _requestRepo.acceptChatRequest(requestId: id);
+
+  Future<void> rejectChatRequest(String id) =>
+      _requestRepo.rejectChatRequest(requestId: id);
+
+  Future<ChatRequestDTO?> sendChatRequest({
+    required String chatUserId,
+    required String content,
+  }) =>
+      _requestRepo.sendChatRequest(
+        chatUserId: chatUserId,
+        content: content,
+      );
+
+  /* ───────────── read-receipt frames (client-side only) ───────────── */
+  void handleReadReceipt(
+    Map<String, dynamic> data,
+    String chatUserId,
+    VoidCallback onMessagesUpdated,
+  ) {
+    final readerId = data['readerId'] as String? ?? '';
+    final msgIds = data['messageIds'] as List? ?? const [];
+    final tsStr = data['readTimestamp'] as String? ?? '';
+
+    if (readerId.isEmpty || msgIds.isEmpty || tsStr.isEmpty) return;
+
+    // We only care if the *other* user read *my* messages in this chat
+    if (readerId != chatUserId) return;
+
+    final readAt = DateTime.parse(tsStr);
+
+    for (final m in messages) {
+      if (msgIds.contains(m.id)) {
+        m.isRead = true;
+        m.readTimestamp = readAt;
+      }
+    }
+
+    // Let the screen rebuild
+    onMessagesUpdated();
+  }
+}

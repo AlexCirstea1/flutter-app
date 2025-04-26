@@ -1,0 +1,52 @@
+import 'package:get_it/get_it.dart';
+import 'package:vaultx_app/core/data/services/storage_service.dart';
+
+import '../../../features/auth/data/services/auth_service.dart';
+import '../../../features/chat/data/repositories/chat_request_repository.dart';
+import '../../../features/chat/data/repositories/message_repository.dart';
+import '../../../features/chat/data/services/chat_service.dart';
+import '../../../features/chat/data/services/key_management_service.dart';
+import '../../../features/chat/data/services/message_crypto_service.dart';
+import '../../../main.dart';
+import 'api_service.dart';
+
+final serviceLocator = GetIt.instance;
+
+void setupServiceLocator() {
+  /* ── Core ───────────────────────────────────────────── */
+  serviceLocator.registerLazySingleton<StorageService>(() => StorageService());
+  serviceLocator.registerLazySingleton<ApiService>(
+      () => ApiService(navigatorKey: navigatorKey));
+
+  serviceLocator.registerLazySingleton<AuthService>(
+      () => AuthService(serviceLocator<ApiService>()));
+
+  /* ── Chat helpers ───────────────────────────────────── */
+  serviceLocator.registerLazySingleton<KeyManagementService>(
+      () => KeyManagementService(storageService: serviceLocator()));
+
+  serviceLocator.registerLazySingleton<MessageCryptoService>(
+      () => MessageCryptoService());
+
+  serviceLocator
+      .registerLazySingleton<MessageRepository>(() => MessageRepository(
+            storageService: serviceLocator(),
+            cryptoService: serviceLocator(),
+          ));
+
+  serviceLocator
+      .registerLazySingleton<ChatRequestRepository>(() => ChatRequestRepository(
+            storageService: serviceLocator(),
+            keyManagementService: serviceLocator(),
+            cryptoService: serviceLocator(),
+          ));
+
+  /* ── High-level façade ──────────────────────────────── */
+  serviceLocator.registerLazySingleton<ChatService>(() => ChatService(
+        storageService: serviceLocator(),
+        keyManagement: serviceLocator(),
+        cryptoService: serviceLocator(),
+        messageRepository: serviceLocator(),
+        requestRepository: serviceLocator(), // new
+      ));
+}
