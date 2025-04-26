@@ -17,7 +17,7 @@ class ChatRequestsPage extends StatefulWidget {
 
 class _ChatRequestsPageState extends State<ChatRequestsPage> {
   final ChatService _chatService =
-      ChatService(storageService: StorageService());
+  ChatService(storageService: StorageService());
   final AvatarService _avatarService = AvatarService(StorageService());
   final List<ChatRequestDTO> _pending = [];
   bool _isLoading = true;
@@ -74,26 +74,139 @@ class _ChatRequestsPageState extends State<ChatRequestsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Chat requests')),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: cs.primary))
-          : _pending.isEmpty
-              ? Center(
-                  child: Text('No pending requests',
-                      style: theme.textTheme.bodyLarge))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(12),
-                  itemBuilder: (_, i) => ChatRequestCard(
-                    dto: _pending[i],
-                    avatarService: _avatarService,
-                    onAccept: () async => _decide(_pending[i], true),
-                    onReject: () async => _decide(_pending[i], false),
-                  ),
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemCount: _pending.length,
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'SECURE CHAT REQUESTS',
+          style: theme.appBarTheme.titleTextStyle,
+        ),
+      ),
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surface,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.shield, size: 14, color: colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'INCOMING CONNECTION REQUESTS',
+                      style: TextStyle(
+                        color: theme.textTheme.bodyMedium?.color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Divider(
+                    color: colorScheme.primary.withOpacity(0.1), height: 1),
+              ),
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                  child: CircularProgressIndicator(
+                    color: colorScheme.secondary,
+                  ),
+                )
+                    : _pending.isEmpty
+                    ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.security,
+                        size: 50,
+                        color: theme.textTheme.bodyMedium?.color
+                            ?.withOpacity(0.3),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'NO PENDING REQUESTS',
+                        style: TextStyle(
+                          fontSize: 14,
+                          letterSpacing: 1.5,
+                          color: theme.textTheme.bodyMedium?.color
+                              ?.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'New connection requests will appear here',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.textTheme.bodyMedium?.color
+                              ?.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                    : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _pending.length,
+                  itemBuilder: (context, index) {
+                    return _buildRequestCard(_pending[index]);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequestCard(ChatRequestDTO dto) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: colorScheme.primary.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withOpacity(0.2),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ChatRequestCard(
+        dto: dto,
+        avatarService: _avatarService,
+        onAccept: () async => _decide(dto, true),
+        onReject: () async => _decide(dto, false),
+      ),
     );
   }
 }
