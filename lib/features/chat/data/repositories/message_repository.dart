@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/config/environment.dart';
@@ -37,11 +36,13 @@ class MessageRepository {
       return;
     }
 
-    final url =
-    Uri.parse('${Environment.apiBaseUrl}/messages?recipientId=$chatUserId');
+    final url = Uri.parse(
+        '${Environment.apiBaseUrl}/messages?recipientId=$chatUserId');
     try {
-      final resp = await http
-          .get(url, headers: {'Authorization': 'Bearer $accessToken'});
+      final resp = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
 
       if (resp.statusCode == 200) {
         final rawBody = utf8.decode(resp.bodyBytes);
@@ -50,75 +51,65 @@ class MessageRepository {
         final myUserId = await storageService.getUserId();
 
         for (var rawMsg in rawList) {
-          final msg = parseMessageFromJson(rawMsg);
+          final msg = parseMessageFromJson(
+            Map<String, dynamic>.from(rawMsg),
+          );
           await _tryDecryptMessage(msg, myUserId);
           messages.add(msg);
         }
 
         // Sort messages by timestamp
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+        // Mark unread as read
         await markMessagesAsRead();
         onMessagesUpdated();
       } else {
         LoggerService.logError(
-            'Fetch chat history error. Code=${resp.statusCode}');
+          'Fetch chat history error. Code=\${resp.statusCode}',
+        );
       }
     } catch (e) {
-      LoggerService.logError('Exception fetching chat history: $e');
+      LoggerService.logError('Exception fetching chat history: \$e');
     } finally {
       isFetchingHistory = false;
     }
   }
 
-  /// Parse JSON into MessageDTO, ensuring we use the server-provided ID field.
+  /// Parse JSON into MessageDTO, explicitly mapping 'read' & 'readTimestamp'.
   MessageDTO parseMessageFromJson(Map<String, dynamic> rawMsg) {
-    // The server might return the message ID under 'id' or 'messageId'.
-    final dynamic rawId = rawMsg['id'] ?? rawMsg['messageId'];
-    if (rawId == null) {
-      LoggerService.logError(
-          'Missing message ID in JSON: $rawMsg — falling back to uuid');
+    final dto = MessageDTO.fromJson(rawMsg);
+
+    // Override fields from server
+    if (rawMsg.containsKey('read')) {
+      dto.isRead = rawMsg['read'] as bool? ?? false;
     }
-    return MessageDTO(
-      id: rawId?.toString() ?? const Uuid().v4(),
-      sender: rawMsg['sender'] ?? '',
-      recipient: rawMsg['recipient'] ?? '',
-      senderKeyVersion: rawMsg['senderKeyVersion'] ?? '',
-      recipientKeyVersion: rawMsg['recipientKeyVersion'] ?? '',
-      ciphertext: rawMsg['ciphertext'] ?? '',
-      iv: rawMsg['iv'] ?? '',
-      encryptedKeyForSender: rawMsg['encryptedKeyForSender'] ?? '',
-      encryptedKeyForRecipient: rawMsg['encryptedKeyForRecipient'] ?? '',
-      timestamp: DateTime.parse(
-          rawMsg['timestamp'] ?? DateTime.now().toIso8601String()),
-      isRead: rawMsg['read'] ?? false,
-      readTimestamp: rawMsg['readTimestamp'] != null
-          ? DateTime.parse(rawMsg['readTimestamp'])
-          : null,
-      clientTempId: rawMsg['clientTempId'],
-      type: rawMsg['type'],
-      isDelivered: rawMsg['isDelivered'] ?? false,
-      deliveredTimestamp: rawMsg['deliveredTimestamp'] != null
-          ? DateTime.parse(rawMsg['deliveredTimestamp'])
-          : null,
-      oneTime: rawMsg['oneTime'] ?? false,
-    );
+    if (rawMsg['readTimestamp'] != null) {
+      dto.readTimestamp = DateTime.tryParse(
+        rawMsg['readTimestamp'].toString(),
+      );
+    }
+
+    return dto;
   }
 
-  Future<void> _tryDecryptMessage(MessageDTO msg, String? myUserId) async {
-    if (myUserId == null || msg.ciphertext.isEmpty || msg.iv.isEmpty) return;
+  Future<void> _tryDecryptMessage(
+      MessageDTO msg,
+      String? myUserId,
+      ) async {
+    if (myUserId == null || msg.ciphertext.isEmpty || msg.iv.isEmpty)
+      return;
 
     final bool isRecipient = (msg.recipient == myUserId);
     final versionToUse =
     isRecipient ? msg.recipientKeyVersion : msg.senderKeyVersion;
     final myPrivateKey = await storageService.getPrivateKey(versionToUse);
-
     if (myPrivateKey == null) return;
 
     try {
       final ephemeralKeyEnc = isRecipient
           ? msg.encryptedKeyForRecipient
           : msg.encryptedKeyForSender;
-
       if (ephemeralKeyEnc.isEmpty) return;
 
       final plaintext = cryptoService.decryptMessage(
@@ -132,7 +123,7 @@ class MessageRepository {
         msg.plaintext = plaintext;
       }
     } catch (e) {
-      LoggerService.logError('Decrypt fail for msg ${msg.id}: $e');
+      LoggerService.logError('Decrypt fail for msg \${msg.id}: \$e');
     }
   }
 
@@ -146,12 +137,7 @@ class MessageRepository {
     final unread = messages
         .where((m) => m.recipient == currentUserId && !m.isRead)
         .toList();
-
     if (unread.isEmpty) return;
-
-    // Log the actual IDs being sent, for debugging
-    LoggerService.logInfo(
-        'Marking as read message IDs: ${unread.map((m) => m.id).join(', ')}');
 
     final url = Uri.parse('${Environment.apiBaseUrl}/chats/mark-as-read');
     final body = {'messageIds': unread.map((m) => m.id).toList()};
@@ -165,10 +151,7 @@ class MessageRepository {
         },
         body: jsonEncode(body),
       );
-
-      // Treat any 2xx as success (200 OK or 204 No Content)
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        LoggerService.logInfo('Marked messages as read on server.');
         final now = DateTime.now();
         for (var msg in unread) {
           msg.isRead = true;
@@ -176,10 +159,11 @@ class MessageRepository {
         }
       } else {
         LoggerService.logError(
-            'Failed to mark msgs read. Code=${resp.statusCode}');
+          'Failed to mark msgs read. Code=\${resp.statusCode}',
+        );
       }
     } catch (e) {
-      LoggerService.logError('Error marking msgs read: $e');
+      LoggerService.logError('Error marking msgs read: \$e');
     }
   }
 
@@ -189,7 +173,6 @@ class MessageRepository {
 
     final url = Uri.parse('${Environment.apiBaseUrl}/chats/mark-as-read');
     final body = {'messageIds': [messageId]};
-
     try {
       final resp = await http.post(
         url,
@@ -199,21 +182,22 @@ class MessageRepository {
         },
         body: jsonEncode(body),
       );
-
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        LoggerService.logInfo('Marked msg $messageId read on server');
         final now = DateTime.now();
-        final idx = messages.indexWhere((m) => m.id == messageId);
+        final idx = messages.indexWhere(
+              (m) => m.id == messageId,
+        );
         if (idx >= 0) {
           messages[idx].isRead = true;
           messages[idx].readTimestamp = now;
         }
       } else {
         LoggerService.logError(
-            'Failed to mark single msg read. Code=${resp.statusCode}');
+          'Failed to mark single msg read. Code=\${resp.statusCode}',
+        );
       }
     } catch (e) {
-      LoggerService.logError('Error marking single msg read: $e');
+      LoggerService.logError('Error marking single msg read: \$e');
     }
   }
 
@@ -230,10 +214,10 @@ class MessageRepository {
           'Content-Type': 'application/json',
         },
       );
-
       if (resp.statusCode != 200) {
         LoggerService.logError(
-            'fetchAllChats error. Code=${resp.statusCode}');
+          'fetchAllChats error. Code=\${resp.statusCode}',
+        );
         return [];
       }
 
@@ -242,17 +226,16 @@ class MessageRepository {
       final List<ChatHistoryDTO> chats =
       raw.map((e) => ChatHistoryDTO.fromJson(e)).toList();
 
-      // decrypt previews
       if (myId != null) {
         for (final chat in chats) {
           for (final m in chat.messages) {
             await _tryDecryptMessage(m, myId);
           }
-          chat.messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          chat.messages.sort(
+                (a, b) => a.timestamp.compareTo(b.timestamp),
+          );
         }
       }
-
-      // sort by last activity
       chats.sort((a, b) {
         final aLast = a.messages.isNotEmpty
             ? a.messages.last.timestamp
@@ -262,10 +245,9 @@ class MessageRepository {
             : DateTime.fromMillisecondsSinceEpoch(0);
         return bLast.compareTo(aLast);
       });
-
       return chats;
     } catch (e) {
-      LoggerService.logError('fetchAllChats exception: $e');
+      LoggerService.logError('fetchAllChats exception: \$e');
       return [];
     }
   }
