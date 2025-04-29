@@ -427,16 +427,27 @@ class _ChatPageState extends State<ChatPage> {
 
     return AppBar(
       backgroundColor: cs.surface,
+      elevation: 2,
+      shadowColor: Colors.black.withOpacity(0.2),
       title: Row(
         children: [
           CircleAvatar(
             backgroundColor: cs.primary.withOpacity(0.2),
-            child: Text(initial,
-                style: TextStyle(color: cs.primary, fontWeight: FontWeight.bold)),
+            child: Text(
+              initial,
+              style: TextStyle(
+                color: cs.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
-          Text(widget.chatUsername.isNotEmpty ? widget.chatUsername : "Unknown User",
-              style: TextStyle(color: theme.textTheme.titleLarge?.color)),
+          Text(
+            widget.chatUsername.isNotEmpty
+                ? widget.chatUsername
+                : "Unknown User",
+            style: TextStyle(color: theme.textTheme.titleLarge?.color),
+          ),
         ],
       ),
       actions: [
@@ -444,11 +455,14 @@ class _ChatPageState extends State<ChatPage> {
           icon: Icon(Icons.info_outline, color: cs.primary),
           onPressed: () async {
             final r = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => ProfileViewPage(
-                        userId: widget.chatUserId,
-                        username: widget.chatUsername)));
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfileViewPage(
+                  userId: widget.chatUserId,
+                  username: widget.chatUsername,
+                ),
+              ),
+            );
             if (r == 'blocked' || r == 'unblocked') _checkBlockStatus();
             if (r == 'deleted' || r == 'reported') Navigator.pop(context);
           },
@@ -499,49 +513,27 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildDateDivider(String label) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final cs = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Horizontal line on left
-            Expanded(
-              child: Container(
-                height: 1,
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.2),
-                margin: const EdgeInsets.only(right: 8),
-              ),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            // Horizontal line on right
-            Expanded(
-              child: Container(
-                height: 1,
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.2),
-                margin: const EdgeInsets.only(left: 8),
-              ),
-            ),
-          ],
+    return Center(
+      child: Chip(
+        label: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: cs.onSurface.withOpacity(0.6),
+          ),
         ),
+        backgroundColor: cs.surface.withOpacity(0.1),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
       ),
     );
   }
 
   Widget _buildTextInput() {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final cs = theme.colorScheme;
 
     if (_isBlocked ||
         _amIBlocked ||
@@ -549,12 +541,10 @@ class _ChatPageState extends State<ChatPage> {
         _isChatPartnerAdmin) {
       final message = _isCurrentUserAdmin || _isChatPartnerAdmin
           ? 'Messaging disabled for admin accounts.'
-          : (_isBlocked
-          ? 'Unblock to send messages.'
-          : 'You cannot send messages.');
+          : (_isBlocked ? 'Unblock to send messages.' : 'You cannot send messages.');
 
       return Container(
-        color: colorScheme.surface,
+        color: cs.surface,
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -562,8 +552,9 @@ class _ChatPageState extends State<ChatPage> {
               message,
               textAlign: TextAlign.center,
               style: TextStyle(
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-                  fontSize: 14),
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                fontSize: 14,
+              ),
             ),
           ),
         ),
@@ -571,7 +562,7 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     return Container(
-      color: colorScheme.surface,
+      color: cs.surface,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -581,14 +572,12 @@ class _ChatPageState extends State<ChatPage> {
                 icon: Icon(
                   Icons.whatshot,
                   color: _isEphemeral
-                      ? colorScheme.primary
+                      ? cs.primary
                       : theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
                 ),
                 tooltip: 'One-time message',
                 onPressed: () {
-                  setState(() {
-                    _isEphemeral = !_isEphemeral;
-                  });
+                  setState(() => _isEphemeral = !_isEphemeral);
                 },
               ),
               Expanded(
@@ -598,16 +587,16 @@ class _ChatPageState extends State<ChatPage> {
                   decoration: InputDecoration(
                     hintText: 'Message...',
                     hintStyle: TextStyle(
-                        color:
-                        theme.textTheme.bodyMedium?.color?.withOpacity(0.5)),
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                    ),
                     filled: true,
-                    fillColor: colorScheme.surface,
-                    contentPadding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    fillColor: cs.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 20),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(30),
-                      borderSide:
-                      BorderSide(color: colorScheme.primary.withOpacity(0.1)),
+                      borderSide: BorderSide(
+                          color: cs.primary.withOpacity(0.1)),
                     ),
                   ),
                   onSubmitted: (_) => _sendMessage(),
@@ -616,9 +605,9 @@ class _ChatPageState extends State<ChatPage> {
               const SizedBox(width: 8),
               CircleAvatar(
                 radius: 24,
-                backgroundColor: colorScheme.primary,
+                backgroundColor: cs.primary,
                 child: IconButton(
-                  icon: Icon(Icons.send, color: colorScheme.onPrimary),
+                  icon: Icon(Icons.send, color: cs.onPrimary),
                   onPressed: _sendMessage,
                 ),
               ),
@@ -630,8 +619,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildBubble(MessageDTO msg, bool isMine) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final cs = Theme.of(context).colorScheme;
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
@@ -640,8 +628,15 @@ class _ChatPageState extends State<ChatPage> {
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
         decoration: BoxDecoration(
           color: isMine
-              ? colorScheme.primary.withOpacity(0.8)
-              : colorScheme.tertiary.withOpacity(0.7),
+              ? cs.primary.withOpacity(0.85)
+              : cs.tertiary.withOpacity(0.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),
@@ -657,8 +652,8 @@ class _ChatPageState extends State<ChatPage> {
               msg.plaintext ?? '[Encrypted]',
               style: TextStyle(
                 color: isMine
-                    ? colorScheme.onPrimary
-                    : theme.textTheme.bodyLarge?.color,
+                    ? cs.onPrimary
+                    : Theme.of(context).textTheme.bodyLarge?.color,
                 fontSize: 15,
               ),
             ),
@@ -666,7 +661,6 @@ class _ChatPageState extends State<ChatPage> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Add one-time indicator if needed
                 if (msg.oneTime)
                   Padding(
                     padding: const EdgeInsets.only(right: 4),
@@ -674,25 +668,38 @@ class _ChatPageState extends State<ChatPage> {
                       Icons.timer,
                       size: 12,
                       color: isMine
-                          ? colorScheme.onPrimary.withOpacity(0.7)
-                          : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                          ? cs.onPrimary.withOpacity(0.7)
+                          : Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.color
+                          ?.withOpacity(0.6),
                     ),
                   ),
                 Text(
                   _formatTime(msg.timestamp),
                   style: TextStyle(
-                      color: isMine
-                          ? colorScheme.onPrimary.withOpacity(0.7)
-                          : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-                      fontSize: 11),
+                    color: isMine
+                        ? cs.onPrimary.withOpacity(0.7)
+                        : Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.color
+                        ?.withOpacity(0.6),
+                    fontSize: 11,
+                  ),
                 ),
                 if (isMine)
                   Icon(
                     msg.isRead ? Icons.done_all : Icons.done,
                     size: 16,
                     color: isMine
-                        ? colorScheme.onPrimary.withOpacity(0.7)
-                        : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                        ? cs.onPrimary.withOpacity(0.7)
+                        : Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.color
+                        ?.withOpacity(0.6),
                   ),
               ],
             ),
