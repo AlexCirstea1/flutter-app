@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -419,93 +420,283 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  AppBar _buildAppBar(ThemeData theme, ColorScheme cs) {
+  PreferredSize _buildAppBar(ThemeData theme, ColorScheme cs) {
     // Get a safe initial character for the avatar
     final String initial = widget.chatUsername.isNotEmpty
         ? widget.chatUsername[0].toUpperCase()
         : "?";
 
-    return AppBar(
-      backgroundColor: cs.surface,
-      elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.2),
-      title: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: cs.primary.withOpacity(0.2),
-            child: Text(
-              initial,
-              style: TextStyle(
-                color: cs.primary,
-                fontWeight: FontWeight.bold,
-              ),
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(60),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 12,
+              spreadRadius: 0,
+            ),
+            BoxShadow(
+              color: cs.primary.withOpacity(0.1),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: Row(
+              children: [
+                // Back button with enhanced styling
+                IconButton(
+                  icon: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: cs.primary,
+                    size: 20,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: cs.primary.withOpacity(0.08),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const SizedBox(width: 12),
+                // Enhanced avatar with glow effect
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        cs.primary.withOpacity(0.2),
+                        cs.primary.withOpacity(0.1),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.primary.withOpacity(0.2),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(2),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: cs.primary.withOpacity(0.15),
+                    child: Text(
+                      initial,
+                      style: TextStyle(
+                        color: cs.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Username with security indicator
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.chatUsername.isNotEmpty
+                                  ? widget.chatUsername
+                                  : "Unknown User",
+                              style: TextStyle(
+                                color: theme.textTheme.titleLarge?.color,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            height: 8,
+                            width: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: cs.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'ENCRYPTED CONNECTION',
+                            style: TextStyle(
+                              color: cs.primary.withOpacity(0.8),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Enhanced profile view button
+                Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: cs.primary.withOpacity(0.2),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () async {
+                        final r = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ProfileViewPage(
+                              userId: widget.chatUserId,
+                              username: widget.chatUsername,
+                            ),
+                          ),
+                        );
+                        if (r == 'blocked' || r == 'unblocked') _checkBlockStatus();
+                        if (r == 'deleted' || r == 'reported') Navigator.pop(context);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Icon(
+                          Icons.account_circle_outlined,
+                          color: cs.primary,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
             ),
           ),
-          const SizedBox(width: 12),
-          Text(
-            widget.chatUsername.isNotEmpty
-                ? widget.chatUsername
-                : "Unknown User",
-            style: TextStyle(color: theme.textTheme.titleLarge?.color),
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: Icon(Icons.info_outline, color: cs.primary),
-          onPressed: () async {
-            final r = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProfileViewPage(
-                  userId: widget.chatUserId,
-                  username: widget.chatUsername,
-                ),
-              ),
-            );
-            if (r == 'blocked' || r == 'unblocked') _checkBlockStatus();
-            if (r == 'deleted' || r == 'reported') Navigator.pop(context);
-          },
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildLockedInput() {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final cs = theme.colorScheme;
 
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          border: Border(
-            top: BorderSide(
-              color: colorScheme.primary.withOpacity(0.1),
-              width: 1,
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -3),
           ),
-        ),
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.lock_outline,
-                size: 18,
-                color: colorScheme.primary,
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: theme.brightness == Brightness.dark
+                  ? cs.surface.withOpacity(0.8)
+                  : cs.primary.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: cs.primary.withOpacity(0.2),
+                width: 1.5,
               ),
-              const SizedBox(width: 8),
-              Text(
-                'Chat locked – send a request first',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: cs.primary.withOpacity(0.1),
+                  ),
+                  child: Icon(
+                    Icons.lock_outline,
+                    size: 18,
+                    color: cs.primary,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 14),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'SECURE CONNECTION REQUIRED',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                          color: cs.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Send a request to start messaging',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        cs.primary.withOpacity(0.8),
+                        cs.primary.withBlue(min(cs.primary.blue + 30, 255)).withOpacity(0.9),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.primary.withOpacity(0.2),
+                        blurRadius: 4,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Icon(
+                      Icons.arrow_upward_rounded,
+                      size: 16,
+                      color: cs.onPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -562,53 +753,132 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     return Container(
-      color: cs.surface,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              IconButton(
-                icon: Icon(
-                  Icons.whatshot,
+              // Ephemeral message toggle with animation
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
                   color: _isEphemeral
-                      ? cs.primary
-                      : theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                      ? cs.primary.withOpacity(0.2)
+                      : cs.surface,
+                  border: Border.all(
+                    color: _isEphemeral
+                        ? cs.primary
+                        : cs.onSurface.withOpacity(0.2),
+                    width: 1.5,
+                  ),
                 ),
-                tooltip: 'One-time message',
-                onPressed: () {
-                  setState(() => _isEphemeral = !_isEphemeral);
-                },
+                child: IconButton(
+                  icon: Icon(
+                    Icons.whatshot,
+                    size: 22,
+                    color: _isEphemeral
+                        ? cs.primary
+                        : theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                  ),
+                  tooltip: 'One-time message',
+                  onPressed: () {
+                    setState(() => _isEphemeral = !_isEphemeral);
+                  },
+                ),
               ),
+              const SizedBox(width: 12),
               Expanded(
-                child: TextField(
-                  controller: _messageController,
-                  style: TextStyle(color: theme.textTheme.bodyLarge?.color),
-                  decoration: InputDecoration(
-                    hintText: 'Message...',
-                    hintStyle: TextStyle(
-                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    color: theme.brightness == Brightness.dark
+                        ? cs.surface.withOpacity(0.8)
+                        : cs.onPrimary.withOpacity(0.9),
+                    border: Border.all(
+                      color: cs.primary.withOpacity(0.3),
+                      width: 1.5,
                     ),
-                    filled: true,
-                    fillColor: cs.surface,
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12, horizontal: 20),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide(
-                          color: cs.primary.withOpacity(0.1)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.primary.withOpacity(0.1),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _messageController,
+                    style: TextStyle(
+                      color: theme.textTheme.bodyLarge?.color,
+                      fontSize: 15,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Type your message...',
+                      hintStyle: TextStyle(
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                      ),
+                      filled: false,
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 20
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      prefixIcon: _isEphemeral ? Icon(
+                        Icons.timer,
+                        size: 16,
+                        color: cs.primary,
+                      ) : null,
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      cs.primary,
+                      cs.primary.withBlue(min(cs.primary.blue + 30, 255)),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.primary.withOpacity(0.4),
+                      blurRadius: 8,
+                      spreadRadius: 0.5,
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _sendMessage,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Icon(
+                        Icons.send_rounded,
+                        color: cs.onPrimary,
+                        size: 22,
+                      ),
                     ),
                   ),
-                  onSubmitted: (_) => _sendMessage(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: cs.primary,
-                child: IconButton(
-                  icon: Icon(Icons.send, color: cs.onPrimary),
-                  onPressed: _sendMessage,
                 ),
               ),
             ],
@@ -710,19 +980,113 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildRequestGate() {
-    return ChatRequestWidget(
-      recipientUsername: widget.chatUsername,
-      requestSent: _chatRequestSent,
-      onSendRequest: (String message) async {
-        final result = await _chatService.sendChatRequest(
-          chatUserId: widget.chatUserId,
-          content: message,
-        );
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
-        if (mounted) setState(() => _chatRequestSent = true);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Request sent – waiting for approval')));
-      },
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: theme.brightness == Brightness.dark
+            ? cs.surface.withOpacity(0.9)
+            : cs.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: cs.primary.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: cs.primary.withOpacity(0.1),
+            blurRadius: 10,
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: cs.primary.withOpacity(0.08),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(14),
+                topRight: Radius.circular(14),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.enhanced_encryption,
+                  color: cs.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'SECURE CONNECTION REQUEST',
+                  style: TextStyle(
+                    color: cs.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const Spacer(),
+                if (_chatRequestSent)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.hourglass_top,
+                          size: 14,
+                          color: cs.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'PENDING',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: cs.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: ChatRequestWidget(
+              recipientUsername: widget.chatUsername,
+              requestSent: _chatRequestSent,
+              onSendRequest: (String message) async {
+                final result = await _chatService.sendChatRequest(
+                  chatUserId: widget.chatUserId,
+                  content: message,
+                );
+
+                if (mounted) setState(() => _chatRequestSent = true);
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Request sent – waiting for approval'))
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -44,24 +44,8 @@ class _ChatRequestWidgetState extends State<ChatRequestWidget> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.primary.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: widget.requestSent
           ? _buildPendingRequest(colorScheme)
           : _buildRequestForm(colorScheme),
@@ -124,26 +108,6 @@ class _ChatRequestWidgetState extends State<ChatRequestWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.lock_outline,
-                size: 14,
-                color: colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'SECURE CONNECTION',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 1.0,
-                  color: colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
           Text(
             'Start a secure chat with ${widget.recipientUsername}',
             style: TextStyle(
