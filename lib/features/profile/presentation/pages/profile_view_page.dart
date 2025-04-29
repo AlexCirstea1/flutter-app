@@ -95,7 +95,7 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
       final token = await _storageService.getAccessToken();
       if (token == null) throw Exception('Authentication required');
 
-      // Check if the current user has blocked the chat partner.
+      // Check if the current user has blocked the profile
       final iBlockedUrl = Uri.parse(
           '${Environment.apiBaseUrl}/user/block/${widget.userId}/status');
       final iBlockedResponse = await http.get(
@@ -103,9 +103,9 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
         headers: {'Authorization': 'Bearer $token'},
       );
 
-      // Check if the chat partner has blocked the current user.
+      // Check if the profile user has blocked the current user
       final blockedMeUrl = Uri.parse(
-          '${Environment.apiBaseUrl}/user/blockedBy/${await _storageService.getUserId()}/status');
+          '${Environment.apiBaseUrl}/user/blockedBy/${widget.userId}/status');
       final blockedMeResponse = await http.get(
         blockedMeUrl,
         headers: {'Authorization': 'Bearer $token'},

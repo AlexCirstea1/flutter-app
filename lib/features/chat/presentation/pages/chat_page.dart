@@ -127,36 +127,76 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _checkBlockStatus() async {
+    final token = await _storageService.getAccessToken();
+    if (token == null) return;
+
+    final youBlocked = Uri.parse(
+        '${Environment.apiBaseUrl}/user/block/${widget.chatUserId}/status'
+    );
+    final theyBlockedYou = Uri.parse(
+        '${Environment.apiBaseUrl}/user/blockedBy/$_currentUserId/status'
+    );
+
+    final res1 = await http.get(youBlocked, headers:{'Authorization':'Bearer $token'});
+    final res2 = await http.get(theyBlockedYou, headers:{'Authorization':'Bearer $token'});
+
+    if (!mounted) return;
+    setState(() {
+      _isBlocked = res1.statusCode==200 && jsonDecode(res1.body)==true;
+      _amIBlocked= res2.statusCode==200 && jsonDecode(res2.body)==true;
+    });
+  }
+
+
+  Future<void> _toggleBlock() async {
+    final theme = Theme.of(context);  // Get the current theme
+    final cs = theme.colorScheme;     // Define color scheme variable
+    
+    final action = _isBlocked ? 'Unblock' : 'Block';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('$action User'),
+        content: Text(
+            'Are you sure you want to ${_isBlocked ? 'unblock' : 'block'} this user?'
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context,false), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () => Navigator.pop(context,true),
+            child: Text(action.toUpperCase(),
+                style: TextStyle(color: _isBlocked ? cs.primary : cs.error)
+            ),
+          ),
+        ],
+      ),
+    ) ?? false;
+    if (!confirmed) return;
+
+    setState(() => _isInitializing = true);
     try {
       final token = await _storageService.getAccessToken();
-      if (token == null) throw Exception('Authentication required');
+      if (token == null) throw Exception('Not authenticated');
 
-      // Check if the current user has blocked the chat partner.
-      final iBlockedUrl = Uri.parse(
-          '${Environment.apiBaseUrl}/user/block/${widget.chatUserId}/status');
-      final iBlockedResponse = await http.get(
-        iBlockedUrl,
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final uri = Uri.parse('${Environment.apiBaseUrl}/user/block/${widget.chatUserId}');
+      final resp = _isBlocked
+          ? await http.delete(uri, headers: {'Authorization':'Bearer $token'})
+          : await http.post(uri,  headers: {'Authorization':'Bearer $token'});
 
-      // Check if the chat partner has blocked the current user.
-      final blockedMeUrl = Uri.parse(
-          '${Environment.apiBaseUrl}/user/blockedBy/$_currentUserId/status');
-      final blockedMeResponse = await http.get(
-        blockedMeUrl,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (mounted) {
-        setState(() {
-          _isBlocked = iBlockedResponse.statusCode == 200 &&
-              jsonDecode(iBlockedResponse.body) == true;
-          _amIBlocked = blockedMeResponse.statusCode == 200 &&
-              jsonDecode(blockedMeResponse.body) == true;
-        });
+      if (resp.statusCode == 200) {
+        setState(() => _isBlocked = !_isBlocked);
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('User ${_isBlocked ? 'blocked' : 'unblocked'}'))
+        );
+      } else {
+        throw Exception('Failed (${resp.statusCode})');
       }
-    } catch (e) {
-      LoggerService.logError('Error checking block status', e);
+    } catch(e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'))
+      );
+    } finally {
+      setState(() => _isInitializing = false);
     }
   }
 
@@ -426,6 +466,11 @@ class _ChatPageState extends State<ChatPage> {
         ? widget.chatUsername[0].toUpperCase()
         : "?";
 
+    // Add these state variables at the class level
+    bool _isUserOnline = false;
+    DateTime? _lastSeen;
+    Timer? _statusRefreshTimer;
+
     return PreferredSize(
       preferredSize: const Size.fromHeight(60),
       child: Container(
@@ -500,7 +545,7 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                 ),
                 const SizedBox(width: 14),
-                // Username with security indicator
+                // Username with online status
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,27 +568,60 @@ class _ChatPageState extends State<ChatPage> {
                           ),
                         ],
                       ),
-                      Row(
-                        children: [
-                          Container(
-                            height: 8,
-                            width: 8,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: cs.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'ENCRYPTED CONNECTION',
-                            style: TextStyle(
-                              color: cs.primary.withOpacity(0.8),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
+                      FutureBuilder<Map<String, dynamic>?>(
+                        future: _fetchUserData(widget.chatUserId),
+                        builder: (context, snapshot) {
+                          bool isOnline = false;
+                          String statusText = "Offline";
+
+                          if (snapshot.hasData && snapshot.data != null) {
+                            isOnline = snapshot.data!['online'] ?? false;
+                            if (isOnline) {
+                              statusText = "Online";
+                            } else if (snapshot.data!['lastSeen'] != null) {
+                              final lastSeen = DateTime.parse(snapshot.data!['lastSeen']);
+                              final now = DateTime.now().toUtc();
+                              final difference = now.difference(lastSeen);
+
+                              if (difference.inMinutes < 1) {
+                                statusText = "Just now";
+                              } else if (difference.inHours < 1) {
+                                statusText = "${difference.inMinutes}m ago";
+                              } else if (difference.inDays < 1) {
+                                statusText = "${difference.inHours}h ago";
+                              } else if (difference.inDays < 7) {
+                                statusText = "${difference.inDays}d ago";
+                              } else {
+                                statusText = "${lastSeen.day}/${lastSeen.month}/${lastSeen.year}";
+                              }
+                            }
+                          }
+
+                          return Row(
+                            children: [
+                              Container(
+                                height: 8,
+                                width: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isOnline ? Colors.green : cs.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                statusText,
+                                style: TextStyle(
+                                  color: isOnline
+                                      ? Colors.green.shade700
+                                      : cs.primary.withOpacity(0.8),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -593,6 +671,22 @@ class _ChatPageState extends State<ChatPage> {
         ),
       ),
     );
+  }
+
+  Future<Map<String, dynamic>?> _fetchUserData(String userId) async {
+    try {
+      final url = Uri.parse('${Environment.apiBaseUrl}/user/public/$userId');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        LoggerService.logError(
+            'Error fetching user data: ${response.statusCode}', null);
+      }
+    } catch (e) {
+      LoggerService.logError('Error fetching user data by ID $userId', e);
+    }
+    return null;
   }
 
   Widget _buildLockedInput() {
@@ -1090,3 +1184,4 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 }
+
