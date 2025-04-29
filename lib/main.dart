@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:vaultx_app/features/activity/presentation/pages/activity_page.dart';
 import 'package:vaultx_app/features/auth/presentation/pages/login_page.dart';
 import 'package:vaultx_app/features/auth/presentation/pages/splash_screen.dart';
-import 'package:vaultx_app/features/blockchain/presentation/pages/blockchain_page.dart';
+import 'package:vaultx_app/features/blockchain/presentation/pages/events_page.dart';
 import 'package:vaultx_app/features/home/presentation/pages/home_page.dart';
 import 'package:vaultx_app/features/profile/presentation/pages/profile_page.dart';
 import 'package:vaultx_app/features/settings/presentation/pages/setpin_page.dart';
@@ -95,7 +95,7 @@ class MyApp extends StatelessWidget {
             '/set-pin': (_) => const SetPinPage(),
             '/about': (_) => const AboutPage(),
             '/activity': (_) => const ActivityPage(),
-            '/blockchain': (_) => const BlockchainPage(),
+            '/blockchain': (_) => const EventsPage(),
             '/notifications': (_) => const NotificationsPage(),
             '/privacy-policy': (_) => const PrivacyPolicyPage(),
           },

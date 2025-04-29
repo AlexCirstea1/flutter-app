@@ -13,7 +13,6 @@ import '../../../blockchain/presentation/pages/learn_more_page.dart';
 import '../../data/services/auth_service.dart';
 import '../../domain/models/user.dart';
 
-
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 

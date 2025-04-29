@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:icons_flutter/icons_flutter.dart';
+import 'package:vaultx_app/features/blockchain/presentation/pages/events_page.dart';
 
 import '../../features/activity/presentation/pages/activity_page.dart';
-import '../../features/blockchain/presentation/pages/blockchain_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
@@ -132,7 +132,7 @@ class BottomNavBar extends StatelessWidget {
         destination = const ProfilePage();
         break;
       case 2:
-        destination = const BlockchainPage();
+        destination = const EventsPage();
         break;
       case 3:
         destination = const ActivityPage();

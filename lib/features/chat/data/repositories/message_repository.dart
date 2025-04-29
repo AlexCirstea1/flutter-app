@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/config/environment.dart';
@@ -37,7 +38,7 @@ class MessageRepository {
     }
 
     final url =
-        Uri.parse('${Environment.apiBaseUrl}/messages?recipientId=$chatUserId');
+    Uri.parse('${Environment.apiBaseUrl}/messages?recipientId=$chatUserId');
     try {
       final resp = await http
           .get(url, headers: {'Authorization': 'Bearer $accessToken'});
@@ -69,9 +70,16 @@ class MessageRepository {
     }
   }
 
+  /// Parse JSON into MessageDTO, ensuring we use the server-provided ID field.
   MessageDTO parseMessageFromJson(Map<String, dynamic> rawMsg) {
+    // The server might return the message ID under 'id' or 'messageId'.
+    final dynamic rawId = rawMsg['id'] ?? rawMsg['messageId'];
+    if (rawId == null) {
+      LoggerService.logError(
+          'Missing message ID in JSON: $rawMsg — falling back to uuid');
+    }
     return MessageDTO(
-      id: rawMsg['id']?.toString() ?? const Uuid().v4(),
+      id: rawId?.toString() ?? const Uuid().v4(),
       sender: rawMsg['sender'] ?? '',
       recipient: rawMsg['recipient'] ?? '',
       senderKeyVersion: rawMsg['senderKeyVersion'] ?? '',
@@ -101,7 +109,7 @@ class MessageRepository {
 
     final bool isRecipient = (msg.recipient == myUserId);
     final versionToUse =
-        isRecipient ? msg.recipientKeyVersion : msg.senderKeyVersion;
+    isRecipient ? msg.recipientKeyVersion : msg.senderKeyVersion;
     final myPrivateKey = await storageService.getPrivateKey(versionToUse);
 
     if (myPrivateKey == null) return;
@@ -141,18 +149,25 @@ class MessageRepository {
 
     if (unread.isEmpty) return;
 
+    // Log the actual IDs being sent, for debugging
+    LoggerService.logInfo(
+        'Marking as read message IDs: ${unread.map((m) => m.id).join(', ')}');
+
     final url = Uri.parse('${Environment.apiBaseUrl}/chats/mark-as-read');
     final body = {'messageIds': unread.map((m) => m.id).toList()};
 
     try {
-      final resp = await http.post(url,
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(body));
+      final resp = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
 
-      if (resp.statusCode == 200) {
+      // Treat any 2xx as success (200 OK or 204 No Content)
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
         LoggerService.logInfo('Marked messages as read on server.');
         final now = DateTime.now();
         for (var msg in unread) {
@@ -173,19 +188,19 @@ class MessageRepository {
     if (accessToken == null) return;
 
     final url = Uri.parse('${Environment.apiBaseUrl}/chats/mark-as-read');
-    final body = {
-      'messageIds': [messageId]
-    };
+    final body = {'messageIds': [messageId]};
 
     try {
-      final resp = await http.post(url,
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(body));
+      final resp = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
 
-      if (resp.statusCode == 200) {
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
         LoggerService.logInfo('Marked msg $messageId read on server');
         final now = DateTime.now();
         final idx = messages.indexWhere((m) => m.id == messageId);
@@ -195,7 +210,7 @@ class MessageRepository {
         }
       } else {
         LoggerService.logError(
-            'Failed to mark single msg read. code=${resp.statusCode}');
+            'Failed to mark single msg read. Code=${resp.statusCode}');
       }
     } catch (e) {
       LoggerService.logError('Error marking single msg read: $e');
@@ -208,20 +223,24 @@ class MessageRepository {
 
     final url = Uri.parse('${Environment.apiBaseUrl}/chats');
     try {
-      final resp = await http.get(url, headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      });
+      final resp = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
 
       if (resp.statusCode != 200) {
-        LoggerService.logError('fetchAllChats error. code=${resp.statusCode}');
+        LoggerService.logError(
+            'fetchAllChats error. Code=${resp.statusCode}');
         return [];
       }
 
       final raw = jsonDecode(utf8.decode(resp.bodyBytes)) as List<dynamic>;
       final myId = await storageService.getUserId();
       final List<ChatHistoryDTO> chats =
-          raw.map((e) => ChatHistoryDTO.fromJson(e)).toList();
+      raw.map((e) => ChatHistoryDTO.fromJson(e)).toList();
 
       // decrypt previews
       if (myId != null) {
@@ -246,7 +265,7 @@ class MessageRepository {
 
       return chats;
     } catch (e) {
-      LoggerService.logError('fetchAllChats exception', e);
+      LoggerService.logError('fetchAllChats exception: $e');
       return [];
     }
   }

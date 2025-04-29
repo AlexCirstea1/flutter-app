@@ -394,18 +394,22 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   AppBar _buildAppBar(ThemeData theme, ColorScheme cs) {
+    // Get a safe initial character for the avatar
+    final String initial = widget.chatUsername.isNotEmpty
+        ? widget.chatUsername[0].toUpperCase()
+        : "?";
+
     return AppBar(
       backgroundColor: cs.surface,
       title: Row(
         children: [
           CircleAvatar(
             backgroundColor: cs.primary.withOpacity(0.2),
-            child: Text(widget.chatUsername[0].toUpperCase(),
-                style:
-                    TextStyle(color: cs.primary, fontWeight: FontWeight.bold)),
+            child: Text(initial,
+                style: TextStyle(color: cs.primary, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 12),
-          Text(widget.chatUsername,
+          Text(widget.chatUsername.isNotEmpty ? widget.chatUsername : "Unknown User",
               style: TextStyle(color: theme.textTheme.titleLarge?.color)),
         ],
       ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/widget/bottom_nav_bar.dart';
 
-
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
 
