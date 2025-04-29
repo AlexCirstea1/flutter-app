@@ -121,8 +121,9 @@ class ChatService {
   Future<void> handleIncomingOrSentMessage(
     Map<String, dynamic> raw,
     String currentUserId,
-    VoidCallback onMessagesUpdated,
-  ) async {
+    VoidCallback onMessagesUpdated, {
+    bool markReadOnReceive = true,
+    }) async {
     final msg = _repo.parseMessageFromJson(raw);
 
     // not my chat ➜ ignore
@@ -152,13 +153,15 @@ class ChatService {
           privateKey: privKey,
         );
       }
-      _upsert(msg); // <── missing before
+      _upsert(msg);
     }
 
     messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     onMessagesUpdated();
 
-    if (msg.recipient == currentUserId && !msg.isRead) {
+    if (markReadOnReceive &&
+        msg.recipient == currentUserId &&
+        !msg.isRead) {
       _repo.markSingleMessageAsRead(msg.id);
     }
   }

@@ -11,6 +11,7 @@ import '../../../../core/config/logger_config.dart';
 import '../../../../core/data/services/service_locator.dart';
 import '../../../../core/data/services/storage_service.dart';
 import '../../../../core/data/services/websocket_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../data/services/chat_service.dart';
 import '../../domain/models/message_dto.dart';
 import '../widgets/chat_request_widget.dart';
@@ -373,22 +374,47 @@ class _ChatPageState extends State<ChatPage> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
+    // Determine which background image to use based on the current theme
+    String backgroundImage;
+    if (cs == AppTheme.lightTheme.colorScheme) {
+      backgroundImage = 'assets/images/chat_bg.png';
+    } else if (cs == AppTheme.darkTheme.colorScheme) {
+      backgroundImage = 'assets/images/chat_bg_dark.png';
+    } else {
+      backgroundImage = 'assets/images/chat_bg_cyber.png';
+    }
+
     return Scaffold(
-      backgroundColor: cs.surface,
       appBar: _buildAppBar(theme, cs),
-      body: Column(
-        children: [
-          if (!_chatAuthorized) _buildRequestGate(), // NEW
-          Expanded(
-            child: _isInitializing || _isFetchingHistory
-                ? Center(child: CircularProgressIndicator(color: cs.secondary))
-                : _chatAuthorized
-                    ? _buildMessagesList()
-                    : const SizedBox.shrink(),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(backgroundImage),
+            repeat: ImageRepeat.repeat,
+            fit: BoxFit.contain,
+            opacity: 0.2,
+            colorFilter: ColorFilter.mode(
+              cs.surface, // Uses the current theme's surface color
+              BlendMode.color, // This blend mode applies the color while preserving texture
+            ),
           ),
-          Divider(height: 1, color: cs.onSurface.withOpacity(0.2)),
-          _chatAuthorized ? _buildTextInput() : _buildLockedInput(), // NEW
-        ],
+        ),
+        child: Column(
+          children: [
+            if (!_chatAuthorized) _buildRequestGate(),
+            Expanded(
+              child: _isInitializing || _isFetchingHistory
+                  ? Center(
+                child: CircularProgressIndicator(color: cs.secondary),
+              )
+                  : _chatAuthorized
+                  ? _buildMessagesList()
+                  : const SizedBox.shrink(),
+            ),
+            Divider(height: 1, color: cs.onSurface.withOpacity(0.2)),
+            _chatAuthorized ? _buildTextInput() : _buildLockedInput(),
+          ],
+        ),
       ),
     );
   }
@@ -524,74 +550,80 @@ class _ChatPageState extends State<ChatPage> {
       final message = _isCurrentUserAdmin || _isChatPartnerAdmin
           ? 'Messaging disabled for admin accounts.'
           : (_isBlocked
-              ? 'Unblock to send messages.'
-              : 'You cannot send messages.');
+          ? 'Unblock to send messages.'
+          : 'You cannot send messages.');
 
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-                fontSize: 14),
+      return Container(
+        color: colorScheme.surface,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                  fontSize: 14),
+            ),
           ),
         ),
       );
     }
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            IconButton(
-              icon: Icon(
-                Icons.whatshot,
-                color: _isEphemeral
-                    ? colorScheme.primary
-                    : theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
-              ),
-              tooltip: 'One-time message',
-              onPressed: () {
-                setState(() {
-                  _isEphemeral = !_isEphemeral;
-                });
-              },
-            ),
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                style: TextStyle(color: theme.textTheme.bodyLarge?.color),
-                decoration: InputDecoration(
-                  hintText: 'Message...',
-                  hintStyle: TextStyle(
-                      color:
-                          theme.textTheme.bodyMedium?.color?.withOpacity(0.5)),
-                  filled: true,
-                  fillColor: colorScheme.surface.withOpacity(0.5),
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide:
-                        BorderSide(color: colorScheme.primary.withOpacity(0.1)),
-                  ),
+    return Container(
+      color: colorScheme.surface,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.whatshot,
+                  color: _isEphemeral
+                      ? colorScheme.primary
+                      : theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
                 ),
-                onSubmitted: (_) => _sendMessage(),
+                tooltip: 'One-time message',
+                onPressed: () {
+                  setState(() {
+                    _isEphemeral = !_isEphemeral;
+                  });
+                },
               ),
-            ),
-            const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: colorScheme.primary,
-              child: IconButton(
-                icon: Icon(Icons.send, color: colorScheme.onPrimary),
-                onPressed: _sendMessage,
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  style: TextStyle(color: theme.textTheme.bodyLarge?.color),
+                  decoration: InputDecoration(
+                    hintText: 'Message...',
+                    hintStyle: TextStyle(
+                        color:
+                        theme.textTheme.bodyMedium?.color?.withOpacity(0.5)),
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                    contentPadding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide:
+                      BorderSide(color: colorScheme.primary.withOpacity(0.1)),
+                    ),
+                  ),
+                  onSubmitted: (_) => _sendMessage(),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: colorScheme.primary,
+                child: IconButton(
+                  icon: Icon(Icons.send, color: colorScheme.onPrimary),
+                  onPressed: _sendMessage,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -609,7 +641,7 @@ class _ChatPageState extends State<ChatPage> {
         decoration: BoxDecoration(
           color: isMine
               ? colorScheme.primary.withOpacity(0.8)
-              : colorScheme.surface.withOpacity(0.7),
+              : colorScheme.tertiary.withOpacity(0.7),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),

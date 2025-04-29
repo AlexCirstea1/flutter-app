@@ -112,20 +112,17 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     });
   }
 
-  void _handleNewOrUpdatedMessage(Map<String, dynamic> rawMsg) async {
+  Future<void> _handleNewOrUpdatedMessage(Map<String, dynamic> rawMsg) async {
     if (_currentUserId == null || !mounted) return;
 
     await _chatService.handleIncomingOrSentMessage(
       rawMsg,
       _currentUserId!,
-      () => setState(() {}), // callback used by ChatService
+          () => setState(() {}),
+      markReadOnReceive: false,
     );
 
-    // Re-build chat listing so UI shows the last message / badge update.
-    // (Very cheap – it only hits memory, no HTTP)
-    setState(() {
-      _chatHistory = _chatService.buildChatHistorySnapshot(_currentUserId!);
-    });
+    await _fetchChatHistory();
   }
 
   void _markAllAsReadStomp() {
@@ -501,27 +498,16 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
           }
         }
 
-        return Container(
+        return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: chat.unreadCount > 0
-                  ? colorScheme.primary.withOpacity(0.3)
-                  : Colors.transparent,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.shadow.withOpacity(0.2),
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              ),
-            ],
+          color: colorScheme.surface,
+          elevation: 4, // stronger shadow for better separation
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
           child: ListTile(
             contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             leading: _buildChatAvatar(chat.participant, theme, colorScheme),
             title: Row(
               children: [
@@ -540,12 +526,13 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                 if (chat.unreadCount > 0)
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: colorScheme.primary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: colorScheme.primary.withOpacity(0.3)),
+                        color: colorScheme.primary.withOpacity(0.3),
+                      ),
                     ),
                     child: Text(
                       '${chat.unreadCount}',
@@ -558,39 +545,33 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                   ),
               ],
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            subtitle: Row(
               children: [
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        (lastMsg?.plaintext?.isNotEmpty ?? false)
-                            ? lastMsg!.plaintext!
-                            : '[ENCRYPTED]',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: theme.textTheme.bodyMedium?.color,
-                          fontSize: 12,
-                          fontFamily:
-                              lastMsg?.plaintext == null ? 'monospace' : null,
-                        ),
-                      ),
+                Expanded(
+                  child: Text(
+                    (lastMsg?.plaintext?.isNotEmpty ?? false)
+                        ? lastMsg!.plaintext!
+                        : '[ENCRYPTED]',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: theme.textTheme.bodyMedium?.color,
+                      fontSize: 12,
+                      fontFamily:
+                      lastMsg?.plaintext == null ? 'monospace' : null,
                     ),
-                    if (timeString.isNotEmpty)
-                      Text(
-                        timeString,
-                        style: TextStyle(
-                          color: theme.textTheme.bodyMedium?.color
-                              ?.withOpacity(0.7),
-                          fontSize: 10,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
+                if (timeString.isNotEmpty)
+                  Text(
+                    timeString,
+                    style: TextStyle(
+                      color:
+                      theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
               ],
             ),
             onTap: () => _navigateToChat(chat),
@@ -599,6 +580,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
       },
     );
   }
+
 
   Widget _buildChatAvatar(
       String userId, ThemeData theme, ColorScheme colorScheme) {

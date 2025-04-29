@@ -48,6 +48,7 @@ class AppTheme {
     primary: Colors.blue,
     secondary: Colors.lightBlueAccent,
     error: Colors.redAccent,
+    tertiary: Color(0xFFCAE4FF),
     surface: Color(0xFFFFFFFF),
   );
 
@@ -81,6 +82,7 @@ class AppTheme {
     primary: Colors.cyan,
     secondary: Colors.cyanAccent,
     error: Colors.red,
+    tertiary: Color(0xFF26A69A),
     surface: Color(0xFF121A24),
   );
 
@@ -114,6 +116,7 @@ class AppTheme {
     primary: Color(0xFF00FF9F), // neon-green
     secondary: Color(0xFF00C3FF), // electric-cyan
     error: Color(0xFFFF005B),
+    tertiary: Color(0xFF488F73),
     surface: Color(0xFF10151B),
   );
 
