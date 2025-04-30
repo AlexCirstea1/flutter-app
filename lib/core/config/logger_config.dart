@@ -10,6 +10,7 @@ class LoggerService {
       printEmojis: true,
       dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
+    level: Level.warning,
   );
 
   static void logInfo(String message) {
@@ -25,11 +26,24 @@ class LoggerService {
     _logger.e(message, error: error, stackTrace: stackTrace);
   }
 
+  static void logException(Exception exception, {String? context, StackTrace? stackTrace}) {
+    _logger.e('Exception: ${exception.toString()}',
+        error: exception,
+        stackTrace: stackTrace ?? StackTrace.current);
+  }
+
   static void logDebug(String message) {
     _logger.d(message);
   }
 
   static void logVerbose(String message) {
     _logger.v(message);
+  }
+
+  static void logErrorWithContext(String className, String methodName, String message,
+      [dynamic error, StackTrace? stackTrace]) {
+    _logger.e('[$className.$methodName] $message',
+        error: error,
+        stackTrace: stackTrace);
   }
 }

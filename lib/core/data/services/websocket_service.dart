@@ -59,7 +59,7 @@ class WebSocketService {
           'Authorization': 'Bearer $accessToken',
         },
         onWebSocketError: (dynamic error) {
-          LoggerService.logError('WebSocket error', error);
+          // LoggerService.logError('WebSocket error', error);
           _connectionStatusController.add(false);
         },
         onStompError: (StompFrame frame) {

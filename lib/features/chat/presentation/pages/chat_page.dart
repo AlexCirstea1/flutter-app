@@ -36,8 +36,8 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   bool _isBlocked = false;
   bool _amIBlocked = false;
-  bool _isCurrentUserAdmin = false;
-  bool _isChatPartnerAdmin = false;
+  final bool _isCurrentUserAdmin = false;
+  final bool _isChatPartnerAdmin = false;
   bool _chatAuthorized = false;
   bool _chatRequestSent = false;
 
@@ -45,7 +45,6 @@ class _ChatPageState extends State<ChatPage> {
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
-  final StorageService _storageService = StorageService();
 
   late final ChatService _chatService = serviceLocator<ChatService>();
   bool _isInitializing = true;
@@ -62,8 +61,6 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _initializeChat();
-    _checkBlockStatus();
-    _checkAdminStatus();
   }
 
   @override
@@ -74,125 +71,33 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  Future<void> _checkAdminStatus() async {
+  Future<void> _fetchBlockStatus() async {
     try {
-      final token = await _storageService.getAccessToken();
-      if (token == null) throw Exception('Authentication required');
-
-      // Check current user roles
-      if (_currentUserId != null) {
-        final currentUserUrl = Uri.parse(
-            '${Environment.apiBaseUrl}/user/public/$_currentUserId/roles');
-        final currentUserResponse = await http.get(currentUserUrl);
-
-        if (currentUserResponse.statusCode == 200) {
-          final List<dynamic> roles = jsonDecode(currentUserResponse.body);
-          _isCurrentUserAdmin =
-              roles.any((r) => r.toString().toUpperCase().contains("ADMIN"));
-        }
-      }
-
-      // Check chat partner roles
-      final chatPartnerUrl = Uri.parse(
-          '${Environment.apiBaseUrl}/user/public/${widget.chatUserId}/roles');
-      final chatPartnerResponse = await http.get(chatPartnerUrl);
-
-      if (chatPartnerResponse.statusCode == 200) {
-        final List<dynamic> roles = jsonDecode(chatPartnerResponse.body);
-        _isChatPartnerAdmin =
-            roles.any((r) => r.toString().toUpperCase().contains("ADMIN"));
-      }
-
-      if (mounted) setState(() {});
-    } catch (e) {
-      LoggerService.logError('Error checking admin status', e);
-    }
-  }
-
-  Future<void> _checkBlockStatus() async {
-    try {
-      final token = await _storageService.getAccessToken();
+      final storage = StorageService();
+      final token = await storage.getAccessToken();
       if (token == null) return;
 
-      // Check if the current user has blocked the chat partner
-      final youBlocked = Uri.parse(
-          '${Environment.apiBaseUrl}/user/block/${widget.chatUserId}/status');
-      final youBlockedResponse = await http.get(
-        youBlocked,
+      final youBlockedResp = await http.get(
+        Uri.parse(
+            '${Environment.apiBaseUrl}/user/block/${widget.chatUserId}/status'),
         headers: {'Authorization': 'Bearer $token'},
       );
-
-      // Check if the chat partner has blocked the current user
-      final theyBlockedYou = Uri.parse(
-          '${Environment.apiBaseUrl}/user/blockedBy/${widget.chatUserId}/status');
-      final theyBlockedYouResponse = await http.get(
-        theyBlockedYou,
+      final theyBlockedResp = await http.get(
+        Uri.parse(
+            '${Environment.apiBaseUrl}/user/blockedBy/${widget.chatUserId}/status'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (mounted) {
         setState(() {
-          _isBlocked = youBlockedResponse.statusCode == 200 &&
-              jsonDecode(youBlockedResponse.body) == true;
-          _amIBlocked = theyBlockedYouResponse.statusCode == 200 &&
-              jsonDecode(theyBlockedYouResponse.body) == true;
+          _isBlocked = youBlockedResp.statusCode == 200 &&
+              jsonDecode(youBlockedResp.body) == true;
+          _amIBlocked = theyBlockedResp.statusCode == 200 &&
+              jsonDecode(theyBlockedResp.body) == true;
         });
       }
     } catch (e) {
-      LoggerService.logError('Error checking block status', e);
-    }
-  }
-
-  Future<void> _toggleBlock() async {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    final action = _isBlocked ? 'Unblock' : 'Block';
-    final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: Text('$action User'),
-            content: Text(
-                'Are you sure you want to ${_isBlocked ? 'unblock' : 'block'} this user?'),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('CANCEL')),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(action.toUpperCase(),
-                    style:
-                        TextStyle(color: _isBlocked ? cs.primary : cs.error)),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-    if (!confirmed) return;
-
-    setState(() => _isInitializing = true);
-    try {
-      final token = await _storageService.getAccessToken();
-      if (token == null) throw Exception('Not authenticated');
-
-      final uri = Uri.parse(
-          '${Environment.apiBaseUrl}/user/block/${widget.chatUserId}');
-      final resp = _isBlocked
-          ? await http.delete(uri, headers: {'Authorization': 'Bearer $token'})
-          : await http.post(uri, headers: {'Authorization': 'Bearer $token'});
-
-      if (resp.statusCode == 200) {
-        setState(() => _isBlocked = !_isBlocked);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('User ${_isBlocked ? 'blocked' : 'unblocked'}')));
-      } else {
-        throw Exception('Failed (${resp.statusCode})');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
-    } finally {
-      setState(() => _isInitializing = false);
+      LoggerService.logError('Block status check failed', e);
     }
   }
 
@@ -211,6 +116,7 @@ class _ChatPageState extends State<ChatPage> {
         }
         return;
       }
+      await _fetchBlockStatus();
       await _chatService.fetchChatHistory(
         chatUserId: widget.chatUserId,
         onMessagesUpdated: _onMessagesUpdated,
@@ -299,27 +205,16 @@ class _ChatPageState extends State<ChatPage> {
         cs: cs,
         theme: theme,
         onBlockStatusChanged: () {
-          _checkBlockStatus();
+          _fetchBlockStatus();
         },
       ),
       body: ChatBackground(
         child: Column(
           children: [
-            if (!_chatAuthorized)
-              ChatRequestGate(
-                chatUserId: widget.chatUserId,
-                recipientUsername: widget.chatUsername,
-                chatRequestSent: _chatRequestSent,
-                chatService: _chatService,
-                onRequestSent: () {
-                  if (mounted) setState(() => _chatRequestSent = true);
-                },
-              ),
             Expanded(
               child: _isInitializing || _isFetchingHistory
                   ? Center(
-                      child: CircularProgressIndicator(color: cs.secondary),
-                    )
+                      child: CircularProgressIndicator(color: cs.secondary))
                   : _chatAuthorized
                       ? ChatMessagesList(
                           messages: _messages,
@@ -328,26 +223,35 @@ class _ChatPageState extends State<ChatPage> {
                           scrollController: _itemScrollController,
                           positionsListener: _itemPositionsListener,
                         )
-                      : const SizedBox.shrink(),
+                      : ChatRequestGate(
+                          chatUserId: widget.chatUserId,
+                          recipientUsername: widget.chatUsername,
+                          chatRequestSent: _chatRequestSent,
+                          chatService: _chatService,
+                          onRequestSent: () {
+                            if (mounted) {
+                              setState(() => _chatRequestSent = true);
+                            }
+                          },
+                        ),
             ),
             Divider(height: 1, color: cs.onSurface.withOpacity(0.2)),
-            _chatAuthorized
-                ? ChatInputWidget(
-                    controller: _messageController,
-                    isBlocked: _isBlocked,
-                    amIBlocked: _amIBlocked,
-                    isCurrentUserAdmin: _isCurrentUserAdmin,
-                    isChatPartnerAdmin: _isChatPartnerAdmin,
-                    onSendMessage: _sendMessage,
-                    onSendFile: (path, type, {required filename}) {
-                      _sendFileMessage(path, type, filename: filename);
-                    },
-                  )
-                : LockedChatInput(
-                    onTap: () {
-                      // Optional: scroll to the request widget
-                    },
-                  ),
+            if (!_isInitializing)
+              _chatAuthorized
+                  ? ChatInputWidget(
+                      controller: _messageController,
+                      isBlocked: _isBlocked,
+                      amIBlocked: _amIBlocked,
+                      isCurrentUserAdmin: _isCurrentUserAdmin,
+                      isChatPartnerAdmin: _isChatPartnerAdmin,
+                      onSendMessage: _sendMessage,
+                      onSendFile: _sendFileMessage,
+                    )
+                  : LockedChatInput(
+                      chatUserId: widget.chatUserId,
+                      onRequestTap: () {},
+                      onBlockStatusChanged: () => _fetchBlockStatus(),
+                    ),
           ],
         ),
       ),

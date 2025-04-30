@@ -47,7 +47,6 @@ class _LoginPageState extends State<LoginPage> {
       final List<Map<String, String>> tmpList = [];
       for (final id in ids) {
         final userData = await _fetchUserDataById(id);
-        debugPrint('Fetched user data for $id: $userData');
         if (userData != null) {
           tmpList.add({
             'id': userData['id'] as String,
@@ -58,7 +57,6 @@ class _LoginPageState extends State<LoginPage> {
       setState(() {
         _recentAccounts = tmpList;
       });
-      debugPrint('Recent accounts loaded: $_recentAccounts');
     } catch (e) {
       LoggerService.logError('Error loading recent accounts', e);
     }
@@ -72,9 +70,6 @@ class _LoginPageState extends State<LoginPage> {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else if (response.statusCode == 404) {
         _storageService.removeRecentAccount(userId);
-      } else {
-        debugPrint(
-            'Error fetching user data for $userId: ${response.statusCode}');
       }
     } catch (e) {
       LoggerService.logError('Error fetching user data by ID $userId', e);
