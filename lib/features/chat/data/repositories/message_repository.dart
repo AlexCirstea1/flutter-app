@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:uuid/uuid.dart';
 
 import '../../../../core/config/environment.dart';
 import '../../../../core/config/logger_config.dart';
@@ -97,8 +96,9 @@ class MessageRepository {
       MessageDTO msg,
       String? myUserId,
       ) async {
-    if (myUserId == null || msg.ciphertext.isEmpty || msg.iv.isEmpty)
+    if (myUserId == null || msg.ciphertext.isEmpty || msg.iv.isEmpty) {
       return;
+    }
 
     final bool isRecipient = (msg.recipient == myUserId);
     final versionToUse =

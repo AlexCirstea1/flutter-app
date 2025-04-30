@@ -1,39 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
-import 'package:vaultx_app/features/profile/presentation/pages/profile_view_page.dart';
 
 import '../../../../core/config/environment.dart';
 import '../../../../core/config/logger_config.dart';
 import '../../../../core/data/services/service_locator.dart';
 import '../../../../core/data/services/storage_service.dart';
 import '../../../../core/data/services/websocket_service.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../data/services/chat_service.dart';
 import '../../domain/models/message_dto.dart';
-import '../widgets/chat_request_widget.dart';
-
-/// We'll define an internal enum to label whether an item is a date header or a normal message.
-enum ChatItemType { dateHeader, message }
-
-/// We'll define a small data class so our list can hold either a date or a message.
-class _ChatListItem {
-  final ChatItemType type;
-  final String? dateLabel; // used if type = dateHeader
-  final MessageDTO? message; // used if type = message
-
-  _ChatListItem.dateHeader(this.dateLabel)
-      : type = ChatItemType.dateHeader,
-        message = null;
-
-  _ChatListItem.message(this.message)
-      : type = ChatItemType.message,
-        dateLabel = null;
-}
+import '../widgets/chat_app_bar.dart';
+import '../widgets/chat_background.dart';
+import '../widgets/chat_input.dart';
+import '../widgets/chat_message_list.dart';
+import '../widgets/chat_request_gate.dart';
+import '../widgets/locked_chat_input.dart';
 
 class ChatPage extends StatefulWidget {
   final String chatUserId;
@@ -54,10 +38,9 @@ class _ChatPageState extends State<ChatPage> {
   bool _amIBlocked = false;
   bool _isCurrentUserAdmin = false;
   bool _isChatPartnerAdmin = false;
-  bool _chatAuthorized = false; // once a message exists
-  bool _chatRequestSent = false; // optimistic after send
+  bool _chatAuthorized = false;
+  bool _chatRequestSent = false;
 
-  final TextEditingController _requestController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
@@ -73,7 +56,7 @@ class _ChatPageState extends State<ChatPage> {
   List<MessageDTO> get _messages => _chatService.messages;
 
   String? _currentUserId;
-  bool _isEphemeral = false;
+  final bool _isEphemeral = false;
 
   @override
   void initState() {
@@ -161,28 +144,30 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _toggleBlock() async {
-    final theme = Theme.of(context);  // Get the current theme
-    final cs = theme.colorScheme;     // Define color scheme variable
-    
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
     final action = _isBlocked ? 'Unblock' : 'Block';
     final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('$action User'),
-        content: Text(
-            'Are you sure you want to ${_isBlocked ? 'unblock' : 'block'} this user?'
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context,false), child: const Text('CANCEL')),
-          TextButton(
-            onPressed: () => Navigator.pop(context,true),
-            child: Text(action.toUpperCase(),
-                style: TextStyle(color: _isBlocked ? cs.primary : cs.error)
-            ),
+          context: context,
+          builder: (_) => AlertDialog(
+            title: Text('$action User'),
+            content: Text(
+                'Are you sure you want to ${_isBlocked ? 'unblock' : 'block'} this user?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('CANCEL')),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(action.toUpperCase(),
+                    style:
+                        TextStyle(color: _isBlocked ? cs.primary : cs.error)),
+              ),
+            ],
           ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
     if (!confirmed) return;
 
     setState(() => _isInitializing = true);
@@ -190,23 +175,22 @@ class _ChatPageState extends State<ChatPage> {
       final token = await _storageService.getAccessToken();
       if (token == null) throw Exception('Not authenticated');
 
-      final uri = Uri.parse('${Environment.apiBaseUrl}/user/block/${widget.chatUserId}');
+      final uri = Uri.parse(
+          '${Environment.apiBaseUrl}/user/block/${widget.chatUserId}');
       final resp = _isBlocked
-          ? await http.delete(uri, headers: {'Authorization':'Bearer $token'})
-          : await http.post(uri,  headers: {'Authorization':'Bearer $token'});
+          ? await http.delete(uri, headers: {'Authorization': 'Bearer $token'})
+          : await http.post(uri, headers: {'Authorization': 'Bearer $token'});
 
       if (resp.statusCode == 200) {
         setState(() => _isBlocked = !_isBlocked);
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('User ${_isBlocked ? 'blocked' : 'unblocked'}'))
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('User ${_isBlocked ? 'blocked' : 'unblocked'}')));
       } else {
         throw Exception('Failed (${resp.statusCode})');
       }
-    } catch(e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'))
-      );
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     } finally {
       setState(() => _isInitializing = false);
     }
@@ -232,7 +216,7 @@ class _ChatPageState extends State<ChatPage> {
         onMessagesUpdated: _onMessagesUpdated,
       );
 
-      _chatAuthorized = _chatService.messages.isNotEmpty; // NEW
+      _chatAuthorized = _chatService.messages.isNotEmpty;
 
       final ws = WebSocketService();
       if (!ws.isConnected) await ws.connect();
@@ -248,12 +232,10 @@ class _ChatPageState extends State<ChatPage> {
               _onMessagesUpdated,
             );
             if (!_chatAuthorized) {
-              setState(() => _chatAuthorized = true); // unlock
+              setState(() => _chatAuthorized = true);
             }
             break;
-          case 'CHAT_REQUEST': // incoming notification (optional usage)
-            // If I just sent it, we already flipped flag. If I am recipient,
-            // show banner in Requests screen; nothing done here.
+          case 'CHAT_REQUEST':
             break;
           case 'READ_RECEIPT':
             _chatService.handleReadReceipt(
@@ -290,7 +272,7 @@ class _ChatPageState extends State<ChatPage> {
       currentUserId: _currentUserId!,
       chatUserId: widget.chatUserId,
       content: text,
-      oneTime: _isEphemeral, // pass ephemeral setting
+      oneTime: _isEphemeral,
       onEphemeralAdded: (MessageDTO ephemeral) {
         setState(() {
           _messages.add(ephemeral);
@@ -301,125 +283,8 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Future<void> _sendChatRequest() async {
-    final text = _requestController.text.trim();
-    if (text.isEmpty || _currentUserId == null) return;
-    _requestController.clear();
-
-    final result = await _chatService.sendChatRequest(
-      chatUserId: widget.chatUserId,
-      content: text,
-    );
-
-    if (mounted) setState(() => _chatRequestSent = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request sent – waiting for approval')));
-  }
-
-  /// A helper to decide how to label a date header
-  String _formatDateHeader(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final msgDay = DateTime(dt.year, dt.month, dt.day);
-    final diff = msgDay.difference(today).inDays;
-
-    if (diff == 0) {
-      return 'Today';
-    } else if (diff == -1) {
-      return 'Yesterday';
-    } else {
-      // fallback to a more general format, e.g. "Oct 5, 2025"
-      // Or your own style
-      return "${_monthName(dt.month)} ${dt.day}, ${dt.year}";
-    }
-  }
-
-  String _monthName(int month) {
-    switch (month) {
-      case 1:
-        return "Jan";
-      case 2:
-        return "Feb";
-      case 3:
-        return "Mar";
-      case 4:
-        return "Apr";
-      case 5:
-        return "May";
-      case 6:
-        return "Jun";
-      case 7:
-        return "Jul";
-      case 8:
-        return "Aug";
-      case 9:
-        return "Sep";
-      case 10:
-        return "Oct";
-      case 11:
-        return "Nov";
-      case 12:
-        return "Dec";
-      default:
-        return "$month";
-    }
-  }
-
-  /// Build a combined list of items: day separator (header) + messages
-  List<_ChatListItem> _buildChatItems() {
-    final items = <_ChatListItem>[];
-    DateTime? lastDay; // we track the last day we inserted
-
-    for (var i = 0; i < _messages.length; i++) {
-      final m = _messages[i];
-      // 'Day' is year-month-day only
-      final msgDay =
-          DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
-
-      // If day changed (or first message), we insert a date-header item
-      if (lastDay == null ||
-          msgDay.year != lastDay.year ||
-          msgDay.month != lastDay.month ||
-          msgDay.day != lastDay.day) {
-        items.add(_ChatListItem.dateHeader(_formatDateHeader(m.timestamp)));
-        lastDay = msgDay;
-      }
-
-      // Then the message item
-      items.add(_ChatListItem.message(m));
-    }
-
-    return items;
-  }
-
-  String _formatTime(DateTime dt) {
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
-  }
-
-  Widget _buildMessagesList() {
-    final chatItems = _buildChatItems();
-
-    return ScrollablePositionedList.builder(
-      itemScrollController: _itemScrollController,
-      itemPositionsListener: _itemPositionsListener,
-      // Jump to last item
-      initialScrollIndex: chatItems.isEmpty ? 0 : chatItems.length - 1,
-      itemCount: chatItems.length,
-      itemBuilder: (ctx, i) {
-        final item = chatItems[i];
-        if (item.type == ChatItemType.dateHeader) {
-          // Return a 'date divider' row
-          return _buildDateDivider(item.dateLabel ?? '');
-        } else {
-          // Return the actual message bubble
-          final msg = item.message!;
-          final isMine = (msg.sender == _currentUserId);
-          return _buildBubble(msg, isMine);
-        }
-      },
-    );
+  void _sendFileMessage(String path, String type, {required String filename}) {
+    // Implement file sending functionality
   }
 
   @override
@@ -427,777 +292,65 @@ class _ChatPageState extends State<ChatPage> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    // Determine which background image to use based on the current theme
-    String backgroundImage;
-    if (cs == AppTheme.lightTheme.colorScheme) {
-      backgroundImage = 'assets/images/chat_bg.png';
-    } else if (cs == AppTheme.darkTheme.colorScheme) {
-      backgroundImage = 'assets/images/chat_bg_dark.png';
-    } else {
-      backgroundImage = 'assets/images/chat_bg_cyber.png';
-    }
-
     return Scaffold(
-      appBar: _buildAppBar(theme, cs),
-      body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(backgroundImage),
-            repeat: ImageRepeat.repeat,
-            fit: BoxFit.contain,
-            opacity: 0.2,
-            colorFilter: ColorFilter.mode(
-              cs.surface, // Uses the current theme's surface color
-              BlendMode.color, // This blend mode applies the color while preserving texture
-            ),
-          ),
-        ),
+      appBar: ChatAppBar(
+        chatUserId: widget.chatUserId,
+        chatUsername: widget.chatUsername,
+        cs: cs,
+        theme: theme,
+        onBlockStatusChanged: () {
+          _checkBlockStatus();
+        },
+      ),
+      body: ChatBackground(
         child: Column(
           children: [
-            if (!_chatAuthorized) _buildRequestGate(),
+            if (!_chatAuthorized)
+              ChatRequestGate(
+                chatUserId: widget.chatUserId,
+                recipientUsername: widget.chatUsername,
+                chatRequestSent: _chatRequestSent,
+                chatService: _chatService,
+                onRequestSent: () {
+                  if (mounted) setState(() => _chatRequestSent = true);
+                },
+              ),
             Expanded(
               child: _isInitializing || _isFetchingHistory
                   ? Center(
-                child: CircularProgressIndicator(color: cs.secondary),
-              )
+                      child: CircularProgressIndicator(color: cs.secondary),
+                    )
                   : _chatAuthorized
-                  ? _buildMessagesList()
-                  : const SizedBox.shrink(),
+                      ? ChatMessagesList(
+                          messages: _messages,
+                          currentUserId: _currentUserId,
+                          isLoading: false,
+                          scrollController: _itemScrollController,
+                          positionsListener: _itemPositionsListener,
+                        )
+                      : const SizedBox.shrink(),
             ),
             Divider(height: 1, color: cs.onSurface.withOpacity(0.2)),
-            _chatAuthorized ? _buildTextInput() : _buildLockedInput(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  PreferredSize _buildAppBar(ThemeData theme, ColorScheme cs) {
-    // Get a safe initial character for the avatar
-    final String initial = widget.chatUsername.isNotEmpty
-        ? widget.chatUsername[0].toUpperCase()
-        : "?";
-
-    // Add these state variables at the class level
-    bool _isUserOnline = false;
-    DateTime? _lastSeen;
-    Timer? _statusRefreshTimer;
-
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(60),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 12,
-              spreadRadius: 0,
-            ),
-            BoxShadow(
-              color: cs.primary.withOpacity(0.1),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            child: Row(
-              children: [
-                // Back button with enhanced styling
-                IconButton(
-                  icon: Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: cs.primary,
-                    size: 20,
-                  ),
-                  style: IconButton.styleFrom(
-                    backgroundColor: cs.primary.withOpacity(0.08),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const SizedBox(width: 12),
-                // Enhanced avatar with glow effect
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        cs.primary.withOpacity(0.2),
-                        cs.primary.withOpacity(0.1),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: cs.primary.withOpacity(0.2),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(2),
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: cs.primary.withOpacity(0.15),
-                    child: Text(
-                      initial,
-                      style: TextStyle(
-                        color: cs.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                // Username with online status
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              widget.chatUsername.isNotEmpty
-                                  ? widget.chatUsername
-                                  : "Unknown User",
-                              style: TextStyle(
-                                color: theme.textTheme.titleLarge?.color,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      FutureBuilder<Map<String, dynamic>?>(
-                        future: _fetchUserData(widget.chatUserId),
-                        builder: (context, snapshot) {
-                          bool isOnline = false;
-                          String statusText = "Offline";
-
-                          if (snapshot.hasData && snapshot.data != null) {
-                            isOnline = snapshot.data!['online'] ?? false;
-                            if (isOnline) {
-                              statusText = "Online";
-                            } else if (snapshot.data!['lastSeen'] != null) {
-                              final lastSeen = DateTime.parse(snapshot.data!['lastSeen']);
-                              final now = DateTime.now().toUtc();
-                              final difference = now.difference(lastSeen);
-
-                              if (difference.inMinutes < 1) {
-                                statusText = "Just now";
-                              } else if (difference.inHours < 1) {
-                                statusText = "${difference.inMinutes}m ago";
-                              } else if (difference.inDays < 1) {
-                                statusText = "${difference.inHours}h ago";
-                              } else if (difference.inDays < 7) {
-                                statusText = "${difference.inDays}d ago";
-                              } else {
-                                statusText = "${lastSeen.day}/${lastSeen.month}/${lastSeen.year}";
-                              }
-                            }
-                          }
-
-                          return Row(
-                            children: [
-                              Container(
-                                height: 8,
-                                width: 8,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isOnline ? Colors.green : cs.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                statusText,
-                                style: TextStyle(
-                                  color: isOnline
-                                      ? Colors.green.shade700
-                                      : cs.primary.withOpacity(0.8),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                // Enhanced profile view button
-                Material(
-                  color: Colors.transparent,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: cs.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: cs.primary.withOpacity(0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () async {
-                        final r = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ProfileViewPage(
-                              userId: widget.chatUserId,
-                              username: widget.chatUsername,
-                            ),
-                          ),
-                        );
-                        if (r == 'blocked' || r == 'unblocked') _checkBlockStatus();
-                        if (r == 'deleted' || r == 'reported') Navigator.pop(context);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(
-                          Icons.account_circle_outlined,
-                          color: cs.primary,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<Map<String, dynamic>?> _fetchUserData(String userId) async {
-    try {
-      final url = Uri.parse('${Environment.apiBaseUrl}/user/public/$userId');
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      } else {
-        LoggerService.logError(
-            'Error fetching user data: ${response.statusCode}', null);
-      }
-    } catch (e) {
-      LoggerService.logError('Error fetching user data by ID $userId', e);
-    }
-    return null;
-  }
-
-  Widget _buildLockedInput() {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -3),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-              color: theme.brightness == Brightness.dark
-                  ? cs.surface.withOpacity(0.8)
-                  : cs.primary.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: cs.primary.withOpacity(0.2),
-                width: 1.5,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: cs.primary.withOpacity(0.1),
-                  ),
-                  child: Icon(
-                    Icons.lock_outline,
-                    size: 18,
-                    color: cs.primary,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Flexible(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'SECURE CONNECTION REQUIRED',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
-                          color: cs.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Send a request to start messaging',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        cs.primary.withOpacity(0.8),
-                        cs.primary.withBlue(min(cs.primary.blue + 30, 255)).withOpacity(0.9),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: cs.primary.withOpacity(0.2),
-                        blurRadius: 4,
-                        spreadRadius: 0,
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    child: Icon(
-                      Icons.arrow_upward_rounded,
-                      size: 16,
-                      color: cs.onPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateDivider(String label) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Center(
-      child: Chip(
-        label: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: cs.onSurface.withOpacity(0.6),
-          ),
-        ),
-        backgroundColor: cs.surface.withOpacity(0.1),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-      ),
-    );
-  }
-
-  Widget _buildTextInput() {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    if (_isBlocked ||
-        _amIBlocked ||
-        _isCurrentUserAdmin ||
-        _isChatPartnerAdmin) {
-      final message = _isCurrentUserAdmin || _isChatPartnerAdmin
-          ? 'Messaging disabled for admin accounts.'
-          : (_isBlocked 
-              ? 'Unblock to send messages.' 
-              : _amIBlocked 
-                  ? 'You have been blocked by this user.' 
-                  : 'You cannot send messages.');
-
-      return Container(
-        color: cs.surface,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // Ephemeral message toggle with animation
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _isEphemeral
-                      ? cs.primary.withOpacity(0.2)
-                      : cs.surface,
-                  border: Border.all(
-                    color: _isEphemeral
-                        ? cs.primary
-                        : cs.onSurface.withOpacity(0.2),
-                    width: 1.5,
-                  ),
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    Icons.whatshot,
-                    size: 22,
-                    color: _isEphemeral
-                        ? cs.primary
-                        : theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
-                  ),
-                  tooltip: 'One-time message',
-                  onPressed: () {
-                    setState(() => _isEphemeral = !_isEphemeral);
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    color: theme.brightness == Brightness.dark
-                        ? cs.surface.withOpacity(0.8)
-                        : cs.onPrimary.withOpacity(0.9),
-                    border: Border.all(
-                      color: cs.primary.withOpacity(0.3),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: cs.primary.withOpacity(0.1),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: TextField(
+            _chatAuthorized
+                ? ChatInputWidget(
                     controller: _messageController,
-                    style: TextStyle(
-                      color: theme.textTheme.bodyLarge?.color,
-                      fontSize: 15,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Type your message...',
-                      hintStyle: TextStyle(
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
-                      ),
-                      filled: false,
-                      contentPadding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                          horizontal: 20
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      prefixIcon: _isEphemeral ? Icon(
-                        Icons.timer,
-                        size: 16,
-                        color: cs.primary,
-                      ) : null,
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
+                    isBlocked: _isBlocked,
+                    amIBlocked: _amIBlocked,
+                    isCurrentUserAdmin: _isCurrentUserAdmin,
+                    isChatPartnerAdmin: _isChatPartnerAdmin,
+                    onSendMessage: _sendMessage,
+                    onSendFile: (path, type, {required filename}) {
+                      _sendFileMessage(path, type, filename: filename);
+                    },
+                  )
+                : LockedChatInput(
+                    onTap: () {
+                      // Optional: scroll to the request widget
+                    },
                   ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      cs.primary,
-                      cs.primary.withBlue(min(cs.primary.blue + 30, 255)),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.primary.withOpacity(0.4),
-                      blurRadius: 8,
-                      spreadRadius: 0.5,
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: _sendMessage,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Icon(
-                        Icons.send_rounded,
-                        color: cs.onPrimary,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBubble(MessageDTO msg, bool isMine) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isMine
-              ? cs.primary.withOpacity(0.85)
-              : cs.tertiary.withOpacity(0.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isMine ? 18 : 0),
-            bottomRight: Radius.circular(isMine ? 0 : 18),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              msg.plaintext ?? '[Encrypted]',
-              style: TextStyle(
-                color: isMine
-                    ? cs.onPrimary
-                    : Theme.of(context).textTheme.bodyLarge?.color,
-                fontSize: 15,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (msg.oneTime)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Icon(
-                      Icons.timer,
-                      size: 12,
-                      color: isMine
-                          ? cs.onPrimary.withOpacity(0.7)
-                          : Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.color
-                          ?.withOpacity(0.6),
-                    ),
-                  ),
-                Text(
-                  _formatTime(msg.timestamp),
-                  style: TextStyle(
-                    color: isMine
-                        ? cs.onPrimary.withOpacity(0.7)
-                        : Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.color
-                        ?.withOpacity(0.6),
-                    fontSize: 11,
-                  ),
-                ),
-                if (isMine)
-                  Icon(
-                    msg.isRead ? Icons.done_all : Icons.done,
-                    size: 16,
-                    color: isMine
-                        ? cs.onPrimary.withOpacity(0.7)
-                        : Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.color
-                        ?.withOpacity(0.6),
-                  ),
-              ],
-            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildRequestGate() {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: theme.brightness == Brightness.dark
-            ? cs.surface.withOpacity(0.9)
-            : cs.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: cs.primary.withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-              color: cs.primary.withOpacity(0.08),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(14),
-                topRight: Radius.circular(14),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.enhanced_encryption,
-                  color: cs.primary,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'SECURE CONNECTION REQUEST',
-                  style: TextStyle(
-                    color: cs.primary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const Spacer(),
-                if (_chatRequestSent)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: cs.primary.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.hourglass_top,
-                          size: 14,
-                          color: cs.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'PENDING',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: cs.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: ChatRequestWidget(
-              recipientUsername: widget.chatUsername,
-              requestSent: _chatRequestSent,
-              onSendRequest: (String message) async {
-                final result = await _chatService.sendChatRequest(
-                  chatUserId: widget.chatUserId,
-                  content: message,
-                );
-
-                if (mounted) setState(() => _chatRequestSent = true);
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Request sent – waiting for approval'))
-                );
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
 }
-
