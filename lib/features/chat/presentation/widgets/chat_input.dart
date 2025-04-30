@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 import '../../../../core/config/logger_config.dart';
 
@@ -12,7 +13,8 @@ class ChatInputWidget extends StatefulWidget {
   final bool isCurrentUserAdmin;
   final bool isChatPartnerAdmin;
   final Function() onSendMessage;
-  final Function(String path, String type, {required String filename}) onSendFile;
+  final Function(String path, String type, {required String filename})
+      onSendFile;
 
   const ChatInputWidget({
     super.key,
@@ -31,20 +33,48 @@ class ChatInputWidget extends StatefulWidget {
 
 class _ChatInputWidgetState extends State<ChatInputWidget> {
   bool _isEphemeral = false;
+  bool _hasText = false;
+  final ValueNotifier<bool> _isDialOpen = ValueNotifier<bool>(false);
+
+  @override
+  void initState() {
+    super.initState();
+    // Add listener to track text changes
+    widget.controller.addListener(_updateTextStatus);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_updateTextStatus);
+    _isDialOpen.dispose();
+    super.dispose();
+  }
+
+  void _updateTextStatus() {
+    final hasText = widget.controller.text.isNotEmpty;
+    if (_hasText != hasText) {
+      setState(() {
+        _hasText = hasText;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    if (widget.isBlocked || widget.amIBlocked || widget.isCurrentUserAdmin || widget.isChatPartnerAdmin) {
+    if (widget.isBlocked ||
+        widget.amIBlocked ||
+        widget.isCurrentUserAdmin ||
+        widget.isChatPartnerAdmin) {
       final message = widget.isCurrentUserAdmin || widget.isChatPartnerAdmin
           ? 'Messaging disabled for admin accounts.'
           : (widget.isBlocked
-          ? 'Unblock to send messages.'
-          : widget.amIBlocked
-          ? 'You have been blocked by this user.'
-          : 'You cannot send messages.');
+              ? 'Unblock to send messages.'
+              : widget.amIBlocked
+                  ? 'You have been blocked by this user.'
+                  : 'You cannot send messages.');
 
       return Container(
         color: cs.surface,
@@ -80,55 +110,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              // Attachment button
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: cs.surface,
-                  border: Border.all(
-                    color: cs.onSurface.withOpacity(0.2),
-                    width: 1.5,
-                  ),
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    Icons.attach_file,
-                    size: 22,
-                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
-                  ),
-                  tooltip: 'Attach file',
-                  onPressed: _showAttachmentOptions,
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Ephemeral message toggle with animation
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _isEphemeral
-                      ? cs.primary.withOpacity(0.2)
-                      : cs.surface,
-                  border: Border.all(
-                    color: _isEphemeral
-                        ? cs.primary
-                        : cs.onSurface.withOpacity(0.2),
-                    width: 1.5,
-                  ),
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    Icons.whatshot,
-                    size: 22,
-                    color: _isEphemeral
-                        ? cs.primary
-                        : theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
-                  ),
-                  tooltip: 'One-time message',
-                  onPressed: () {
-                    setState(() => _isEphemeral = !_isEphemeral);
-                  },
-                ),
-              ),
+              // SpeedDial for attachments and ephemeral toggle
+              _buildSpeedDial(cs, theme),
               const SizedBox(width: 12),
               Expanded(
                 child: Container(
@@ -174,6 +157,17 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                         Icons.whatshot,
                         size: 16,
                         color: cs.primary.withOpacity(0.7),
+                      )
+                          : null,
+                      // Add clear button as suffix icon when there's text
+                      suffixIcon: _hasText
+                          ? IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () {
+                          widget.controller.clear();
+                        },
+                        splashRadius: 16,
+                        tooltip: 'Clear message',
                       )
                           : null,
                     ),
@@ -224,101 +218,66 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     );
   }
 
-  void _showAttachmentOptions() {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cs.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Attach',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: theme.textTheme.titleLarge?.color,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildAttachmentOption(
-                    icon: Icons.photo_library,
-                    label: 'Gallery',
-                    color: Colors.purple,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pickImageFromGallery();
-                    },
-                  ),
-                  _buildAttachmentOption(
-                    icon: Icons.camera_alt,
-                    label: 'Camera',
-                    color: Colors.blue,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _takePhoto();
-                    },
-                  ),
-                  _buildAttachmentOption(
-                    icon: Icons.insert_drive_file,
-                    label: 'Document',
-                    color: Colors.orange,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _pickDocument();
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
+  Widget _buildSpeedDial(ColorScheme cs, ThemeData theme) {
+    return SpeedDial(
+      icon: Icons.add,
+      activeIcon: Icons.close,
+      spacing: 3,
+      openCloseDial: _isDialOpen,
+      elevation: 2,
+      renderOverlay: false,
+      buttonSize: const Size(46, 46),
+      childrenButtonSize: const Size(56, 56),
+      backgroundColor: cs.tertiary,
+      foregroundColor: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+      overlayColor: Colors.black,
+      overlayOpacity: 0.5,
+      children: [
+        SpeedDialChild(
+          child: const Icon(Icons.photo_library, color: Colors.white),
+          backgroundColor: Colors.purple,
+          labelWidget: _buildLabel('Gallery'),
+          onTap: _pickImageFromGallery,
         ),
-      ),
+        SpeedDialChild(
+          child: const Icon(Icons.camera_alt, color: Colors.white),
+          backgroundColor: Colors.blue,
+          labelWidget: _buildLabel('Camera'),
+          onTap: _takePhoto,
+        ),
+        SpeedDialChild(
+          child: const Icon(Icons.insert_drive_file, color: Colors.white),
+          backgroundColor: Colors.orange,
+          labelWidget: _buildLabel('Document'),
+          onTap: _pickDocument,
+        ),
+        SpeedDialChild(
+          child: const Icon(Icons.whatshot, color: Colors.white),
+          backgroundColor: _isEphemeral ? cs.primary : Colors.grey,
+          labelWidget:
+              _buildLabel(_isEphemeral ? 'One-time: ON' : 'One-time: OFF'),
+          onTap: () {
+            setState(() => _isEphemeral = !_isEphemeral);
+          },
+        ),
+      ],
     );
   }
 
-  Widget _buildAttachmentOption({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).textTheme.bodyMedium?.color,
-              ),
-            ),
-          ],
+  Widget _buildLabel(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      margin: const EdgeInsets.only(right: 10),
+      decoration: BoxDecoration(
+        color: Colors.black87,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
         ),
       ),
     );
