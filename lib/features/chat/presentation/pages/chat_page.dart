@@ -127,26 +127,38 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _checkBlockStatus() async {
-    final token = await _storageService.getAccessToken();
-    if (token == null) return;
+    try {
+      final token = await _storageService.getAccessToken();
+      if (token == null) return;
 
-    final youBlocked = Uri.parse(
-        '${Environment.apiBaseUrl}/user/block/${widget.chatUserId}/status'
-    );
-    final theyBlockedYou = Uri.parse(
-        '${Environment.apiBaseUrl}/user/blockedBy/$_currentUserId/status'
-    );
+      // Check if the current user has blocked the chat partner
+      final youBlocked = Uri.parse(
+          '${Environment.apiBaseUrl}/user/block/${widget.chatUserId}/status');
+      final youBlockedResponse = await http.get(
+        youBlocked,
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-    final res1 = await http.get(youBlocked, headers:{'Authorization':'Bearer $token'});
-    final res2 = await http.get(theyBlockedYou, headers:{'Authorization':'Bearer $token'});
+      // Check if the chat partner has blocked the current user
+      final theyBlockedYou = Uri.parse(
+          '${Environment.apiBaseUrl}/user/blockedBy/${widget.chatUserId}/status');
+      final theyBlockedYouResponse = await http.get(
+        theyBlockedYou,
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-    if (!mounted) return;
-    setState(() {
-      _isBlocked = res1.statusCode==200 && jsonDecode(res1.body)==true;
-      _amIBlocked= res2.statusCode==200 && jsonDecode(res2.body)==true;
-    });
+      if (mounted) {
+        setState(() {
+          _isBlocked = youBlockedResponse.statusCode == 200 &&
+              jsonDecode(youBlockedResponse.body) == true;
+          _amIBlocked = theyBlockedYouResponse.statusCode == 200 &&
+              jsonDecode(theyBlockedYouResponse.body) == true;
+        });
+      }
+    } catch (e) {
+      LoggerService.logError('Error checking block status', e);
+    }
   }
-
 
   Future<void> _toggleBlock() async {
     final theme = Theme.of(context);  // Get the current theme
@@ -826,7 +838,11 @@ class _ChatPageState extends State<ChatPage> {
         _isChatPartnerAdmin) {
       final message = _isCurrentUserAdmin || _isChatPartnerAdmin
           ? 'Messaging disabled for admin accounts.'
-          : (_isBlocked ? 'Unblock to send messages.' : 'You cannot send messages.');
+          : (_isBlocked 
+              ? 'Unblock to send messages.' 
+              : _amIBlocked 
+                  ? 'You have been blocked by this user.' 
+                  : 'You cannot send messages.');
 
       return Container(
         color: cs.surface,
