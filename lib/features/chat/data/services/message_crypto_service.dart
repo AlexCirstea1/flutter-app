@@ -75,4 +75,44 @@ class MessageCryptoService {
     fr.seed(KeyParameter(Uint8List.fromList(seeds)));
     return fr;
   }
+
+  /// Same idea as encryptMessage but returns raw-byte cipher.
+  Future<EncryptedDataBundle> encryptData({
+    required Uint8List plaintextBytes,
+    required PublicKeyData senderKey,
+    required PublicKeyData recipientKey,
+  }) async {
+    final aesKeyBytes = _makeFortunaRandom().nextBytes(32);
+    final aesKey = encrypt.Key(aesKeyBytes);
+    final ivBytes = _makeFortunaRandom().nextBytes(16);
+    final ivObj = encrypt.IV(ivBytes);
+
+    final encrypter =
+        encrypt.Encrypter(encrypt.AES(aesKey, mode: encrypt.AESMode.cbc));
+
+    final cipherBytes = encrypter.encryptBytes(plaintextBytes, iv: ivObj).bytes;
+    final aesKeyB64 = base64.encode(aesKeyBytes);
+
+    return EncryptedDataBundle(
+      cipherBytes: cipherBytes,
+      iv: base64.encode(ivBytes),
+      keySender: CryptoHelper.rsaEncrypt(aesKeyB64, senderKey.publicKey),
+      keyRecipient: CryptoHelper.rsaEncrypt(aesKeyB64, recipientKey.publicKey),
+      senderVer: senderKey.keyVersion,
+      recipientVer: recipientKey.keyVersion,
+    );
+  }
+}
+
+class EncryptedDataBundle {
+  final List<int> cipherBytes;
+  final String iv, keySender, keyRecipient, senderVer, recipientVer;
+  EncryptedDataBundle({
+    required this.cipherBytes,
+    required this.iv,
+    required this.keySender,
+    required this.keyRecipient,
+    required this.senderVer,
+    required this.recipientVer,
+  });
 }

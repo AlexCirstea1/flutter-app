@@ -1,10 +1,9 @@
 import 'dart:math';
-import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
-import '../../../../core/config/logger_config.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatInputWidget extends StatefulWidget {
   final TextEditingController controller;
@@ -141,7 +140,8 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                     decoration: InputDecoration(
                       hintText: 'Type your message...',
                       hintStyle: TextStyle(
-                        color: theme.textTheme.bodyLarge?.color?.withOpacity(0.5),
+                        color:
+                            theme.textTheme.bodyLarge?.color?.withOpacity(0.5),
                         fontSize: 15,
                       ),
                       filled: false,
@@ -154,21 +154,21 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
                       focusedBorder: InputBorder.none,
                       prefixIcon: _isEphemeral
                           ? Icon(
-                        Icons.whatshot,
-                        size: 16,
-                        color: cs.primary.withOpacity(0.7),
-                      )
+                              Icons.whatshot,
+                              size: 16,
+                              color: cs.primary.withOpacity(0.7),
+                            )
                           : null,
                       // Add clear button as suffix icon when there's text
                       suffixIcon: _hasText
                           ? IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () {
-                          widget.controller.clear();
-                        },
-                        splashRadius: 16,
-                        tooltip: 'Clear message',
-                      )
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () {
+                                widget.controller.clear();
+                              },
+                              splashRadius: 16,
+                              tooltip: 'Clear message',
+                            )
                           : null,
                     ),
                     onSubmitted: (_) => widget.onSendMessage(),
@@ -283,40 +283,21 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
     );
   }
 
-  Future<void> _pickImageFromGallery() async {
-    try {
-      final result = await ImagePicker().pickImage(source: ImageSource.gallery);
-      if (result != null) {
-        widget.onSendFile(result.path, 'image', filename: '');
-      }
-    } catch (e) {
-      LoggerService.logError('Error picking image', e);
-      _showErrorSnackbar('Could not select image');
-    }
+  _pickImageFromGallery() async {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (x != null) widget.onSendFile(x.path, 'image', filename: x.name);
   }
 
-  Future<void> _takePhoto() async {
-    try {
-      final result = await ImagePicker().pickImage(source: ImageSource.camera);
-      if (result != null) {
-        widget.onSendFile(result.path, 'image', filename: '');
-      }
-    } catch (e) {
-      LoggerService.logError('Error taking photo', e);
-      _showErrorSnackbar('Could not capture image');
-    }
+  _takePhoto() async {
+    final x = await ImagePicker().pickImage(source: ImageSource.camera);
+    if (x != null) widget.onSendFile(x.path, 'image', filename: x.name);
   }
 
-  Future<void> _pickDocument() async {
-    try {
-      final result = await FilePicker.platform.pickFiles();
-      if (result != null && result.files.single.path != null) {
-        widget.onSendFile(result.files.single.path!, 'file',
-            filename: result.files.single.name);
-      }
-    } catch (e) {
-      LoggerService.logError('Error picking document', e);
-      _showErrorSnackbar('Could not select document');
+  _pickDocument() async {
+    final res = await FilePicker.platform.pickFiles();
+    if (res != null && res.files.single.path != null) {
+      widget.onSendFile(res.files.single.path!, 'file',
+          filename: res.files.single.name);
     }
   }
 

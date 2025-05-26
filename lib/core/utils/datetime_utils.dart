@@ -12,7 +12,8 @@ class DateTimeUtils {
   }
 
   // Format a timestamp in the local timezone
-  static String formatDateTime(DateTime dateTime, {String format = 'yyyy-MM-dd HH:mm'}) {
+  static String formatDateTime(DateTime dateTime,
+      {String format = 'yyyy-MM-dd HH:mm'}) {
     final formatter = DateFormat(format);
     return formatter.format(utcToLocal(dateTime));
   }

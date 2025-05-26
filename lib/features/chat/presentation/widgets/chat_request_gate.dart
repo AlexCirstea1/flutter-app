@@ -64,9 +64,8 @@ class ChatRequestGate extends StatelessWidget {
                 );
 
                 onRequestSent();
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Request sent – waiting for approval'))
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Request sent – waiting for approval')));
               },
             ),
           ),

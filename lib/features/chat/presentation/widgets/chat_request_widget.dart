@@ -229,7 +229,8 @@ class _ChatRequestWidgetState extends State<ChatRequestWidget> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: cs.primary,
                 foregroundColor: cs.onPrimary,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -245,21 +246,21 @@ class _ChatRequestWidgetState extends State<ChatRequestWidget> {
                   const SizedBox(width: 8),
                   _isLoading
                       ? SizedBox(
-                    height: 14,
-                    width: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: cs.onPrimary,
-                    ),
-                  )
+                          height: 14,
+                          width: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: cs.onPrimary,
+                          ),
+                        )
                       : const Text(
-                    'SEND REQUEST',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
+                          'SEND REQUEST',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
                 ],
               ),
             ),

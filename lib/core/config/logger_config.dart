@@ -26,10 +26,10 @@ class LoggerService {
     _logger.e(message, error: error, stackTrace: stackTrace);
   }
 
-  static void logException(Exception exception, {String? context, StackTrace? stackTrace}) {
+  static void logException(Exception exception,
+      {String? context, StackTrace? stackTrace}) {
     _logger.e('Exception: ${exception.toString()}',
-        error: exception,
-        stackTrace: stackTrace ?? StackTrace.current);
+        error: exception, stackTrace: stackTrace ?? StackTrace.current);
   }
 
   static void logDebug(String message) {
@@ -40,10 +40,10 @@ class LoggerService {
     _logger.v(message);
   }
 
-  static void logErrorWithContext(String className, String methodName, String message,
+  static void logErrorWithContext(
+      String className, String methodName, String message,
       [dynamic error, StackTrace? stackTrace]) {
     _logger.e('[$className.$methodName] $message',
-        error: error,
-        stackTrace: stackTrace);
+        error: error, stackTrace: stackTrace);
   }
 }

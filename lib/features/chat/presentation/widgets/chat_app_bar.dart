@@ -28,9 +28,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String initial = chatUsername.isNotEmpty
-        ? chatUsername[0].toUpperCase()
-        : "?";
+    final String initial =
+        chatUsername.isNotEmpty ? chatUsername[0].toUpperCase() : "?";
 
     return Container(
       decoration: BoxDecoration(
@@ -162,7 +161,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 } else if (difference.inDays < 7) {
                   statusText = "${difference.inDays}d ago";
                 } else {
-                  statusText = "${lastSeen.day}/${lastSeen.month}/${lastSeen.year}";
+                  statusText =
+                      "${lastSeen.day}/${lastSeen.month}/${lastSeen.year}";
                 }
               }
             }
@@ -181,7 +181,9 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Text(
                   statusText,
                   style: TextStyle(
-                    color: isOnline ? Colors.green.shade700 : cs.primary.withOpacity(0.8),
+                    color: isOnline
+                        ? Colors.green.shade700
+                        : cs.primary.withOpacity(0.8),
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,

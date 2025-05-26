@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/config/environment.dart';
 import '../../../../core/config/logger_config.dart';
@@ -189,8 +191,29 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  void _sendFileMessage(String path, String type, {required String filename}) {
-    // Implement file sending functionality
+  Future<void> _sendFileMessage(String path, String type,
+      {required String filename}) async {
+    if (_currentUserId == null) return;
+
+    final tempId = const Uuid().v4(); // will become messageId
+    final file = File(path);
+
+    await _chatService.sendFileMessage(
+      currentUserId: _currentUserId!,
+      chatUserId: widget.chatUserId,
+      picked: file,
+      fileName: filename.isEmpty ? file.uri.pathSegments.last : filename,
+      clientTempId: tempId,
+      onLocalEcho: (msg) {
+        setState(() {
+          _messages.add(msg);
+          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        });
+      },
+      onProgress: (p) {
+        // TODO: show progress UI if you wish
+      },
+    );
   }
 
   @override

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+import '../../data/blockchain_api.dart';
 import '../../domain/models/did_event.dart';
 import '../../domain/models/event_history.dart';
-import '../../data/blockchain_api.dart';
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -54,7 +55,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
           style: theme.appBarTheme.titleTextStyle,
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: theme.appBarTheme.iconTheme?.color),
+          icon:
+              Icon(Icons.arrow_back, color: theme.appBarTheme.iconTheme?.color),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -71,67 +73,71 @@ class _EventDetailPageState extends State<EventDetailPage> {
           ),
         ),
         child: _loading
-            ? Center(child: CircularProgressIndicator(color: colorScheme.secondary))
-            : _hasError || _event == null
             ? Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                color: theme.colorScheme.error.withOpacity(0.7),
-                size: 48,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'EVENT NOT FOUND',
-                style: TextStyle(
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-                  fontSize: 16,
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w300,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: _fetch,
-                child: Text(
-                  'RETRY',
-                  style: TextStyle(
-                    color: colorScheme.primary,
-                    letterSpacing: 1.0,
+                child: CircularProgressIndicator(color: colorScheme.secondary))
+            : _hasError || _event == null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: theme.colorScheme.error.withOpacity(0.7),
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'EVENT NOT FOUND',
+                          style: TextStyle(
+                            color: theme.textTheme.bodyMedium?.color
+                                ?.withOpacity(0.7),
+                            fontSize: 16,
+                            letterSpacing: 1.5,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: _fetch,
+                          child: Text(
+                            'RETRY',
+                            style: TextStyle(
+                              color: colorScheme.primary,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    children: [
+                      // Header section with type and icon
+                      _buildHeaderSection(context, colorScheme),
+
+                      const SizedBox(height: 24),
+
+                      // Event details card
+                      _buildDetailsCard(context, colorScheme, df),
+
+                      const SizedBox(height: 24),
+
+                      // Payload section
+                      _buildSectionHeader(
+                          context, 'PAYLOAD', Icons.code, colorScheme),
+                      _buildPayloadCard(context, colorScheme),
+
+                      const SizedBox(height: 24),
+
+                      // History section
+                      _buildSectionHeader(
+                          context, 'HISTORY', Icons.history, colorScheme),
+                      _buildHistoryList(context, colorScheme),
+
+                      const SizedBox(height: 16),
+                    ],
                   ),
-                ),
-              ),
-            ],
-          ),
-        )
-            : ListView(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          children: [
-            // Header section with type and icon
-            _buildHeaderSection(context, colorScheme),
-
-            const SizedBox(height: 24),
-
-            // Event details card
-            _buildDetailsCard(context, colorScheme, df),
-
-            const SizedBox(height: 24),
-
-            // Payload section
-            _buildSectionHeader(context, 'PAYLOAD', Icons.code, colorScheme),
-            _buildPayloadCard(context, colorScheme),
-
-            const SizedBox(height: 24),
-
-            // History section
-            _buildSectionHeader(context, 'HISTORY', Icons.history, colorScheme),
-            _buildHistoryList(context, colorScheme),
-
-            const SizedBox(height: 16),
-          ],
-        ),
       ),
     );
   }
@@ -176,7 +182,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  Widget _buildDetailsCard(BuildContext context, ColorScheme colorScheme, DateFormat df) {
+  Widget _buildDetailsCard(
+      BuildContext context, ColorScheme colorScheme, DateFormat df) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -214,7 +221,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  Widget _buildDetailItem(BuildContext context, String label, String value, {bool monospace = false}) {
+  Widget _buildDetailItem(BuildContext context, String label, String value,
+      {bool monospace = false}) {
     final theme = Theme.of(context);
 
     return Column(
@@ -243,7 +251,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon, ColorScheme colorScheme) {
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon,
+      ColorScheme colorScheme) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -302,7 +311,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
         child: Text(
           'NO HISTORY RECORDS FOUND',
           style: TextStyle(
-            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+            color:
+                Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
             fontSize: 14,
             letterSpacing: 0.5,
           ),
@@ -311,84 +321,94 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
 
     return Column(
-      children: _history!.map((h) =>
-          Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: colorScheme.primary.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: (h.isDelete ?? false)
-                          ? Colors.redAccent.withOpacity(0.1)
-                          : Colors.greenAccent.withOpacity(0.1),
-                      border: Border.all(
-                        color: (h.isDelete ?? false)
-                            ? Colors.redAccent.withOpacity(0.5)
-                            : Colors.greenAccent.withOpacity(0.5),
-                        width: 1,
+      children: _history!
+          .map((h) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: colorScheme.primary.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: (h.isDelete ?? false)
+                              ? Colors.redAccent.withOpacity(0.1)
+                              : Colors.greenAccent.withOpacity(0.1),
+                          border: Border.all(
+                            color: (h.isDelete ?? false)
+                                ? Colors.redAccent.withOpacity(0.5)
+                                : Colors.greenAccent.withOpacity(0.5),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          (h.isDelete ?? false)
+                              ? Icons.delete_outline
+                              : Icons.add_circle_outline,
+                          size: 16,
+                          color: (h.isDelete ?? false)
+                              ? Colors.redAccent.withOpacity(0.8)
+                              : Colors.greenAccent.withOpacity(0.8),
+                        ),
                       ),
-                    ),
-                    child: Icon(
-                      (h.isDelete ?? false) ? Icons.delete_outline : Icons.add_circle_outline,
-                      size: 16,
-                      color: (h.isDelete ?? false)
-                          ? Colors.redAccent.withOpacity(0.8)
-                          : Colors.greenAccent.withOpacity(0.8),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _truncateId(h.txId),
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 13,
-                            color: Theme.of(context).textTheme.bodyMedium?.color,
-                          ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _truncateId(h.txId),
+                              style: TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 13,
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.color,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              DateFormat('yyyy-MM-dd HH:mm:ss')
+                                  .format(h.timestamp),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.color
+                                    ?.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat('yyyy-MM-dd HH:mm:ss').format(h.timestamp),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6),
-                          ),
+                      ),
+                      Text(
+                        (h.isDelete ?? false) ? 'DELETED' : 'CREATED',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: (h.isDelete ?? false)
+                              ? Colors.redAccent.withOpacity(0.8)
+                              : Colors.greenAccent.withOpacity(0.8),
+                          letterSpacing: 0.8,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    (h.isDelete ?? false) ? 'DELETED' : 'CREATED',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: (h.isDelete ?? false)
-                          ? Colors.redAccent.withOpacity(0.8)
-                          : Colors.greenAccent.withOpacity(0.8),
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-      ).toList(),
+                ),
+              ))
+          .toList(),
     );
   }
 

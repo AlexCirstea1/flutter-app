@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+
 import '../../../core/config/environment.dart';
 import '../../../core/data/services/storage_service.dart';
 import '../domain/models/did_event.dart';

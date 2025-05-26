@@ -117,6 +117,12 @@ class WebSocketService {
         _handleIncomingFrame(frame, tag: 'CHAT_REQUEST');
       },
     );
+
+    // 6) file-metadata echoes
+    _stompClient?.subscribe(
+      destination: '/user/queue/files',
+      callback: (frame) => _handleIncomingFrame(frame, tag: 'FILE_META'),
+    );
   }
 
   void _handleIncomingFrame(StompFrame frame, {required String tag}) {

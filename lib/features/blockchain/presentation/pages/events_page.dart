@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../../../../core/data/services/storage_service.dart';
 import '../../../../core/widget/bottom_nav_bar.dart';
-import '../../domain/models/did_event.dart';
 import '../../data/blockchain_api.dart';
+import '../../domain/models/did_event.dart';
 import 'event_detail_page.dart';
 
 class EventsPage extends StatefulWidget {

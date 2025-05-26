@@ -24,15 +24,22 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isFile = message.ciphertext == '__FILE__';
+    final bool isEncrypted = message.plaintext == null || message.plaintext!.isEmpty;
+
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
         decoration: BoxDecoration(
-          color: isMine
+          color: isEncrypted
+              ? (isMine
+              ? colorScheme.primary.withOpacity(0.5)
+              : colorScheme.tertiary.withOpacity(0.3))
+              : (isMine
               ? colorScheme.primary.withOpacity(0.85)
-              : colorScheme.tertiary.withOpacity(0.5),
+              : colorScheme.tertiary.withOpacity(0.5)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.08),
@@ -46,19 +53,52 @@ class MessageBubble extends StatelessWidget {
             bottomLeft: Radius.circular(isMine ? 18 : 0),
             bottomRight: Radius.circular(isMine ? 0 : 18),
           ),
+          border: isEncrypted
+              ? Border.all(
+            color: isMine
+                ? colorScheme.primary.withOpacity(0.4)
+                : colorScheme.tertiary.withOpacity(0.4),
+            width: 1,
+          )
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              message.plaintext ?? '[Encrypted]',
-              style: TextStyle(
-                color: isMine
-                    ? colorScheme.onPrimary
-                    : textTheme.bodyLarge?.color,
-                fontSize: 15,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isEncrypted)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(
+                      Icons.lock_outline,
+                      size: 14,
+                      color: isMine
+                          ? colorScheme.onPrimary.withOpacity(0.6)
+                          : textTheme.bodyMedium?.color?.withOpacity(0.5),
+                    ),
+                  ),
+                Flexible(
+                  child: Text(
+                    isFile
+                        ? message.plaintext ?? '[File]'
+                        : (isEncrypted ? '[Encrypted]' : message.plaintext!),
+                    style: TextStyle(
+                      color: isEncrypted
+                          ? (isMine
+                          ? colorScheme.onPrimary.withOpacity(0.6)
+                          : textTheme.bodyLarge?.color?.withOpacity(0.5))
+                          : (isMine
+                          ? colorScheme.onPrimary
+                          : textTheme.bodyLarge?.color),
+                      fontSize: 15,
+                      fontStyle: isEncrypted ? FontStyle.italic : FontStyle.normal,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 3),
             Row(

@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+
+import 'package:flutter/material.dart';
 
 import '../../../../core/data/services/api_service.dart';
 import '../../../../core/data/services/service_locator.dart';

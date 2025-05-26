@@ -35,8 +35,8 @@ class MessageRepository {
       return;
     }
 
-    final url = Uri.parse(
-        '${Environment.apiBaseUrl}/messages?recipientId=$chatUserId');
+    final url =
+        Uri.parse('${Environment.apiBaseUrl}/messages?recipientId=$chatUserId');
     try {
       final resp = await http.get(
         url,
@@ -93,16 +93,16 @@ class MessageRepository {
   }
 
   Future<void> _tryDecryptMessage(
-      MessageDTO msg,
-      String? myUserId,
-      ) async {
+    MessageDTO msg,
+    String? myUserId,
+  ) async {
     if (myUserId == null || msg.ciphertext.isEmpty || msg.iv.isEmpty) {
       return;
     }
 
     final bool isRecipient = (msg.recipient == myUserId);
     final versionToUse =
-    isRecipient ? msg.recipientKeyVersion : msg.senderKeyVersion;
+        isRecipient ? msg.recipientKeyVersion : msg.senderKeyVersion;
     final myPrivateKey = await storageService.getPrivateKey(versionToUse);
     if (myPrivateKey == null) return;
 
@@ -172,7 +172,9 @@ class MessageRepository {
     if (accessToken == null) return;
 
     final url = Uri.parse('${Environment.apiBaseUrl}/chats/mark-as-read');
-    final body = {'messageIds': [messageId]};
+    final body = {
+      'messageIds': [messageId]
+    };
     try {
       final resp = await http.post(
         url,
@@ -185,7 +187,7 @@ class MessageRepository {
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
         final now = DateTime.now();
         final idx = messages.indexWhere(
-              (m) => m.id == messageId,
+          (m) => m.id == messageId,
         );
         if (idx >= 0) {
           messages[idx].isRead = true;
@@ -224,7 +226,7 @@ class MessageRepository {
       final raw = jsonDecode(utf8.decode(resp.bodyBytes)) as List<dynamic>;
       final myId = await storageService.getUserId();
       final List<ChatHistoryDTO> chats =
-      raw.map((e) => ChatHistoryDTO.fromJson(e)).toList();
+          raw.map((e) => ChatHistoryDTO.fromJson(e)).toList();
 
       if (myId != null) {
         for (final chat in chats) {
@@ -232,7 +234,7 @@ class MessageRepository {
             await _tryDecryptMessage(m, myId);
           }
           chat.messages.sort(
-                (a, b) => a.timestamp.compareTo(b.timestamp),
+            (a, b) => a.timestamp.compareTo(b.timestamp),
           );
         }
       }

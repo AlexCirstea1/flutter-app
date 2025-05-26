@@ -88,8 +88,20 @@ class ChatMessagesList extends StatelessWidget {
   }
 
   String _monthName(int month) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return months[month - 1];
   }
 
@@ -100,7 +112,8 @@ class ChatMessagesList extends StatelessWidget {
     for (var i = 0; i < messages.length; i++) {
       final m = messages[i];
       // 'Day' is year-month-day only
-      final msgDay = DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
+      final msgDay =
+          DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
 
       // If day changed (or first message), we insert a date-header item
       if (lastDay == null ||

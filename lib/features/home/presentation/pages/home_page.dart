@@ -118,7 +118,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     await _chatService.handleIncomingOrSentMessage(
       rawMsg,
       _currentUserId!,
-          () => setState(() {}),
+      () => setState(() {}),
       markReadOnReceive: false,
     );
 
@@ -507,7 +507,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
           ),
           child: ListTile(
             contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             leading: _buildChatAvatar(chat.participant, theme, colorScheme),
             title: Row(
               children: [
@@ -526,7 +526,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                 if (chat.unreadCount > 0)
                   Container(
                     padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: colorScheme.primary.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
@@ -558,7 +558,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                       color: theme.textTheme.bodyMedium?.color,
                       fontSize: 12,
                       fontFamily:
-                      lastMsg?.plaintext == null ? 'monospace' : null,
+                          lastMsg?.plaintext == null ? 'monospace' : null,
                     ),
                   ),
                 ),
@@ -567,7 +567,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
                     timeString,
                     style: TextStyle(
                       color:
-                      theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                          theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                       fontSize: 10,
                       fontFamily: 'monospace',
                     ),
@@ -580,7 +580,6 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
       },
     );
   }
-
 
   Widget _buildChatAvatar(
       String userId, ThemeData theme, ColorScheme colorScheme) {

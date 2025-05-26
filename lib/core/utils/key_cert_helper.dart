@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:basic_utils/basic_utils.dart';
 
-import '../domain/models/certificate_info.dart';
 import '../data/services/storage_service.dart';
+import '../domain/models/certificate_info.dart';
 import '../domain/models/distinguished_name.dart';
 
 /// A helper class to generate an RSA key pair, produce a self-signed certificate,
