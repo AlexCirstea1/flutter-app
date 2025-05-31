@@ -47,6 +47,7 @@ class ChatService {
 
   /* ───────────── public read-only ───────────── */
   List<MessageDTO> get messages => _repo.messages;
+
   bool get isFetchingHistory => _repo.isFetchingHistory;
 
   /* ──────────── history / reading ───────────── */
@@ -328,7 +329,7 @@ class ChatService {
         recipient: chatUserId,
         timestamp: DateTime.now(),
         plaintext: '[File] $fileName',
-        ciphertext: '__FILE__',
+        ciphertext: fileName,
         iv: enc.iv,
         encryptedKeyForSender: enc.keySender,
         encryptedKeyForRecipient: enc.keyRecipient,
@@ -340,25 +341,36 @@ class ChatService {
     );
 
     /* 5️⃣ HTTP multipart upload */
-    final uri = Uri.parse('${Environment.apiBaseUrl}/files');
-    final req = http.MultipartRequest('POST', uri)
-      ..headers['Authorization'] = 'Bearer ${await _storage.getAccessToken()}'
-      ..fields['meta'] = jsonEncode({
-        ...meta,
-        'messageId': msgId, // make sure both parts identical
-      })
-      ..files.add(
-        http.MultipartFile.fromBytes('file', enc.cipherBytes,
-            filename: fileName,
-            contentType: MediaType('application', 'octet-stream')),
-      );
+    try {
+      final uri = Uri.parse('${Environment.apiBaseUrl}/files');
+      final request = http.MultipartRequest('POST', uri);
 
-    final streamed = await req.send();
-    // crude progress feedback
-    onProgress(1.0);
-    if (streamed.statusCode >= 400) {
-      LoggerService.logError(
-          'File upload failed – HTTP ${streamed.statusCode}');
+      // Add authorization header
+      request.headers['Authorization'] =
+          'Bearer ${await _storage.getAccessToken()}';
+
+      // Add the meta part as proper JSON (using MultipartFile instead of fields)
+      final metaJson = jsonEncode(meta);
+      request.files.add(http.MultipartFile.fromBytes(
+          'meta', utf8.encode(metaJson),
+          contentType: MediaType('application', 'json')));
+
+      // Add the file part
+      request.files.add(http.MultipartFile.fromBytes('file', enc.cipherBytes,
+          filename: fileName));
+
+      final responseStream = await request.send();
+      final response = await http.Response.fromStream(responseStream);
+      onProgress(1.0);
+
+      if (response.statusCode >= 400) {
+        LoggerService.logError(
+            'File upload failed – HTTP ${response.statusCode}: ${response.body}');
+      } else {
+        LoggerService.logInfo('File uploaded successfully');
+      }
+    } catch (e) {
+      LoggerService.logError('File upload exception: $e');
     }
   }
 }

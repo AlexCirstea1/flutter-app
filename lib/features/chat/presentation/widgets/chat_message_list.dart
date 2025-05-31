@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../domain/models/message_dto.dart';
+import '../../../chat/data/services/file_download_service.dart';
+import '../../../../core/data/services/service_locator.dart';
 import 'message_buble.dart';
+import 'file_message_widget.dart';
 
 // Move this enum from ChatPage to make the widget independent
 enum ChatItemType { dateHeader, message }
@@ -61,6 +64,18 @@ class ChatMessagesList extends StatelessWidget {
         } else {
           final msg = item.message!;
           final isMine = (msg.sender == currentUserId);
+
+          // Check if this is a file message
+          if (msg.plaintext != null && msg.plaintext!.startsWith('[File] ')) {
+            return FileMessageWidget(
+              message: msg,
+              currentUserId: currentUserId,
+              isOwn: isMine,
+              onDownload: _handleFileDownload,
+            );
+          }
+
+          // Regular text message
           return MessageBubble(
             message: msg,
             isMine: isMine,
@@ -70,6 +85,32 @@ class ChatMessagesList extends StatelessWidget {
         }
       },
     );
+  }
+
+  void _handleFileDownload(MessageDTO message) async {
+    // Get the FileDownloadService from service locator
+    final downloadService = serviceLocator<FileDownloadService>();
+
+    // Create a download progress tracker
+    double progress = 0;
+
+    // Download and decrypt the file
+    final file = await downloadService.downloadAndDecryptFile(
+      message: message,
+      onProgress: (p) {
+        // Progress update
+        progress = p;
+      },
+      onError: (error) {
+        // Show error message
+        print('Download error: $error');
+      },
+    );
+
+    if (file != null) {
+      // Open the file
+      await downloadService.openFile(file);
+    }
   }
 
   String _formatDateHeader(DateTime dt) {

@@ -102,6 +102,36 @@ class MessageCryptoService {
       recipientVer: recipientKey.keyVersion,
     );
   }
+
+  /// Decrypts file data using the provided private key and encrypted AES key
+  Future<Uint8List> decryptData({
+    required List<int> cipherBytes,
+    required String iv,
+    required String encryptedKey,
+    required String privateKey,
+  }) async {
+    try {
+      // Decrypt the AES key using RSA private key
+      final aesKeyB64 = CryptoHelper.rsaDecrypt(encryptedKey, privateKey);
+      final aesKeyBytes = base64.decode(aesKeyB64);
+      final ivBytes = base64.decode(iv);
+
+      // Create AES cipher for decryption
+      final keyObj = encrypt.Key(Uint8List.fromList(aesKeyBytes));
+      final ivObj = encrypt.IV(Uint8List.fromList(ivBytes));
+      final encrypter =
+      encrypt.Encrypter(encrypt.AES(keyObj, mode: encrypt.AESMode.cbc));
+
+      // Decrypt the file content
+      final decryptedBytes = encrypter.decryptBytes(
+          encrypt.Encrypted(Uint8List.fromList(cipherBytes)),
+          iv: ivObj);
+
+      return Uint8List.fromList(decryptedBytes);
+    } catch (e) {
+      throw Exception('Failed to decrypt file data: $e');
+    }
+  }
 }
 
 class EncryptedDataBundle {
