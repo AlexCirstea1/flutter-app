@@ -17,6 +17,9 @@ MessageDTO _$MessageDTOFromJson(Map<String, dynamic> json) => MessageDTO(
       timestamp: DateTime.parse(json['timestamp'] as String),
       senderKeyVersion: json['senderKeyVersion'] as String,
       recipientKeyVersion: json['recipientKeyVersion'] as String,
+      file: json['file'] == null
+          ? null
+          : FileInfo.fromJson(json['file'] as Map<String, dynamic>),
       isRead: json['isRead'] as bool? ?? false,
       readTimestamp: json['readTimestamp'] == null
           ? null
@@ -49,4 +52,5 @@ Map<String, dynamic> _$MessageDTOToJson(MessageDTO instance) =>
       'oneTime': instance.oneTime,
       'clientTempId': instance.clientTempId,
       'type': instance.type,
+      'file': instance.file,
     };

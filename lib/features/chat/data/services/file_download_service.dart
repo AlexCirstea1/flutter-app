@@ -27,8 +27,8 @@ class FileDownloadService {
     try {
       onProgress(0.1);
 
-      // Get file ID from message ID
-      final fileId = message.id;
+      // Get file ID from message file info
+      final fileId = message.file?.fileId ?? message.id;
 
       // Get access token
       final accessToken = await storageService.getAccessToken();

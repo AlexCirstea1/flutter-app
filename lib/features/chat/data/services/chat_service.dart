@@ -19,6 +19,7 @@ import '../../../../core/data/services/storage_service.dart';
 import '../../../../core/data/services/websocket_service.dart';
 import '../../domain/models/chat_history_dto.dart';
 import '../../domain/models/chat_request_dto.dart';
+import '../../domain/models/file_info.dart';
 import '../../domain/models/message_dto.dart';
 import '../repositories/chat_request_repository.dart';
 import '../repositories/message_repository.dart';
@@ -281,55 +282,63 @@ class ChatService {
     required String clientTempId,
     required void Function(MessageDTO) onLocalEcho,
     required void Function(double) onProgress,
+    required void Function(Map<String, dynamic>) stompSend,
   }) async {
-    /* 0️⃣ Keys */
-    final senderKey =
-        await _keyMgr.getOrFetchPublicKeyAndVersion(currentUserId);
-    final recipientKey =
-        await _keyMgr.getOrFetchPublicKeyAndVersion(chatUserId);
-    if (senderKey == null || recipientKey == null) {
-      LoggerService.logError('Missing pub-key(s) – abort file send');
-      return;
-    }
+    try {
+      /* 1️⃣ Keys */
+      final senderKey = await _keyMgr.getOrFetchPublicKeyAndVersion(currentUserId);
+      final recipientKey = await _keyMgr.getOrFetchPublicKeyAndVersion(chatUserId);
+      if (senderKey == null || recipientKey == null) {
+        LoggerService.logError('Missing pub-key(s) – abort file send');
+        return;
+      }
 
-    /* 1️⃣ Encrypt bytes */
-    final bytes = await picked.readAsBytes();
-    final enc = await _crypto.encryptData(
+      /* 2️⃣ Read and encrypt file */
+      final bytes = await picked.readAsBytes();
+      final enc = await _crypto.encryptData(
         plaintextBytes: bytes,
         senderKey: senderKey,
-        recipientKey: recipientKey);
+        recipientKey: recipientKey,
+      );
 
-    /* 2️⃣ IDs */
-    final fileId = const Uuid().v4();
-    final msgId = clientTempId; // reuse the tempId from caller
+      /* 3️⃣ Generate IDs */
+      final fileId = const Uuid().v4();
+      final msgId = clientTempId;
 
-    /* 3️⃣ STOMP metadata */
-    final meta = {
-      'messageId': msgId,
-      'fileId': fileId,
-      'sender': currentUserId,
-      'recipient': chatUserId,
-      'fileName': fileName,
-      'mimeType': lookupMimeType(fileName) ?? 'application/octet-stream',
-      'sizeBytes': bytes.length,
-      'iv': enc.iv,
-      'encryptedKeyForSender': enc.keySender,
-      'encryptedKeyForRecipient': enc.keyRecipient,
-      'senderKeyVersion': enc.senderVer,
-      'recipientKeyVersion': enc.recipientVer,
-      'clientTempId': msgId,
-    };
-    WebSocketService().sendMessage('/app/sendFileMetadata', meta);
+      /* 4️⃣ Create FileInfo */
+      final fileInfo = FileInfo(
+        fileId: fileId,
+        fileName: fileName,
+        mimeType: lookupMimeType(fileName) ?? 'application/octet-stream',
+        sizeBytes: bytes.length,
+      );
 
-    /* 4️⃣ Local echo (placeholder chat message) */
-    onLocalEcho(
-      MessageDTO(
+      /* 5️⃣ Send WebSocket message with file info */
+      final wsPayload = {
+        'sender': currentUserId,
+        'recipient': chatUserId,
+        'clientTempId': msgId,
+        'timestamp': DateTime.now().toIso8601String(),
+        'type': 'SENT_MESSAGE',
+        'ciphertext': '__FILE__',
+        'iv': enc.iv,
+        'encryptedKeyForSender': enc.keySender,
+        'encryptedKeyForRecipient': enc.keyRecipient,
+        'senderKeyVersion': enc.senderVer,
+        'recipientKeyVersion': enc.recipientVer,
+        'oneTime': false,
+        'file': fileInfo.toJson(),
+      };
+      stompSend(wsPayload);
+
+      /* 6️⃣ Local echo */
+      onLocalEcho(MessageDTO(
         id: msgId,
         sender: currentUserId,
         recipient: chatUserId,
         timestamp: DateTime.now(),
         plaintext: '[File] $fileName',
-        ciphertext: fileName,
+        ciphertext: '__FILE__',
         iv: enc.iv,
         encryptedKeyForSender: enc.keySender,
         encryptedKeyForRecipient: enc.keyRecipient,
@@ -337,35 +346,69 @@ class ChatService {
         recipientKeyVersion: enc.recipientVer,
         oneTime: false,
         isRead: true,
-      ),
-    );
+        file: fileInfo,
+      ));
 
-    /* 5️⃣ HTTP multipart upload */
+      /* 7️⃣ Upload file via HTTP */
+      await _uploadEncryptedFile(
+        fileId: fileId,
+        messageId: msgId,
+        fileName: fileName,
+        mimeType: fileInfo.mimeType,
+        sizeBytes: bytes.length,
+        encryptedBytes: enc.cipherBytes,
+        onProgress: onProgress,
+      );
+    } catch (e) {
+      LoggerService.logError('File send exception: $e');
+    }
+  }
+
+  Future<void> _uploadEncryptedFile({
+    required String fileId,
+    required String messageId,
+    required String fileName,
+    required String mimeType,
+    required int sizeBytes,
+    required List<int> encryptedBytes,
+    required void Function(double) onProgress,
+  }) async {
     try {
       final uri = Uri.parse('${Environment.apiBaseUrl}/files');
       final request = http.MultipartRequest('POST', uri);
 
       // Add authorization header
-      request.headers['Authorization'] =
-          'Bearer ${await _storage.getAccessToken()}';
+      request.headers['Authorization'] = 'Bearer ${await _storage.getAccessToken()}';
 
-      // Add the meta part as proper JSON (using MultipartFile instead of fields)
-      final metaJson = jsonEncode(meta);
+      // Add metadata
+      final meta = {
+        'messageId': messageId,
+        'fileId': fileId,
+        'fileName': fileName,
+        'mimeType': mimeType,
+        'sizeBytes': sizeBytes,
+      };
+
       request.files.add(http.MultipartFile.fromBytes(
-          'meta', utf8.encode(metaJson),
-          contentType: MediaType('application', 'json')));
+        'meta',
+        utf8.encode(jsonEncode(meta)),
+        contentType: MediaType('application', 'json'),
+      ));
 
-      // Add the file part
-      request.files.add(http.MultipartFile.fromBytes('file', enc.cipherBytes,
-          filename: fileName));
+      // Add encrypted file
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        encryptedBytes,
+        filename: fileName,
+        contentType: MediaType('application', 'octet-stream'),
+      ));
 
       final responseStream = await request.send();
       final response = await http.Response.fromStream(responseStream);
       onProgress(1.0);
 
       if (response.statusCode >= 400) {
-        LoggerService.logError(
-            'File upload failed – HTTP ${response.statusCode}: ${response.body}');
+        LoggerService.logError('File upload failed – HTTP ${response.statusCode}: ${response.body}');
       } else {
         LoggerService.logInfo('File uploaded successfully');
       }

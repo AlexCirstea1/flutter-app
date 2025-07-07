@@ -21,7 +21,6 @@ class FileMessageWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    // Extract filename from plaintext (which starts with '[File] ')
     final filename = message.plaintext?.replaceFirst('[File] ', '') ?? 'File';
 
     return Container(
@@ -30,39 +29,44 @@ class FileMessageWidget extends StatelessWidget {
         color: isOwn ? cs.primary : cs.surface,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.insert_drive_file,
-            color: isOwn ? cs.onPrimary : cs.primary,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              filename,
-              style: TextStyle(
-                color: isOwn ? cs.onPrimary : cs.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            icon: Icon(
-              Icons.download,
+      child: IntrinsicWidth(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.insert_drive_file,
               color: isOwn ? cs.onPrimary : cs.primary,
               size: 20,
             ),
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-            padding: EdgeInsets.zero,
-            onPressed: () => onDownload(message),
-            tooltip: 'Download',
-          ),
-        ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                filename,
+                style: TextStyle(
+                  color: isOwn ? cs.onPrimary : cs.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: IconButton(
+                icon: Icon(
+                  Icons.download,
+                  color: isOwn ? cs.onPrimary : cs.primary,
+                  size: 20,
+                ),
+                padding: EdgeInsets.zero,
+                onPressed: () => onDownload(message),
+                tooltip: 'Download',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

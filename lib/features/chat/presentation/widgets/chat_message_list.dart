@@ -51,6 +51,7 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
   // Track download errors
   final Map<String, String> _downloadErrors = {};
 
+  // Update lib/features/chat/presentation/widgets/chat_message_list.dart
   @override
   Widget build(BuildContext context) {
     if (widget.isLoading) {
@@ -76,7 +77,7 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
           final isMine = (msg.sender == widget.currentUserId);
 
           // Check if this is a file message
-          if (msg.plaintext != null && msg.plaintext!.startsWith('[File] ')) {
+          if (msg.ciphertext == '__FILE__' || msg.file != null) {
             return FileMessageWidget(
               message: msg,
               currentUserId: widget.currentUserId,

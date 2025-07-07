@@ -198,6 +198,7 @@ class _ChatPageState extends State<ChatPage> {
     final tempId = const Uuid().v4(); // will become messageId
     final file = File(path);
 
+    final ws = WebSocketService();
     await _chatService.sendFileMessage(
       currentUserId: _currentUserId!,
       chatUserId: widget.chatUserId,
@@ -212,6 +213,9 @@ class _ChatPageState extends State<ChatPage> {
       },
       onProgress: (p) {
         // TODO: show progress UI if you wish
+      },
+      stompSend: (Map<String, dynamic> payload) {
+        ws.sendMessage('/app/sendPrivateMessage', payload);
       },
     );
   }

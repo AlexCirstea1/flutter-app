@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import 'file_info.dart';
+
 part 'message_dto.g.dart';
 
 @JsonSerializable()
@@ -49,6 +51,9 @@ class MessageDTO {
   @JsonKey(ignore: true)
   String? plaintext;
 
+  /// File information if this is a file message
+  final FileInfo? file;
+
   MessageDTO({
     required this.id,
     required this.sender,
@@ -60,6 +65,7 @@ class MessageDTO {
     required this.timestamp,
     required this.senderKeyVersion,
     required this.recipientKeyVersion,
+    this.file,
     this.isRead = false,
     this.readTimestamp,
     this.isDelivered = false,

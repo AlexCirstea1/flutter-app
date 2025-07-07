@@ -123,7 +123,8 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isFile = message.ciphertext == '__FILE__';
+    final bool isFile =
+        message.ciphertext == '__FILE__' || message.file != null;
     final bool isEncrypted =
         message.plaintext == null || message.plaintext!.isEmpty;
 
@@ -182,11 +183,20 @@ class MessageBubble extends StatelessWidget {
                             : textTheme.bodyMedium?.color?.withOpacity(0.5),
                       ),
                     ),
+                  if (isFile && message.file != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(
+                        Icons.attach_file,
+                        size: 14,
+                        color: isMine
+                            ? colorScheme.onPrimary.withOpacity(0.8)
+                            : textTheme.bodyMedium?.color?.withOpacity(0.7),
+                      ),
+                    ),
                   Flexible(
                     child: Text(
-                      isFile
-                          ? message.plaintext ?? '[File]'
-                          : (isEncrypted ? '[Encrypted]' : message.plaintext!),
+                      _getDisplayText(isFile, isEncrypted),
                       style: TextStyle(
                         color: isEncrypted
                             ? (isMine
@@ -242,5 +252,15 @@ class MessageBubble extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getDisplayText(bool isFile, bool isEncrypted) {
+    if (isFile) {
+      if (message.file != null) {
+        return message.plaintext ?? '[File] ${message.file!.fileName}';
+      }
+      return message.plaintext ?? '[File]';
+    }
+    return isEncrypted ? '[Encrypted]' : message.plaintext!;
   }
 }
