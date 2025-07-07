@@ -12,7 +12,7 @@ class Environment {
   // Define base host values for each flavor.
   static const String _localHost = 'localhost:8081';
   static const String _testHost = 'api.vaultx.server-alex.cloud';
-  static const String _prodHost = 'api.productionserver.com';
+  static const String _prodHost = 'api.response-app.hub-gateway.online';
 
   // Set the app flavor here
   static Flavor appFlavor = Flavor.LOCAL; // Change as needed

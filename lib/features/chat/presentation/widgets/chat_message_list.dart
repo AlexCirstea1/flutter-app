@@ -25,7 +25,7 @@ class _ChatListItem {
         dateLabel = null;
 }
 
-class ChatMessagesList extends StatelessWidget {
+class ChatMessagesList extends StatefulWidget {
   final List<MessageDTO> messages;
   final String? currentUserId;
   final bool isLoading;
@@ -42,8 +42,18 @@ class ChatMessagesList extends StatelessWidget {
   });
 
   @override
+  State<ChatMessagesList> createState() => _ChatMessagesListState();
+}
+
+class _ChatMessagesListState extends State<ChatMessagesList> {
+  // Track download progress for each file
+  final Map<String, double> _downloadProgress = {};
+  // Track download errors
+  final Map<String, String> _downloadErrors = {};
+
+  @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (widget.isLoading) {
       return Center(
         child: CircularProgressIndicator(
           color: Theme.of(context).colorScheme.secondary,
@@ -53,8 +63,8 @@ class ChatMessagesList extends StatelessWidget {
 
     final chatItems = _buildChatItems();
     return ScrollablePositionedList.builder(
-      itemScrollController: scrollController,
-      itemPositionsListener: positionsListener,
+      itemScrollController: widget.scrollController,
+      itemPositionsListener: widget.positionsListener,
       initialScrollIndex: chatItems.isEmpty ? 0 : chatItems.length - 1,
       itemCount: chatItems.length,
       itemBuilder: (ctx, i) {
@@ -63,13 +73,13 @@ class ChatMessagesList extends StatelessWidget {
           return _buildDateDivider(context, item.dateLabel ?? '');
         } else {
           final msg = item.message!;
-          final isMine = (msg.sender == currentUserId);
+          final isMine = (msg.sender == widget.currentUserId);
 
           // Check if this is a file message
           if (msg.plaintext != null && msg.plaintext!.startsWith('[File] ')) {
             return FileMessageWidget(
               message: msg,
-              currentUserId: currentUserId,
+              currentUserId: widget.currentUserId,
               isOwn: isMine,
               onDownload: _handleFileDownload,
             );
@@ -88,26 +98,63 @@ class ChatMessagesList extends StatelessWidget {
   }
 
   void _handleFileDownload(MessageDTO message) async {
+    // Prevent multiple downloads of the same file
+    if (_downloadProgress.containsKey(message.id) &&
+        _downloadProgress[message.id]! > 0 &&
+        _downloadProgress[message.id]! < 1) {
+      return;
+    }
+
+    setState(() {
+      _downloadProgress[message.id] = 0.05;
+      _downloadErrors.remove(message.id);
+    });
+
     // Get the FileDownloadService from service locator
     final downloadService = serviceLocator<FileDownloadService>();
-
-    // Create a download progress tracker
-    double progress = 0;
 
     // Download and decrypt the file
     final file = await downloadService.downloadAndDecryptFile(
       message: message,
       onProgress: (p) {
-        // Progress update
-        progress = p;
+        setState(() {
+          _downloadProgress[message.id] = p;
+        });
       },
       onError: (error) {
-        // Show error message
-        print('Download error: $error');
+        setState(() {
+          _downloadErrors[message.id] = error;
+          _downloadProgress[message.id] = 0;
+        });
+
+        // Show error message as a snackbar
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to download file: $error'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       },
     );
 
     if (file != null) {
+      // Download completed successfully
+      setState(() {
+        _downloadProgress[message.id] = 1.0;
+      });
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('File downloaded successfully. Opening...'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
       // Open the file
       await downloadService.openFile(file);
     }
@@ -150,8 +197,8 @@ class ChatMessagesList extends StatelessWidget {
     final items = <_ChatListItem>[];
     DateTime? lastDay; // we track the last day we inserted
 
-    for (var i = 0; i < messages.length; i++) {
-      final m = messages[i];
+    for (var i = 0; i < widget.messages.length; i++) {
+      final m = widget.messages[i];
       // 'Day' is year-month-day only
       final msgDay =
           DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
