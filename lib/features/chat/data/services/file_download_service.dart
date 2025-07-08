@@ -38,7 +38,7 @@ class FileDownloadService {
       }
 
       // Download encrypted file
-      final url = Uri.parse('${Environment.apiBaseUrl}/api/files/$fileId');
+      final url = Uri.parse('${Environment.apiBaseUrl}/files/$fileId');
       final response = await http.get(
         url,
         headers: {'Authorization': 'Bearer $accessToken'},
@@ -54,7 +54,7 @@ class FileDownloadService {
       // Get the encrypted data
       final encryptedBytes = response.bodyBytes;
 
-      // Determine if current user is sender or recipient for key selection
+      // Determine current user and key selection
       final currentUserId = await storageService.getUserId();
       final isRecipient = message.recipient == currentUserId;
 
@@ -82,13 +82,23 @@ class FileDownloadService {
 
       onProgress(0.9);
 
-      // Save to temporary file
+      // Use original filename from file info, or extract from plaintext with proper extension
+      String fileName;
+      if (message.file?.fileName != null) {
+        fileName = message.file!.fileName;
+      } else {
+        // Extract filename from plaintext and ensure it has an extension
+        final extractedName = message.plaintext?.replaceFirst('[File] ', '') ?? 'download';
+        fileName = extractedName.contains('.') ? extractedName : '$extractedName.bin';
+      }
+
+      // Save to temporary file with proper filename
       final tempDir = await getTemporaryDirectory();
-      final fileName = message.plaintext?.replaceFirst('[File] ', '') ?? 'download.bin';
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(decryptedBytes);
 
       onProgress(1.0);
+      LoggerService.logInfo('File decrypted and saved: ${file.path}');
       return file;
     } catch (e) {
       LoggerService.logError('File download/decrypt error: $e');

@@ -26,6 +26,28 @@ import '../repositories/message_repository.dart';
 import 'key_management_service.dart';
 import 'message_crypto_service.dart';
 
+/*───────────────────────────────────────────────────────────────
+*  Pending‑upload cache
+*------------------------------------------------------------------*/
+class _PendingUpload {
+  const _PendingUpload({
+    required this.fileId,
+    required this.encryptedBytes,
+    required this.fileName,
+    required this.mimeType,
+    required this.sizeBytes,
+    required this.onProgress,
+  });
+
+  final String fileId;
+  final List<int> encryptedBytes;
+  final String fileName;
+  final String mimeType;
+  final int sizeBytes;
+  final void Function(double) onProgress;
+}
+
+/*───────────────────────────────────────────────────────────────*/
 class ChatService {
   /* ─────────────── dependencies ─────────────── */
   final StorageService _storage;
@@ -46,7 +68,10 @@ class ChatService {
         _repo = messageRepository,
         _requestRepo = requestRepository;
 
-  /* ───────────── public read-only ───────────── */
+  /*────────────  pending file uploads  ────────────*/
+  final Map<String, _PendingUpload> _pendingUploads = {}; // key = clientTempId
+
+  /* ───────────── public read‑only ───────────── */
   List<MessageDTO> get messages => _repo.messages;
 
   bool get isFetchingHistory => _repo.isFetchingHistory;
@@ -126,7 +151,7 @@ class ChatService {
     stompSend(map);
   }
 
-  /* ───────────── real-time events ───────────── */
+  /* ───────────── real‑time events ───────────── */
   Future<void> handleIncomingOrSentMessage(
     Map<String, dynamic> raw,
     String currentUserId,
@@ -142,7 +167,7 @@ class ChatService {
     if (msg.sender == currentUserId && msg.clientTempId != null) {
       final idx = messages.indexWhere((m) => m.id == msg.clientTempId);
       if (idx >= 0) {
-        msg.plaintext = messages[idx].plaintext; // keep the clear-text
+        msg.plaintext = messages[idx].plaintext; // keep the clear‑text
         messages[idx] = msg; // replace echo with final
       } else {
         _upsert(msg); // fallback (shouldn’t happen)
@@ -165,6 +190,25 @@ class ChatService {
       _upsert(msg);
     }
 
+    /* ── C. kick‑off deferred HTTP upload if this finalises a file ─── */
+    if (msg.clientTempId != null &&
+        _pendingUploads.containsKey(msg.clientTempId)) {
+      final u = _pendingUploads.remove(msg.clientTempId)!;
+      try {
+        await _uploadEncryptedFile(
+          fileId: u.fileId,
+          messageId: msg.id, // definitive server ID
+          fileName: u.fileName,
+          mimeType: u.mimeType,
+          sizeBytes: u.sizeBytes,
+          encryptedBytes: u.encryptedBytes,
+          onProgress: u.onProgress,
+        );
+      } catch (e) {
+        LoggerService.logError('Deferred file upload failed: $e');
+      }
+    }
+
     messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     onMessagesUpdated();
 
@@ -173,11 +217,11 @@ class ChatService {
     }
   }
 
-  /// Re-insert or update by **server id** (avoids multi-dupes)
+  /// Re‑insert or update by **server id** (avoids multi‑dupes)
   void _upsert(MessageDTO m) {
     final i = messages.indexWhere((e) => e.id == m.id);
     if (i >= 0) {
-      // preserve existing clear-text if the newcomer is still encrypted
+      // preserve existing clear‑text if the newcomer is still encrypted
       if ((messages[i].plaintext?.isNotEmpty ?? false) &&
           (m.plaintext == null || m.plaintext!.isEmpty)) {
         m.plaintext = messages[i].plaintext;
@@ -226,7 +270,7 @@ class ChatService {
     return list;
   }
 
-  /* ─────────── chat-request API ─────────── */
+  /* ─────────── chat‑request API ─────────── */
   Future<List<ChatRequestDTO>> fetchPendingChatRequests() =>
       _requestRepo.fetchPendingChatRequests();
 
@@ -245,7 +289,7 @@ class ChatService {
         content: content,
       );
 
-  /* ───────────── read-receipt frames (client-side only) ───────────── */
+  /* ───────────── read‑receipt frames (client‑side only) ───────────── */
   void handleReadReceipt(
     Map<String, dynamic> data,
     String chatUserId,
@@ -286,10 +330,12 @@ class ChatService {
   }) async {
     try {
       /* 1️⃣ Keys */
-      final senderKey = await _keyMgr.getOrFetchPublicKeyAndVersion(currentUserId);
-      final recipientKey = await _keyMgr.getOrFetchPublicKeyAndVersion(chatUserId);
+      final senderKey =
+          await _keyMgr.getOrFetchPublicKeyAndVersion(currentUserId);
+      final recipientKey =
+          await _keyMgr.getOrFetchPublicKeyAndVersion(chatUserId);
       if (senderKey == null || recipientKey == null) {
-        LoggerService.logError('Missing pub-key(s) – abort file send');
+        LoggerService.logError('Missing pub‑key(s) – abort file send');
         return;
       }
 
@@ -349,16 +395,16 @@ class ChatService {
         file: fileInfo,
       ));
 
-      /* 7️⃣ Upload file via HTTP */
-      await _uploadEncryptedFile(
+      /* 7️⃣ Cache upload until server echoes definitive message ID */
+      _pendingUploads[msgId] = _PendingUpload(
         fileId: fileId,
-        messageId: msgId,
+        encryptedBytes: enc.cipherBytes,
         fileName: fileName,
         mimeType: fileInfo.mimeType,
         sizeBytes: bytes.length,
-        encryptedBytes: enc.cipherBytes,
         onProgress: onProgress,
       );
+      onProgress(0.0); // signal start
     } catch (e) {
       LoggerService.logError('File send exception: $e');
     }
@@ -378,7 +424,8 @@ class ChatService {
       final request = http.MultipartRequest('POST', uri);
 
       // Add authorization header
-      request.headers['Authorization'] = 'Bearer ${await _storage.getAccessToken()}';
+      request.headers['Authorization'] =
+          'Bearer ${await _storage.getAccessToken()}';
 
       // Add metadata
       final meta = {
@@ -408,7 +455,8 @@ class ChatService {
       onProgress(1.0);
 
       if (response.statusCode >= 400) {
-        LoggerService.logError('File upload failed – HTTP ${response.statusCode}: ${response.body}');
+        LoggerService.logError(
+            'File upload failed – HTTP ${response.statusCode}: ${response.body}');
       } else {
         LoggerService.logInfo('File uploaded successfully');
       }

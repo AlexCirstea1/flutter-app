@@ -548,18 +548,40 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
             subtitle: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    (lastMsg?.plaintext?.isNotEmpty ?? false)
-                        ? lastMsg!.plaintext!
-                        : '[ENCRYPTED]',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: theme.textTheme.bodyMedium?.color,
-                      fontSize: 12,
-                      fontFamily:
-                          lastMsg?.plaintext == null ? 'monospace' : null,
-                    ),
+                  child: Row(
+                    children: [
+                      if (lastMsg?.ciphertext == '__FILE__' ||
+                          lastMsg?.file != null) ...[
+                        Icon(Icons.insert_drive_file,
+                            size: 16,
+                            color: theme.textTheme.bodyMedium?.color
+                                ?.withOpacity(0.7)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'File',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: theme.textTheme.bodyMedium?.color,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ] else ...[
+                        Text(
+                          (lastMsg?.plaintext?.isNotEmpty ?? false)
+                              ? lastMsg!.plaintext!
+                              : '[ENCRYPTED]',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: theme.textTheme.bodyMedium?.color,
+                            fontSize: 12,
+                            fontFamily:
+                                lastMsg?.plaintext == null ? 'monospace' : null,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 if (timeString.isNotEmpty)

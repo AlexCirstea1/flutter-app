@@ -15,7 +15,7 @@ class Environment {
   static const String _prodHost = 'api.response-app.hub-gateway.online';
 
   // Set the app flavor here
-  static Flavor appFlavor = Flavor.LOCAL; // Change as needed
+  static Flavor appFlavor = Flavor.PRODUCTION; // Change as needed
 
   // Returns the base API URL (with /api appended)
   static String get apiBaseUrl {

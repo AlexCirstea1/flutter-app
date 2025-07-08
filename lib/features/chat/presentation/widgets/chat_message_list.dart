@@ -80,9 +80,10 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
           if (msg.ciphertext == '__FILE__' || msg.file != null) {
             return FileMessageWidget(
               message: msg,
-              currentUserId: widget.currentUserId,
               isOwn: isMine,
               onDownload: _handleFileDownload,
+              downloadProgress: _downloadProgress[msg.id],
+              downloadError: _downloadErrors[msg.id],
             );
           }
 
