@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../domain/models/message_dto.dart';
@@ -7,14 +9,14 @@ import '../../../../core/data/services/service_locator.dart';
 import 'message_buble.dart';
 import 'file_message_widget.dart';
 
-// Move this enum from ChatPage to make the widget independent
+/* ────────────────────────────────────────────────────────── */
+/*  Small helpers                                            */
 enum ChatItemType { dateHeader, message }
 
-// Move this class from ChatPage to make the widget independent
 class _ChatListItem {
   final ChatItemType type;
-  final String? dateLabel; // used if type = dateHeader
-  final MessageDTO? message; // used if type = message
+  final String? dateLabel;
+  final MessageDTO? message;
 
   _ChatListItem.dateHeader(this.dateLabel)
       : type = ChatItemType.dateHeader,
@@ -24,6 +26,7 @@ class _ChatListItem {
       : type = ChatItemType.message,
         dateLabel = null;
 }
+/* ────────────────────────────────────────────────────────── */
 
 class ChatMessagesList extends StatefulWidget {
   final List<MessageDTO> messages;
@@ -48,10 +51,58 @@ class ChatMessagesList extends StatefulWidget {
 }
 
 class _ChatMessagesListState extends State<ChatMessagesList> {
-  // Track download progress for each file
+  /* ───────── file-download state ───────── */
   final Map<String, double> _downloadProgress = {};
-  // Track download errors
   final Map<String, String> _downloadErrors = {};
+
+  /* ───────── auto-scroll bookkeeping ───── */
+  int _prevLen = 0;
+  final double _tolerance = 20; // px
+
+  @override
+  void initState() {
+    super.initState();
+    _prevLen = widget.messages.length;
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatMessagesList old) {
+    super.didUpdateWidget(old);
+
+    if (widget.messages.length != _prevLen) {
+      if (_isNearBottom()) _animateToLatest();
+      _prevLen = widget.messages.length;
+    }
+  }
+
+  /* ───────────────── auto-scroll helpers ───────────────── */
+  bool _isNearBottom() {
+    final positions = widget.positionsListener.itemPositions.value;
+    if (positions.isEmpty) return false;
+
+    // In a reversed list, the bottommost visible item has the *largest*
+    // trailing edge (0 = top, 1 = bottom of viewport).
+    final lastTrailing = positions
+        .reduce((a, b) => a.itemTrailingEdge > b.itemTrailingEdge ? a : b)
+        .itemTrailingEdge;
+
+    final distancePx =
+        (1.0 - lastTrailing) * MediaQuery.of(context).size.height;
+    return distancePx < _tolerance;
+  }
+
+  void _animateToLatest() {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!widget.scrollController.isAttached) return;
+      widget.scrollController.scrollTo(
+        index: 0, // newest == index 0
+        alignment: 0.0, // stick to bottom
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+  /* ─────────────────────────────────────────────────────── */
 
   @override
   Widget build(BuildContext context) {
@@ -63,104 +114,116 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
       );
     }
 
-    final chatItems = _buildChatItems();
+    final chatItems = _buildChatItems(); // newest first
     return ScrollablePositionedList.builder(
+      reverse: true, // ← key change
       itemScrollController: widget.scrollController,
       itemPositionsListener: widget.positionsListener,
-      initialScrollIndex: chatItems.isEmpty ? 0 : chatItems.length - 1,
+      initialScrollIndex: chatItems.isNotEmpty ? 0 : 0,
       itemCount: chatItems.length,
       itemBuilder: (ctx, i) {
         final item = chatItems[i];
+
         if (item.type == ChatItemType.dateHeader) {
           return _buildDateDivider(context, item.dateLabel ?? '');
-        } else {
-          final msg = item.message!;
-          final isMine = (msg.sender == widget.currentUserId);
+        }
 
-          if (msg.ciphertext == '__FILE__' || msg.file != null) {
-            return FileMessageWidget(
-              message: msg,
-              isOwn: isMine,
-              onDownload: _handleFileDownload,
-              downloadProgress: _downloadProgress[msg.id],
-              downloadError: _downloadErrors[msg.id],
-            );
-          }
+        final msg = item.message!;
+        final isMine = (msg.sender == widget.currentUserId);
 
-          return MessageBubble(
+        if (msg.ciphertext == '__FILE__' || msg.file != null) {
+          return FileMessageWidget(
             message: msg,
-            isMine: isMine,
-            colorScheme: Theme.of(context).colorScheme,
-            textTheme: Theme.of(context).textTheme,
-            onDeleteMessage: widget.onMessageDeleted, // pass deletion callback
+            isOwn: isMine,
+            onDownload: _handleFileDownload,
+            downloadProgress: _downloadProgress[msg.id],
+            downloadError: _downloadErrors[msg.id],
           );
         }
+
+        return MessageBubble(
+          message: msg,
+          isMine: isMine,
+          colorScheme: Theme.of(context).colorScheme,
+          textTheme: Theme.of(context).textTheme,
+          onDeleteMessage: widget.onMessageDeleted,
+        );
       },
     );
   }
 
+  /* ───────────────────────── file download ───────────────────── */
   void _handleFileDownload(MessageDTO message) async {
-    // Prevent multiple downloads of the same file
     if (_downloadProgress.containsKey(message.id) &&
         _downloadProgress[message.id]! > 0 &&
-        _downloadProgress[message.id]! < 1) {
-      return;
-    }
+        _downloadProgress[message.id]! < 1) return;
 
     setState(() {
       _downloadProgress[message.id] = 0.05;
       _downloadErrors.remove(message.id);
     });
 
-    // Get the FileDownloadService from service locator
-    final downloadService = serviceLocator<FileDownloadService>();
-
-    // Download and decrypt the file
-    final file = await downloadService.downloadAndDecryptFile(
+    final dlService = serviceLocator<FileDownloadService>();
+    final file = await dlService.downloadAndDecryptFile(
       message: message,
-      onProgress: (p) {
-        setState(() {
-          _downloadProgress[message.id] = p;
-        });
-      },
-      onError: (error) {
-        setState(() {
-          _downloadErrors[message.id] = error;
-          _downloadProgress[message.id] = 0;
-        });
-
-        // Show error message as a snackbar
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to download file: $error'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      },
+      onProgress: (p) => setState(() => _downloadProgress[message.id] = p),
+      onError: (err) => setState(() {
+        _downloadErrors[message.id] = err;
+        _downloadProgress[message.id] = 0;
+      }),
     );
 
-    if (file != null) {
-      // Download completed successfully
-      setState(() {
-        _downloadProgress[message.id] = 1.0;
-      });
-
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('File downloaded successfully. Opening...'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-
-      // Open the file
-      await downloadService.openFile(file);
+    if (file != null && mounted) {
+      setState(() => _downloadProgress[message.id] = 1.0);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('File downloaded successfully. Opening…'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      await dlService.openFile(file);
+    } else if (file == null && mounted && _downloadErrors[message.id] != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Failed to download file: ${_downloadErrors[message.id]}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
+  /* ───────────────────────── date chips ───────────────────── */
+
+  /* ───────── FIXED date-chip builder ───────── */
+  List<_ChatListItem> _buildChatItems() {
+    final items = <_ChatListItem>[];
+
+    DateTime? lastDay;                               // “current day” bucket
+    for (int i = widget.messages.length - 1; i >= 0; i--) {
+      final m = widget.messages[i];                  // newest → oldest
+      final msgDay = DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
+
+      // If we’ve just crossed into an OLDER calendar day, insert the chip
+      if (lastDay != null &&
+          (msgDay.year  != lastDay.year  ||
+              msgDay.month != lastDay.month ||
+              msgDay.day   != lastDay.day)) {
+        items.add(_ChatListItem.dateHeader(_formatDateHeader(lastDay)));
+      }
+
+      // Add the message itself
+      items.add(_ChatListItem.message(m));
+      lastDay = msgDay;
+    }
+
+    // Add header for the oldest block (loop never catches it)
+    if (lastDay != null) {
+      items.add(_ChatListItem.dateHeader(_formatDateHeader(lastDay)));
+    }
+
+    return items;   // still newest-first for reverse:true
+  }
+  /* ─────────────────────────────────────────── */
 
   String _formatDateHeader(DateTime dt) {
     final now = DateTime.now();
@@ -168,74 +231,38 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
     final msgDay = DateTime(dt.year, dt.month, dt.day);
     final diff = msgDay.difference(today).inDays;
 
-    if (diff == 0) {
-      return 'Today';
-    } else if (diff == -1) {
-      return 'Yesterday';
-    } else {
-      return "${_monthName(dt.month)} ${dt.day}, ${dt.year}";
-    }
+    if (diff == 0) return 'Today';
+    if (diff == -1) return 'Yesterday';
+    return '${_monthName(dt.month)} ${dt.day}, ${dt.year}';
   }
 
-  String _monthName(int month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return months[month - 1];
-  }
+  String _monthName(int m) => const [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ][m - 1];
 
-  List<_ChatListItem> _buildChatItems() {
-    final items = <_ChatListItem>[];
-    DateTime? lastDay; // we track the last day we inserted
-
-    for (var i = 0; i < widget.messages.length; i++) {
-      final m = widget.messages[i];
-      // 'Day' is year-month-day only
-      final msgDay =
-          DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
-
-      // If day changed (or first message), we insert a date-header item
-      if (lastDay == null ||
-          msgDay.year != lastDay.year ||
-          msgDay.month != lastDay.month ||
-          msgDay.day != lastDay.day) {
-        items.add(_ChatListItem.dateHeader(_formatDateHeader(m.timestamp)));
-        lastDay = msgDay;
-      }
-
-      // Then the message item
-      items.add(_ChatListItem.message(m));
-    }
-
-    return items;
-  }
-
-  Widget _buildDateDivider(BuildContext context, String label) {
-    final cs = Theme.of(context).colorScheme;
-
+  Widget _buildDateDivider(BuildContext ctx, String label) {
+    final cs = Theme.of(ctx).colorScheme;
     return Center(
       child: Chip(
-        label: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: cs.onSurface.withOpacity(0.6),
-          ),
-        ),
+        label: Text(label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface.withOpacity(0.6),
+            )),
         backgroundColor: cs.surface.withOpacity(0.1),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
       ),
     );
   }

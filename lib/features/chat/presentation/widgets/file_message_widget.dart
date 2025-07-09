@@ -123,10 +123,10 @@ class FileMessageWidget extends StatelessWidget {
       child: GestureDetector(
         onLongPress: () => _showFileOptions(context),
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
           constraints:
-              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.4),
           decoration: BoxDecoration(
             color: isOwn
                 ? cs.primary.withOpacity(0.85)

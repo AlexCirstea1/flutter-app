@@ -72,6 +72,7 @@ class _EventsPageState extends State<EventsPage> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
@@ -292,6 +293,9 @@ class _EventsPageState extends State<EventsPage> {
         break;
       case 'CHAT_CREATED':
         iconData = Icons.chat_outlined;
+        break;
+      case 'FILE_UPLOAD':
+        iconData = Icons.file_upload_outlined;
         break;
       default:
         iconData = Icons.data_object;
