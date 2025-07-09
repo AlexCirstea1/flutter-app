@@ -123,6 +123,11 @@ class WebSocketService {
       destination: '/user/queue/files',
       callback: (frame) => _handleIncomingFrame(frame, tag: 'FILE_META'),
     );
+
+    _stompClient?.subscribe(
+      destination: '/user/queue/notifications',
+      callback: (frame) => _handleIncomingFrame(frame, tag: 'MESSAGE_DELETED'),
+    );
   }
 
   void _handleIncomingFrame(StompFrame frame, {required String tag}) {

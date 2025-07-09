@@ -253,4 +253,32 @@ class MessageRepository {
       return [];
     }
   }
+
+  Future<bool> deleteMessage({required String messageId}) async {
+    final accessToken = await storageService.getAccessToken();
+    if (accessToken == null) {
+      LoggerService.logError('[DEL] no access-token');
+      return false;
+    }
+
+    final uri = Uri.parse('${Environment.apiBaseUrl}/messages/$messageId');
+    try {
+      LoggerService.logInfo('[DEL] sending DELETE request to → $uri');
+      final response = await http.delete(
+        uri,
+        headers: {'Authorization': 'Bearer $accessToken'},
+      );
+
+      LoggerService.logInfo('[DEL] response status=${response.statusCode}');
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        LoggerService.logError('[DEL] HTTP ${response.statusCode}: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      LoggerService.logError('[DEL] exception: $e');
+      return false;
+    }
+  }
 }

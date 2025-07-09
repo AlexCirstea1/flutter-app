@@ -31,6 +31,7 @@ class ChatMessagesList extends StatefulWidget {
   final bool isLoading;
   final ItemScrollController scrollController;
   final ItemPositionsListener positionsListener;
+  final Function(MessageDTO)? onMessageDeleted;
 
   const ChatMessagesList({
     super.key,
@@ -39,6 +40,7 @@ class ChatMessagesList extends StatefulWidget {
     required this.isLoading,
     required this.scrollController,
     required this.positionsListener,
+    this.onMessageDeleted,
   });
 
   @override
@@ -51,7 +53,6 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
   // Track download errors
   final Map<String, String> _downloadErrors = {};
 
-  // Update lib/features/chat/presentation/widgets/chat_message_list.dart
   @override
   Widget build(BuildContext context) {
     if (widget.isLoading) {
@@ -76,7 +77,6 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
           final msg = item.message!;
           final isMine = (msg.sender == widget.currentUserId);
 
-          // Check if this is a file message
           if (msg.ciphertext == '__FILE__' || msg.file != null) {
             return FileMessageWidget(
               message: msg,
@@ -87,12 +87,12 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
             );
           }
 
-          // Regular text message
           return MessageBubble(
             message: msg,
             isMine: isMine,
             colorScheme: Theme.of(context).colorScheme,
             textTheme: Theme.of(context).textTheme,
+            onDeleteMessage: widget.onMessageDeleted, // pass deletion callback
           );
         }
       },

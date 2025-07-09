@@ -29,6 +29,7 @@ class FileMessageWidget extends StatelessWidget {
   }
 
   String _getFileTypeLabel(String fileName, String? mimeType) {
+    // ... existing implementation unchanged
     if (mimeType != null) {
       if (mimeType.startsWith('image/')) return 'Image';
       if (mimeType.startsWith('video/')) return 'Video';
@@ -41,7 +42,6 @@ class FileMessageWidget extends StatelessWidget {
         return 'Archive';
       }
     }
-
     final extension = fileName.split('.').last.toLowerCase();
     switch (extension) {
       case 'jpg':
@@ -94,7 +94,12 @@ class FileMessageWidget extends StatelessWidget {
               title: const Text('Validate File'),
               onTap: () {
                 Navigator.pop(context);
-                _validateFile(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ValidationPage(message: message),
+                    fullscreenDialog: true,
+                  ),
+                );
               },
             ),
           ],
@@ -103,120 +108,15 @@ class FileMessageWidget extends StatelessWidget {
     );
   }
 
-  Future<void> _validateFile(BuildContext context) async {
-    LoggerService.logInfo('[UI] validateFile — tapped');
-    final status = ValueNotifier<String>('Preparing…');
-
-    final fileValidationService = serviceLocator<FileValidationService>();
-    final downloadService = serviceLocator<FileDownloadService>();
-
-    final rootNavigator = Navigator.of(context, rootNavigator: true);
-
-    showDialog(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        content: Row(
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(width: 16),
-            Expanded(
-              child: ValueListenableBuilder<String>(
-                valueListenable: status,
-                builder: (_, value, __) => Text(value),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    Future<void> closeSpinner() async {
-      if (rootNavigator.canPop()) {
-        rootNavigator.pop();
-      }
-    }
-
-    try {
-      status.value = 'Downloading file…';
-      LoggerService.logInfo('[UI] start download');
-      final file = await downloadService.downloadAndDecryptFile(
-        message: message,
-        onProgress: (p) => LoggerService.logInfo('[UI] download p=$p'),
-        onError: (err) async {
-          LoggerService.logError('[UI] download error: $err');
-          await closeSpinner();
-          if (context.mounted) {
-            _showValidationResult(context, null, err);
-          }
-        },
-      );
-      LoggerService.logInfo('[UI] download done → ${file?.path}');
-
-      if (file == null || message.file?.fileId == null) {
-        throw 'Unable to download file for validation';
-      }
-
-      status.value = 'Validating file…';
-      LoggerService.logInfo('[UI] call validateFile');
-      final result = await fileValidationService.validateFile(
-        fileId: message.file!.fileId,
-        file: file,
-      );
-      LoggerService.logInfo('[UI] validateFile returned isValid=${result?.isValid}');
-
-      await closeSpinner();
-      if (context.mounted) {
-        _showValidationResult(context, result, null);
-      }
-    } catch (e, st) {
-      LoggerService.logError('[UI] validateFile exception: $e\n$st');
-      await closeSpinner();
-      if (context.mounted) {
-        _showValidationResult(context, null, e.toString());
-      }
-    } finally {
-      status.dispose();
-    }
-  }
-
-  void _showValidationResult(
-      BuildContext context,
-      FileValidationResponse? result,
-      String? error,
-      ) {
-    // Use root navigator and delay push until spinner is fully closed
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute(
-          builder: (_) => ValidationResultScreen(
-            result: result,
-            error: error,
-          ),
-          fullscreenDialog: true,
-        ),
-      );
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    String fileName;
-    String displayText;
-
-    if (message.file?.fileName != null) {
-      fileName = message.file!.fileName;
-      final fileType = _getFileTypeLabel(fileName, message.file?.mimeType);
-      displayText = fileType;
-    } else {
-      fileName = message.plaintext?.replaceFirst('[File] ', '') ?? 'File';
-      final fileType = _getFileTypeLabel(fileName, null);
-      displayText = fileType;
-    }
+    String fileName = message.file?.fileName ??
+        message.plaintext?.replaceFirst('[File] ', '') ??
+        'File';
+    String displayText = _getFileTypeLabel(fileName, message.file?.mimeType);
 
     return Align(
       alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
@@ -226,7 +126,7 @@ class FileMessageWidget extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
           constraints:
-          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
           decoration: BoxDecoration(
             color: isOwn
                 ? cs.primary.withOpacity(0.85)
@@ -235,7 +135,7 @@ class FileMessageWidget extends StatelessWidget {
               BoxShadow(
                   color: Colors.black.withOpacity(0.08),
                   blurRadius: 4,
-                  offset: const Offset(0, 2)),
+                  offset: const Offset(0, 2))
             ],
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(18),
@@ -256,40 +156,34 @@ class FileMessageWidget extends StatelessWidget {
                           : tt.bodyLarge?.color?.withOpacity(0.7)),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      displayText,
-                      style: tt.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: isOwn ? cs.onPrimary : tt.bodyLarge?.color),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    child: Text(displayText,
+                        style: tt.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            color: isOwn ? cs.onPrimary : tt.bodyLarge?.color),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
                   ),
                   IconButton(
-                    icon: Icon(Icons.download,
-                        size: 20,
-                        color: isOwn
-                            ? cs.onPrimary
-                            : tt.bodyLarge?.color?.withOpacity(0.7)),
-                    padding: EdgeInsets.zero,
-                    onPressed: () => onDownload(message),
-                    tooltip: 'Download',
-                  ),
+                      icon: Icon(Icons.download,
+                          size: 20,
+                          color: isOwn
+                              ? cs.onPrimary
+                              : tt.bodyLarge?.color?.withOpacity(0.7)),
+                      padding: EdgeInsets.zero,
+                      onPressed: () => onDownload(message),
+                      tooltip: 'Download'),
                 ],
               ),
               const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(
-                    _formatTime(message.timestamp),
-                    style: tt.bodyMedium?.copyWith(
-                      color: isOwn
-                          ? cs.onPrimary.withOpacity(0.7)
-                          : tt.bodyMedium?.color?.withOpacity(0.6),
-                      fontSize: 11,
-                    ),
-                  ),
+                  Text(_formatTime(message.timestamp),
+                      style: tt.bodyMedium?.copyWith(
+                          color: isOwn
+                              ? cs.onPrimary.withOpacity(0.7)
+                              : tt.bodyMedium?.color?.withOpacity(0.6),
+                          fontSize: 11)),
                   if (isOwn) ...[
                     const SizedBox(width: 4),
                     Icon(message.isRead ? Icons.done_all : Icons.done,
@@ -305,21 +199,18 @@ class FileMessageWidget extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: LinearProgressIndicator(
-                      minHeight: 4,
-                      value: downloadProgress,
-                      backgroundColor: Colors.grey.shade300,
-                      color: isOwn ? cs.onPrimary : cs.primary,
-                    ),
+                        minHeight: 4,
+                        value: downloadProgress,
+                        backgroundColor: Colors.grey.shade300,
+                        color: isOwn ? cs.onPrimary : cs.primary),
                   ),
                 ),
               if (downloadError != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    downloadError!,
-                    style:
-                    const TextStyle(color: Colors.redAccent, fontSize: 12),
-                  ),
+                  child: Text(downloadError!,
+                      style: const TextStyle(
+                          color: Colors.redAccent, fontSize: 12)),
                 ),
             ],
           ),
@@ -329,73 +220,374 @@ class FileMessageWidget extends StatelessWidget {
   }
 }
 
-class ValidationResultScreen extends StatelessWidget {
-  final FileValidationResponse? result;
-  final String? error;
+class ValidationPage extends StatefulWidget {
+  final MessageDTO message;
+  const ValidationPage({super.key, required this.message});
 
-  const ValidationResultScreen({
-    Key? key,
-    this.result,
-    this.error,
-  }) : super(key: key);
+  @override
+  _ValidationPageState createState() => _ValidationPageState();
+}
+
+class _ValidationPageState extends State<ValidationPage>
+    with TickerProviderStateMixin {
+  String status = 'Preparing…';
+  FileValidationResponse? result;
+  String? error;
+  bool loading = true;
+  late AnimationController _fadeController;
+  late AnimationController _scaleController;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _startValidation();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _startValidation() async {
+    LoggerService.logInfo('[UI] ValidationPage: start');
+    final fileValidationService = serviceLocator<FileValidationService>();
+
+    try {
+      setState(() => status = 'Downloading file…');
+
+      setState(() => status = 'Validating file…');
+      final res = await fileValidationService.validateFile(
+        fileId: widget.message.file!.fileId,
+      );
+
+      if (res == null) throw 'Validation service error';
+
+      setState(() {
+        result = res;
+        loading = false;
+      });
+      _fadeController.forward();
+      _scaleController.forward();
+    } catch (e, st) {
+      LoggerService.logError('[UI] ValidationPage exception: $e\n$st');
+      setState(() {
+        error = e.toString();
+        loading = false;
+      });
+      _fadeController.forward();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final title = error != null
-        ? 'Validation Error'
-        : (result?.isValid == true ? 'File is Valid' : 'File is Invalid');
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return Scaffold(
+      backgroundColor: cs.surface,
       appBar: AppBar(
-        title: Text(title),
+        title: Text('File Validation', style: tt.titleLarge),
+        backgroundColor: cs.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: cs.onSurface),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: error != null
-            ? Center(
-          child: Text(
-            error!,
-            style: const TextStyle(color: Colors.red, fontSize: 16),
-          ),
-        )
-            : Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(result!.message, style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 12),
-            Text('Blockchain Hash:', style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(result!.blockchainHash),
-            const SizedBox(height: 8),
-            Text('Current Hash:', style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(result!.currentHash),
-            const SizedBox(height: 12),
-            Text('Uploaded:', style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(
-              DateTime.fromMillisecondsSinceEpoch(
-                  result!.uploadTimestamp * 1000)
-                  .toLocal()
-                  .toString(),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child:
+              loading ? _buildLoadingState(cs, tt) : _buildResultState(cs, tt),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState(ColorScheme cs, TextTheme tt) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(20),
             ),
-            const SizedBox(height: 12),
-            Text('Validity:', style: const TextStyle(fontWeight: FontWeight.bold)),
-            Row(
-              children: [
-                Icon(
-                  result!.isValid ? Icons.check_circle : Icons.error,
-                  color: result!.isValid ? Colors.green : Colors.red,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  result!.isValid ? 'Valid' : 'Invalid',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: result!.isValid ? Colors.green : Colors.red,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: cs.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            status,
+            style: tt.titleMedium?.copyWith(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Please wait while we verify your file',
+            style: tt.bodyMedium?.copyWith(
+              color: cs.onSurface.withOpacity(0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultState(ColorScheme cs, TextTheme tt) {
+    return FadeTransition(
+      opacity: _fadeController,
+      child:
+          error != null ? _buildErrorState(cs, tt) : _buildSuccessState(cs, tt),
+    );
+  }
+
+  Widget _buildErrorState(ColorScheme cs, TextTheme tt) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: cs.errorContainer.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(
+              Icons.error_outline,
+              size: 48,
+              color: cs.error,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Validation Failed',
+            style: tt.headlineSmall?.copyWith(
+              color: cs.error,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cs.errorContainer.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: cs.error.withOpacity(0.2)),
+            ),
+            child: Text(
+              error!,
+              style: tt.bodyMedium?.copyWith(color: cs.error),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuccessState(ColorScheme cs, TextTheme tt) {
+    final isValid = result!.isValid;
+    final statusColor = isValid ? Colors.green : cs.error;
+    final containerColor = isValid
+        ? Colors.green.withOpacity(0.1)
+        : cs.errorContainer.withOpacity(0.1);
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Status Header
+          ScaleTransition(
+            scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+              CurvedAnimation(
+                parent: _scaleController,
+                curve: Curves.elasticOut,
+              ),
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: containerColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: statusColor.withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    isValid ? Icons.verified : Icons.error_outline,
+                    color: statusColor,
+                    size: 48,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Text(
+                    isValid ? 'File Verified' : 'Verification Failed',
+                    style: tt.headlineSmall?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    result!.message,
+                    style: tt.bodyMedium?.copyWith(
+                      color: cs.onSurface.withOpacity(0.7),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Details Section - Only show if data is available
+          if (result!.blockchainHash != null) ...[
+            _buildDetailCard(
+              'Blockchain Hash',
+              result!.blockchainHash!,
+              Icons.link,
+              cs,
+              tt,
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (result!.currentHash != null) ...[
+            _buildDetailCard(
+              'Current Hash',
+              result!.currentHash!,
+              Icons.fingerprint,
+              cs,
+              tt,
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (result!.uploadTimestamp != null) ...[
+            _buildDetailCard(
+              'Upload Date',
+              DateTime.fromMillisecondsSinceEpoch(result!.uploadTimestamp!)
+                  .toLocal()
+                  .toString()
+                  .split('.')[0],
+              Icons.schedule,
+              cs,
+              tt,
             ),
           ],
-        ),
+
+          // Show message when no blockchain record exists
+          if (result!.blockchainHash == null &&
+              result!.currentHash == null &&
+              result!.uploadTimestamp == null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cs.surfaceVariant.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cs.outline.withOpacity(0.2)),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: cs.onSurfaceVariant,
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No Blockchain Record',
+                    style: tt.titleMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'This file has not been recorded on the blockchain yet.',
+                    style: tt.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant.withOpacity(0.7),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailCard(
+    String title,
+    String content,
+    IconData icon,
+    ColorScheme cs,
+    TextTheme tt,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.surfaceVariant.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outline.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: cs.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: tt.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: cs.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.surface,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              content,
+              style: tt.bodyMedium?.copyWith(
+                fontFamily: 'monospace',
+                color: cs.onSurface,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

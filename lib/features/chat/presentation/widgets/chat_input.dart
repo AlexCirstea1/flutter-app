@@ -11,6 +11,7 @@ class ChatInputWidget extends StatefulWidget {
   final bool amIBlocked;
   final bool isCurrentUserAdmin;
   final bool isChatPartnerAdmin;
+  final Function(bool)? onEphemeralChanged;
   final Function() onSendMessage;
   final Function(String path, String type, {required String filename})
       onSendFile;
@@ -24,6 +25,7 @@ class ChatInputWidget extends StatefulWidget {
     required this.isChatPartnerAdmin,
     required this.onSendMessage,
     required this.onSendFile,
+    this.onEphemeralChanged,
   });
 
   @override
@@ -258,6 +260,7 @@ class _ChatInputWidgetState extends State<ChatInputWidget> {
               _buildLabel(_isEphemeral ? 'One-time: ON' : 'One-time: OFF'),
           onTap: () {
             setState(() => _isEphemeral = !_isEphemeral);
+            widget.onEphemeralChanged?.call(_isEphemeral);
           },
         ),
       ],

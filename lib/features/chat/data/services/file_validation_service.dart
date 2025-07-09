@@ -12,17 +12,17 @@ import '../../../../core/data/services/storage_service.dart';
 class FileValidationResponse {
   final String fileId;
   final String message;
-  final String blockchainHash;
-  final String currentHash;
-  final int uploadTimestamp; // Change from String? to int
+  final String? blockchainHash; // Make nullable
+  final String? currentHash; // Make nullable
+  final int? uploadTimestamp; // Make nullable
   final bool isValid;
 
   FileValidationResponse({
     required this.fileId,
     required this.message,
-    required this.blockchainHash,
-    required this.currentHash,
-    required this.uploadTimestamp,
+    this.blockchainHash, // Remove required
+    this.currentHash, // Remove required
+    this.uploadTimestamp, // Remove required
     required this.isValid,
   });
 
@@ -30,13 +30,14 @@ class FileValidationResponse {
     return FileValidationResponse(
       fileId: json['fileId'] as String,
       message: json['message'] as String,
-      blockchainHash: json['blockchainHash'] as String,
-      currentHash: json['currentHash'] as String,
-      uploadTimestamp: json['uploadTimestamp'] as int, // Parse as int
+      blockchainHash: json['blockchainHash'] as String?, // Cast to nullable
+      currentHash: json['currentHash'] as String?, // Cast to nullable
+      uploadTimestamp: json['uploadTimestamp'] as int?, // Cast to nullable
       isValid: json['valid'] as bool,
     );
   }
 }
+
 class FileValidationService {
   final StorageService storageService;
 
@@ -44,7 +45,6 @@ class FileValidationService {
 
   Future<FileValidationResponse?> validateFile({
     required String fileId,
-    required File file,
   }) async {
     final accessToken = await storageService.getAccessToken();
     if (accessToken == null) {
@@ -55,57 +55,23 @@ class FileValidationService {
     final uri = Uri.parse('${Environment.apiBaseUrl}/files/$fileId/validate');
     final client = http.Client();
     try {
-      LoggerService.logInfo('[VAL] preparing multipart → $uri');
+      LoggerService.logInfo('[VAL] sending POST request to → $uri');
 
-      /* 1️⃣ read file & meta */
-      final bytes     = await file.readAsBytes();
-      final fileName  = p.basename(file.path);
-      final sizeBytes = bytes.length;
-      LoggerService.logInfo('[VAL] file $fileName  size=$sizeBytes B');
-
-      final metaJson = jsonEncode({
-        'fileId'    : fileId,
-        'fileName'  : fileName,
-        'sizeBytes' : sizeBytes,
-        'mimeType'  : 'application/octet-stream',
-      });
-
-      /* 2️⃣ build request (same pattern as upload) */
-      final request = http.MultipartRequest('POST', uri)
-        ..headers['Authorization'] = 'Bearer $accessToken'
-        ..files.add(http.MultipartFile.fromBytes(
-          'meta',
-          utf8.encode(metaJson),
-          contentType: MediaType('application', 'json'),
-        ))
-        ..files.add(http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename : fileName,
-          contentType: MediaType('application', 'octet-stream'),
-        ));
-
-      LoggerService.logInfo('[VAL] sending request, headers=${request.headers}');
-
-      /* 3️⃣ send & await */
-      final streamed = await client
-          .send(request)
-          .timeout(const Duration(seconds: 60), onTimeout: () {
-        LoggerService.logError('[VAL] TIMEOUT after 60 s');
+      final response = await client.post(
+        uri,
+        headers: {'Authorization': 'Bearer $accessToken'},
+      ).timeout(const Duration(seconds: 30), onTimeout: () {
+        LoggerService.logError('[VAL] TIMEOUT after 30 s');
         throw TimeoutException('validation request timed-out');
       });
 
-      LoggerService
-          .logInfo('[VAL] response status=${streamed.statusCode}   '
-          'contentLength=${streamed.contentLength}');
+      LoggerService.logInfo('[VAL] response status=${response.statusCode}');
+      LoggerService.logInfo('[VAL] response body: ${response.body}');
 
-      final body = await streamed.stream.bytesToString();
-      LoggerService.logInfo('[VAL] response body: $body');
-
-      if (streamed.statusCode == 200) {
-        return FileValidationResponse.fromJson(jsonDecode(body));
+      if (response.statusCode == 200) {
+        return FileValidationResponse.fromJson(jsonDecode(response.body));
       } else {
-        LoggerService.logError('[VAL] HTTP ${streamed.statusCode}');
+        LoggerService.logError('[VAL] HTTP ${response.statusCode}');
         return null;
       }
     } catch (e) {
@@ -115,5 +81,4 @@ class FileValidationService {
       client.close();
     }
   }
-
 }

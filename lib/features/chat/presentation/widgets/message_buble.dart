@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/data/services/service_locator.dart';
+import '../../data/repositories/message_repository.dart';
 import '../../domain/models/message_dto.dart';
 
 class MessageBubble extends StatelessWidget {
@@ -27,98 +29,83 @@ class MessageBubble extends StatelessWidget {
     return '$hh:$mm';
   }
 
+  void _deleteMessage(BuildContext context) async {
+    final messageRepository = serviceLocator<MessageRepository>();
+    final success = await messageRepository.deleteMessage(messageId: message.id);
+    Navigator.pop(context);
+    if (success && onDeleteMessage != null) {
+      onDeleteMessage!(message);
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? 'Message deleted' : 'Failed to delete message'),
+      ),
+    );
+  }
+
   void _showMessageOptions(BuildContext context) {
     final bool isFile = message.ciphertext == '__FILE__';
     final bool isEncrypted =
         message.plaintext == null || message.plaintext!.isEmpty;
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final position = renderBox.localToGlobal(Offset.zero);
-    final size = renderBox.size;
 
-    final List<PopupMenuEntry<String>> menuItems = [];
+    List<Widget> options = [];
 
-    // Copy option is available for any decrypted message
     if (!isEncrypted) {
-      menuItems.add(
-        const PopupMenuItem<String>(
-          value: 'copy',
-          child: Row(
-            children: [
-              Icon(Icons.copy, size: 20),
-              SizedBox(width: 8),
-              Text('Copy'),
-            ],
-          ),
+      options.add(
+        ListTile(
+          leading: const Icon(Icons.copy, size: 20),
+          title: const Text('Copy'),
+          onTap: () {
+            Navigator.pop(context);
+            if (message.plaintext != null) {
+              Clipboard.setData(ClipboardData(text: message.plaintext!));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Message copied to clipboard')),
+              );
+            }
+          },
         ),
       );
     }
 
-    // Edit option only for my text messages that are not encrypted or files
     if (isMine && !isEncrypted && !isFile) {
-      menuItems.add(
-        const PopupMenuItem<String>(
-          value: 'edit',
-          child: Row(
-            children: [
-              Icon(Icons.edit, size: 20),
-              SizedBox(width: 8),
-              Text('Edit'),
-            ],
-          ),
+      options.add(
+        ListTile(
+          leading: const Icon(Icons.edit, size: 20),
+          title: const Text('Edit'),
+          onTap: () {
+            Navigator.pop(context);
+            if (onEditMessage != null) {
+              onEditMessage!(message);
+            }
+          },
         ),
       );
     }
 
-    // Delete option available for my messages
     if (isMine) {
-      menuItems.add(
-        const PopupMenuItem<String>(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete, color: Colors.redAccent, size: 20),
-              SizedBox(width: 8),
-              Text('Delete', style: TextStyle(color: Colors.redAccent)),
-            ],
-          ),
+      options.add(
+        ListTile(
+          leading: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+          title:
+              const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          onTap: () => _deleteMessage(context),
         ),
       );
     }
 
-    if (menuItems.isEmpty) return;
+    if (options.isEmpty) return;
 
-    showMenu<String>(
+    showModalBottomSheet(
       context: context,
-      position: RelativeRect.fromLTRB(
-        position.dx,
-        position.dy,
-        position.dx + size.width,
-        position.dy + size.height,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: options,
+        ),
       ),
-      items: menuItems,
-    ).then((value) {
-      if (value == null) return;
-
-      switch (value) {
-        case 'copy':
-          if (message.plaintext != null) {
-            Clipboard.setData(ClipboardData(text: message.plaintext!));
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Message copied to clipboard')));
-          }
-          break;
-        case 'edit':
-          if (onEditMessage != null) {
-            onEditMessage!(message);
-          }
-          break;
-        case 'delete':
-          if (onDeleteMessage != null) {
-            onDeleteMessage!(message);
-          }
-          break;
-      }
-    });
+    );
   }
 
   @override

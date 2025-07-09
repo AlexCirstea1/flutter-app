@@ -57,7 +57,7 @@ class _ChatPageState extends State<ChatPage> {
   List<MessageDTO> get _messages => _chatService.messages;
 
   String? _currentUserId;
-  final bool _isEphemeral = false;
+  bool _isEphemeral = false;
 
   @override
   void initState() {
@@ -143,6 +143,12 @@ class _ChatPageState extends State<ChatPage> {
               setState(() => _chatAuthorized = true);
             }
             break;
+          case 'MESSAGE_DELETED':
+            final messageId = message['messageId'] as String;
+            setState(() {
+              _messages.removeWhere((m) => m.id == messageId);
+            });
+            break;
           case 'CHAT_REQUEST':
             break;
           case 'READ_RECEIPT':
@@ -220,6 +226,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  // dart
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -249,6 +256,11 @@ class _ChatPageState extends State<ChatPage> {
                           isLoading: false,
                           scrollController: _itemScrollController,
                           positionsListener: _itemPositionsListener,
+                          onMessageDeleted: (MessageDTO msg) {
+                            setState(() {
+                              _messages.removeWhere((m) => m.id == msg.id);
+                            });
+                          },
                         )
                       : ChatRequestGate(
                           chatUserId: widget.chatUserId,
@@ -273,6 +285,9 @@ class _ChatPageState extends State<ChatPage> {
                       isChatPartnerAdmin: _isChatPartnerAdmin,
                       onSendMessage: _sendMessage,
                       onSendFile: _sendFileMessage,
+                      onEphemeralChanged: (bool value) {
+                        setState(() => _isEphemeral = value);
+                      },
                     )
                   : LockedChatInput(
                       chatUserId: widget.chatUserId,
