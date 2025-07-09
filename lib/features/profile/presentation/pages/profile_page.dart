@@ -19,6 +19,10 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  static const cacheDuration = Duration(hours: 2);
+  DateTime? _lastProfileFetch;
+  DateTime? _lastCertFetch;
+
   CertificateInfo? _certificateInfo;
   int _selectedIndex = 1;
   bool _isLoading = true;
@@ -35,54 +39,139 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
-    _loadCertificateInfo();
+    _loadProfileData(useCache: true);
   }
 
-  Future<void> _loadCertificateInfo() async {
-    final certificate = await _storageService.getCertificate();
-    final certInfo = KeyCertHelper.parseCertificate(certificate!);
+  Future<void> _loadProfileData({bool useCache = true}) async {
+    setState(() => _isLoading = true);
 
-    if (mounted) {
-      setState(() {
-        _certificateInfo = certInfo;
-      });
+    await Future.wait([
+      _fetchUserData(useCache: useCache),
+      _loadCertificateInfo(useCache: useCache),
+    ]);
+
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _loadCertificateInfo({bool useCache = true}) async {
+    // Use cached certificate if available and valid
+    if (useCache &&
+        _certificateInfo != null &&
+        _lastCertFetch != null &&
+        DateTime.now().difference(_lastCertFetch!) < cacheDuration) {
+      return;
+    }
+
+    final certificate = await _storageService.getCertificate();
+    if (certificate != null) {
+      final certInfo = KeyCertHelper.parseCertificate(certificate);
+
+      if (mounted) {
+        setState(() {
+          _certificateInfo = certInfo;
+          _lastCertFetch = DateTime.now();
+        });
+      }
+
+      // Cache locally for future use
+      await _storageService.setObject('cached_certificate_info', certInfo.toJson());
+      await _storageService.setString('cert_cache_time', DateTime.now().toIso8601String());
     }
   }
 
-  Future<void> _fetchUserData() async {
+  Future<void> _fetchUserData({bool useCache = true}) async {
     try {
+      // Try to load from cache first
+      if (useCache) {
+        final cachedData = await _storageService.getObject('cached_profile_data');
+        final cacheTimeStr = await _storageService.getString('profile_cache_time');
+
+        if (cachedData != null && cacheTimeStr != null) {
+          final cacheTime = DateTime.parse(cacheTimeStr);
+          if (DateTime.now().difference(cacheTime) < cacheDuration) {
+            setState(() {
+              _username = cachedData['username'] ?? 'N/A';
+              _email = cachedData['email'] ?? 'N/A';
+              _hasPin = cachedData['hasPin'] ?? false;
+              _userId = cachedData['userId'];
+              _blockchainConsent = cachedData['blockchainConsent'] ?? false;
+              _lastProfileFetch = cacheTime;
+            });
+
+            // Load cached avatar
+            final cachedAvatar = await _storageService.getBytes('cached_avatar_${_userId}');
+            if (cachedAvatar != null) {
+              setState(() => _avatarBytes = cachedAvatar);
+              return; // Exit if we successfully loaded from cache
+            }
+          }
+        }
+      }
+
+      // Fetch from network if cache is invalid or we're forcing refresh
       final accessToken = await _storageService.getAccessToken();
       if (accessToken != null) {
         final userData = await _authService.getUserData(accessToken);
         if (userData != null) {
-          // Get the userId and store it
           final userId = await _storageService.getUserId();
 
           setState(() {
             _username = userData['username'] ?? 'N/A';
             _email = userData['email'] ?? 'N/A';
             _hasPin = userData['hasPin'] ?? false;
-            _userId = userId; // Store the userId
-            _blockchainConsent =
-                userData['blockchainConsent'] as bool? ?? false;
-            _isLoading = false;
+            _userId = userId;
+            _blockchainConsent = userData['blockchainConsent'] as bool? ?? false;
+            _lastProfileFetch = DateTime.now();
           });
+
+          // Cache the profile data
+          await _storageService.setObject('cached_profile_data', {
+            'username': _username,
+            'email': _email,
+            'hasPin': _hasPin,
+            'userId': _userId,
+            'blockchainConsent': _blockchainConsent,
+          });
+          await _storageService.setString('profile_cache_time', DateTime.now().toIso8601String());
 
           if (userData['id'] != null) {
             await _fetchAvatar(userData['id']);
           }
         }
       }
-    } catch (_) {
-      setState(() => _isLoading = false);
+    } catch (e) {
+      // If network fetch fails, try using any available cache as fallback
+      final cachedData = await _storageService.getObject('cached_profile_data');
+      if (cachedData != null) {
+        setState(() {
+          _username = cachedData['username'] ?? 'N/A';
+          _email = cachedData['email'] ?? 'N/A';
+          _hasPin = cachedData['hasPin'] ?? false;
+          _userId = cachedData['userId'];
+          _blockchainConsent = cachedData['blockchainConsent'] ?? false;
+        });
+
+        final cachedAvatar = await _storageService.getBytes('cached_avatar_${_userId}');
+        if (cachedAvatar != null) {
+          setState(() => _avatarBytes = cachedAvatar);
+        }
+      }
     }
   }
 
   Future<void> _fetchAvatar(String userId) async {
     final avatarService = AvatarService(_storageService);
     final bytes = await avatarService.getAvatar(userId);
-    setState(() => _avatarBytes = bytes);
+    if (bytes != null) {
+      setState(() => _avatarBytes = bytes);
+      // Cache the avatar
+      await _storageService.setBytes('cached_avatar_$userId', bytes);
+    }
+  }
+
+  // Add refresh function for pull-to-refresh or button press
+  Future<void> refreshProfileData() async {
+    await _loadProfileData(useCache: false);
   }
 
   void _onItemTapped(int index) {
@@ -105,6 +194,13 @@ class _ProfilePageState extends State<ProfilePage> {
           style: theme.appBarTheme.titleTextStyle,
         ),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: refreshProfileData,
+            tooltip: 'Refresh Profile',
+          ),
+        ],
       ),
       body: _isLoading
           ? Center(

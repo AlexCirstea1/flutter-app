@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../../core/config/environment.dart';
 import '../../../../core/config/logger_config.dart';
+import '../../../../core/data/services/dummy_password_store.dart';
 import '../../../../core/data/services/service_locator.dart';
 import '../../../../core/data/services/storage_service.dart';
 import '../../../chat/presentation/widgets/user_role_chip.dart';
@@ -458,6 +459,11 @@ class _LoginPageState extends State<LoginPage> {
         onTap: () {
           setState(() {
             _usernameController.text = account['username'] ?? '';
+            final dummyPwd =
+                DummyPasswordStore.getPassword(account['username'] ?? '');
+            if (dummyPwd != null) {
+              _passwordController.text = dummyPwd;
+            }
           });
 
           _scrollController.animateTo(

@@ -1,10 +1,11 @@
 import 'dart:convert';
-
+import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:vaultx_app/core/data/services/service_locator.dart';
 import '../../../features/auth/domain/models/user_profile.dart';
 import '../../config/logger_config.dart';
+import 'data_preload_service.dart';
 
 class StorageService {
   final _secureStorage = const FlutterSecureStorage();
@@ -87,9 +88,28 @@ class StorageService {
 
   // Clear all tokens and username
   Future<void> clearLoginDetails() async {
+    // Delete authentication tokens and user profile.
     await _secureStorage.delete(key: ACCESS_TOKEN);
     await _secureStorage.delete(key: REFRESH_TOKEN);
     await _secureStorage.delete(key: USER_PROFILE);
+
+    // Evict profile cache.
+    await _secureStorage.delete(key: 'cached_profile_data');
+    await _secureStorage.delete(key: 'profile_cache_time');
+
+    // Evict certificate cache.
+    await _secureStorage.delete(key: 'cached_certificate_info');
+    await _secureStorage.delete(key: 'cert_cache_time');
+
+    // Evict avatar cache if user ID is available.
+    final userId = await getUserId();
+    if (userId != null) {
+      await _secureStorage.delete(key: 'cached_avatar_$userId');
+    }
+
+    // Clear caches in DataPreloadService
+    final dataPreload = serviceLocator<DataPreloadService>();
+    dataPreload.clearCache();
   }
 
   // Generic save
@@ -164,7 +184,7 @@ class StorageService {
     final privateKeyName = '${MY_PRIVATE_KEY}_${userId}_$version';
     final privateKey = await _secureStorage.read(key: privateKeyName);
     if (privateKey != null) {
-      LoggerService.logInfo(
+      LoggerService.logDebug(
           'Successfully retrieved private key for user: $userId, version: $version');
     } else {
       LoggerService.logError(
@@ -268,5 +288,54 @@ class StorageService {
   Future<bool> isBiometricEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(BIOMETRIC_KEY) ?? false;
+  }
+
+  // Add these methods to the StorageService class
+
+// Store objects as JSON strings
+  Future<void> setObject(String key, Map<String, dynamic> value) async {
+    await _secureStorage.write(key: key, value: jsonEncode(value));
+  }
+
+// Retrieve objects from storage
+  Future<Map<String, dynamic>?> getObject(String key) async {
+    final data = await _secureStorage.read(key: key);
+    if (data == null) return null;
+
+    try {
+      return jsonDecode(data) as Map<String, dynamic>;
+    } catch (e) {
+      LoggerService.logError('Error parsing stored object', e);
+      return null;
+    }
+  }
+
+// Store simple strings
+  Future<void> setString(String key, String value) async {
+    await _secureStorage.write(key: key, value: value);
+  }
+
+// Get simple strings
+  Future<String?> getString(String key) async {
+    return await _secureStorage.read(key: key);
+  }
+
+// Store binary data (for avatars)
+  Future<void> setBytes(String key, Uint8List bytes) async {
+    final base64Data = base64Encode(bytes);
+    await _secureStorage.write(key: key, value: base64Data);
+  }
+
+// Get binary data
+  Future<Uint8List?> getBytes(String key) async {
+    final data = await _secureStorage.read(key: key);
+    if (data == null) return null;
+
+    try {
+      return base64Decode(data);
+    } catch (e) {
+      LoggerService.logError('Error decoding binary data', e);
+      return null;
+    }
   }
 }

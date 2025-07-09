@@ -1,139 +1,106 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../../../core/data/services/api_service.dart';
+import '../../../../core/data/services/data_preload_service.dart';
 import '../../../../core/data/services/service_locator.dart';
 import '../../../../core/data/services/storage_service.dart';
 import '../../../../core/widget/pin_screen.dart';
-import '../../data/services/auth_service.dart';
+import '../../../auth/data/services/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
-
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  final AuthService _authService = serviceLocator<AuthService>();
-  final StorageService _storageService = StorageService();
-  final ApiService _api = serviceLocator<ApiService>();
+  /* ───────── deps ───────── */
+  final _authService = serviceLocator<AuthService>();
+  final _storage = StorageService();
+  final _api = serviceLocator<ApiService>();
+  final _preload = serviceLocator<DataPreloadService>();
 
-  late AnimationController _animationController;
-  late Animation<double> _animation;
-  bool _isDataReady = false;
+  /* ───────── animation ─── */
+  late final AnimationController _animCtl =
+      AnimationController(vsync: this, duration: const Duration(seconds: 2))
+        ..addListener(() => setState(() {}))
+        ..addStatusListener((status) {
+          if (status == AnimationStatus.completed &&
+              _authReady &&
+              _preloadDone &&
+              mounted) {
+            _go();
+          }
+        })
+        ..forward();
+
+  bool _authReady = false;
+  bool _preloadDone = false;
   String? _nextRoute;
   Widget? _nextScreen;
 
   @override
   void initState() {
     super.initState();
-
-    // Setup animation controller for the 2 second loading
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    );
-
-    _animation = Tween<double>(begin: 0, end: 1).animate(_animationController)
-      ..addListener(() {
-        setState(() {});
-      })
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed && _isDataReady) {
-          _navigateToNextScreen();
-        }
-      });
-
-    _animationController.forward();
-
-    // Start checking login status in parallel
-    _checkLoginStatus();
+    _checkLoginStatus(); // auth & route
+    _kickOffPreload(); // background data load
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+  Future<void> _kickOffPreload() async {
+    // start immediately but don't block UI
+    await _preload.preloadAppData();
+    _preloadDone = true;
+    if (_animCtl.isCompleted && _authReady && mounted) _go();
   }
 
   Future<void> _checkLoginStatus() async {
-    String? accessToken = await _storageService.getAccessToken();
-    String? refreshToken = await _storageService.getRefreshToken();
+    final access = await _storage.getAccessToken();
+    final refresh = await _storage.getRefreshToken();
+    final profile = await _storage.getUserProfile();
 
-    // Check if we have a valid user profile
-    final userProfile = await _storageService.getUserProfile();
-
-    if (accessToken != null) {
-      bool isTokenValid = await _authService.verifyToken(accessToken);
-
-      if (isTokenValid) {
-        // Use the hasPin from the UserProfile if available, otherwise fall back to the stored value
-        final hasPin = userProfile?.hasPin ?? await _storageService.getHasPin();
-
-        if (hasPin) {
-          _nextScreen = const PinScreen();
-        } else {
-          _nextRoute = '/home';
-        }
-      } else if (refreshToken != null) {
-        // Try to refresh the token
-        String? newAccessToken = await _authService.refreshToken(refreshToken);
-
-        if (newAccessToken != null && userProfile != null) {
-          // If we have user data, construct and save a proper auth response
-          final authResponse = {
-            'access_token': newAccessToken,
-            'refresh_token': refreshToken,
-            'user': userProfile.toJson(),
-          };
-
-          // Save the complete updated auth data
-          await _storageService.saveAuthData(authResponse);
-
-          // Navigate based on PIN status
-          if (userProfile.hasPin) {
-            _nextScreen = const PinScreen();
-          } else {
-            _nextRoute = '/home';
-          }
-        } else {
-          // Token refresh failed or no user profile, redirect to login
-          _nextRoute = '/login';
-        }
+    if (access != null && await _authService.verifyToken(access)) {
+      final hasPin = profile?.hasPin ?? await _storage.getHasPin();
+      _nextScreen = hasPin ? const PinScreen() : null;
+      _nextRoute = hasPin ? null : '/home';
+    } else if (refresh != null) {
+      final newTok = await _authService.refreshToken(refresh);
+      if (newTok != null && profile != null) {
+        await _storage.saveAuthData({
+          'access_token': newTok,
+          'refresh_token': refresh,
+          'user': profile.toJson(),
+        });
+        _nextScreen = profile.hasPin ? const PinScreen() : null;
+        _nextRoute = profile.hasPin ? null : '/home';
       } else {
-        // No refresh token available, redirect to login
         _nextRoute = '/login';
       }
     } else {
-      // User is not logged in, navigate to login page
       _nextRoute = '/login';
     }
 
-    // Mark data ready for navigation
-    setState(() {
-      _isDataReady = true;
-    });
-
-    // If animation already complete, navigate now
-    if (_animationController.status == AnimationStatus.completed) {
-      _navigateToNextScreen();
-    }
+    _authReady = true;
+    if (_animCtl.isCompleted && _preloadDone && mounted) _go();
   }
 
-  void _navigateToNextScreen() {
+  void _go() {
     if (_nextScreen != null) {
       Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => _nextScreen!),
-      );
+          context, MaterialPageRoute(builder: (_) => _nextScreen!));
     } else if (_nextRoute != null) {
       Navigator.pushReplacementNamed(context, _nextRoute!);
     }
   }
 
+  @override
+  void dispose() {
+    _animCtl.dispose();
+    super.dispose();
+  }
+
+  /* ───────── UI ───────── */
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -200,7 +167,7 @@ class _SplashScreenState extends State<SplashScreen>
 
             const SizedBox(height: 60),
 
-            // Custom progress indicator
+            // Progress bar driven by splash animation
             Container(
               width: 200,
               height: 4,
@@ -208,51 +175,41 @@ class _SplashScreenState extends State<SplashScreen>
                 color: colorScheme.surface,
                 borderRadius: BorderRadius.circular(2),
                 border: Border.all(
-                  color: colorScheme.primary.withOpacity(0.2),
+                  color: colorScheme.secondary.withOpacity(0.2),
                   width: 1,
                 ),
               ),
-              child: Stack(
-                children: [
-                  // Background track
-                  Container(
-                    width: 200,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  // Animated progress
-                  FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: _animation.value,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondary,
-                        borderRadius: BorderRadius.circular(2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorScheme.secondary.withOpacity(0.3),
-                            blurRadius: 5,
-                            spreadRadius: -1,
-                          ),
-                        ],
+              child: FractionallySizedBox(
+                widthFactor: _animCtl.value,
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondary,
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.secondary.withOpacity(0.3),
+                        blurRadius: 5,
+                        spreadRadius: -1,
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
 
             const SizedBox(height: 16),
 
-            // Loading text with status
-            Text(
-              _isDataReady ? "Ready" : "Initializing...",
-              style: TextStyle(
-                fontSize: 12,
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-                letterSpacing: 1.0,
+            // Show current preload step
+            ValueListenableBuilder<String>(
+              valueListenable: _preload.currentOperation,
+              builder: (_, txt, __) => Text(
+                txt,
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1.0,
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                ),
               ),
             ),
           ],

@@ -2,17 +2,21 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:drift/drift.dart';
 
 import '../../../../core/config/environment.dart';
 import '../../../../core/config/logger_config.dart';
+import '../../../../core/data/database/app_database.dart';
 import '../../../../core/data/services/storage_service.dart';
 import '../../domain/models/chat_history_dto.dart';
+import '../../domain/models/file_info.dart';
 import '../../domain/models/message_dto.dart';
 import '../services/message_crypto_service.dart';
 
 class MessageRepository {
   final StorageService storageService;
   final MessageCryptoService cryptoService;
+  final AppDatabase database;
 
   /// In-memory list of messages for a single conversation.
   final List<MessageDTO> messages = [];
@@ -21,57 +25,178 @@ class MessageRepository {
   MessageRepository({
     required this.storageService,
     required this.cryptoService,
+    required this.database,
   });
 
   Future<void> fetchChatHistory({
     required String chatUserId,
     required VoidCallback onMessagesUpdated,
+    bool forceRefresh = false,
   }) async {
     isFetchingHistory = true;
-    final accessToken = await storageService.getAccessToken();
-    if (accessToken == null) {
-      LoggerService.logError('No access token. Stopping fetch.');
+
+    try {
+      // First load from cache for immediate display
+      if (!forceRefresh) {
+        await _loadFromCache(chatUserId);
+        onMessagesUpdated();
+      }
+
+      // Then fetch from server for latest data
+      await _fetchFromServer(chatUserId, onMessagesUpdated);
+    } finally {
       isFetchingHistory = false;
-      return;
+    }
+  }
+
+  Future<void> _loadFromCache(String chatUserId) async {
+    LoggerService.logInfo('[CACHE] Loading messages from cache for chat: $chatUserId');
+
+    final cachedMessages = await database.getMessagesForChat(chatUserId);
+    messages.clear();
+
+    LoggerService.logInfo('[CACHE] Found ${cachedMessages.length} cached messages');
+
+    for (var cached in cachedMessages) {
+      final msg = MessageDTO(
+        id: cached.id,
+        sender: cached.sender,
+        recipient: cached.recipient,
+        timestamp: cached.timestamp,
+        ciphertext: cached.ciphertext,
+        iv: cached.iv,
+        encryptedKeyForSender: cached.encryptedKeyForSender,
+        encryptedKeyForRecipient: cached.encryptedKeyForRecipient,
+        senderKeyVersion: cached.senderKeyVersion,
+        recipientKeyVersion: cached.recipientKeyVersion,
+        plaintext: cached.plaintext,
+        isRead: cached.isRead,
+        readTimestamp: cached.readTimestamp,
+        oneTime: cached.oneTime,
+        file: cached.fileData != null ? FileInfo.fromJson(json.decode(cached.fileData!)) : null,
+      );
+      messages.add(msg);
     }
 
-    final url =
-        Uri.parse('${Environment.apiBaseUrl}/messages?recipientId=$chatUserId');
+    messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    if (cachedMessages.isNotEmpty) {
+      LoggerService.logInfo('[CACHE] Successfully loaded ${messages.length} messages from cache');
+    } else {
+      LoggerService.logInfo('[CACHE] No cached messages found');
+    }
+  }
+
+  Future<void> _fetchFromServer(String chatUserId, VoidCallback onMessagesUpdated) async {
+    LoggerService.logInfo('[SERVER] Fetching messages from server for chat: $chatUserId');
+
+    final accessToken = await storageService.getAccessToken();
+    if (accessToken == null) return;
+
+    final myUserId = await storageService.getUserId();
+    if (myUserId == null) return;
+
+    // Get latest message timestamp for incremental sync
+    final latestTimestamp = await database.getLatestMessageTimestamp(chatUserId);
+
+    if (latestTimestamp != null) {
+      LoggerService.logInfo('[SERVER] Incremental sync from: ${latestTimestamp.toIso8601String()}');
+    } else {
+      LoggerService.logInfo('[SERVER] Full sync - no previous messages');
+    }
+
+    // Build URL with optional timestamp filter
+    String url = '${Environment.apiBaseUrl}/messages?recipientId=$chatUserId';
+    if (latestTimestamp != null) {
+      final formattedTimestamp = latestTimestamp.toIso8601String();
+      url += '&since=$formattedTimestamp';
+    }
+
     try {
       final resp = await http.get(
-        url,
+        Uri.parse(url),
         headers: {'Authorization': 'Bearer $accessToken'},
       );
 
       if (resp.statusCode == 200) {
         final rawBody = utf8.decode(resp.bodyBytes);
         final List<dynamic> rawList = jsonDecode(rawBody);
-        messages.clear();
-        final myUserId = await storageService.getUserId();
 
-        for (var rawMsg in rawList) {
-          final msg = parseMessageFromJson(
-            Map<String, dynamic>.from(rawMsg),
-          );
-          await _tryDecryptMessage(msg, myUserId);
-          messages.add(msg);
+        if (latestTimestamp == null) {
+          // Full refresh - clear existing cache
+          messages.clear();
+          LoggerService.logInfo('[SERVER] Full refresh - cleared existing cache');
         }
 
-        // Sort messages by timestamp
+        // Parse and decrypt new messages
+        final List<MessageDTO> newMessages = [];
+        final List<CachedMessagesCompanion> toCache = [];
+
+        for (var rawMsg in rawList) {
+          final msg = parseMessageFromJson(Map<String, dynamic>.from(rawMsg));
+          await _tryDecryptMessage(msg, myUserId);
+          newMessages.add(msg);
+
+          // Add to cache
+          toCache.add(CachedMessagesCompanion(
+            id: Value(msg.id),
+            chatUserId: Value(chatUserId),
+            sender: Value(msg.sender),
+            recipient: Value(msg.recipient),
+            ciphertext: Value(msg.ciphertext),
+            iv: Value(msg.iv),
+            encryptedKeyForSender: Value(msg.encryptedKeyForSender),
+            encryptedKeyForRecipient: Value(msg.encryptedKeyForRecipient),
+            senderKeyVersion: Value(msg.senderKeyVersion),
+            recipientKeyVersion: Value(msg.recipientKeyVersion),
+            plaintext: Value(msg.plaintext),
+            timestamp: Value(msg.timestamp),
+            isRead: Value(msg.isRead),
+            readTimestamp: Value(msg.readTimestamp),
+            oneTime: Value(msg.oneTime),
+            fileData: msg.file != null ? Value(jsonEncode(msg.file!.toJson())) : const Value(null),
+          ));
+        }
+
+        // Update cache in background
+        if (toCache.isNotEmpty) {
+          LoggerService.logInfo('[CACHE] Caching ${toCache.length} new messages');
+          database.cacheMessages(toCache);
+        }
+
+        // Merge with existing messages
+        if (latestTimestamp != null) {
+          // For incremental updates, merge without duplicates
+          int updatedCount = 0;
+          int newCount = 0;
+
+          for (final newMsg in newMessages) {
+            final existingIndex = messages.indexWhere((m) => m.id == newMsg.id);
+            if (existingIndex >= 0) {
+              messages[existingIndex] = newMsg;
+              updatedCount++;
+            } else {
+              messages.add(newMsg);
+              newCount++;
+            }
+          }
+
+          LoggerService.logInfo('[SERVER] Merged messages: $newCount new, $updatedCount updated');
+        } else {
+          // For full refresh, just use new messages
+          messages.addAll(newMessages);
+          LoggerService.logInfo('[SERVER] Full refresh: added ${newMessages.length} messages');
+        }
+
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
         // Mark unread as read
         await markMessagesAsRead();
         onMessagesUpdated();
-      } else {
-        LoggerService.logError(
-          'Fetch chat history error. Code=\${resp.statusCode}',
-        );
+        LoggerService.logInfo('[SERVER] Total messages in memory: ${messages.length}');
       }
     } catch (e) {
-      LoggerService.logError('Exception fetching chat history: \$e');
-    } finally {
-      isFetchingHistory = false;
+      LoggerService.logError('[SERVER] Exception fetching chat history: $e');
     }
   }
 

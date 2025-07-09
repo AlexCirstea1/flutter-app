@@ -10,7 +10,9 @@ import '../../../features/chat/data/services/file_validation_service.dart';
 import '../../../features/chat/data/services/key_management_service.dart';
 import '../../../features/chat/data/services/message_crypto_service.dart';
 import '../../../main.dart';
+import '../database/app_database.dart';
 import 'api_service.dart';
+import 'data_preload_service.dart';
 
 final serviceLocator = GetIt.instance;
 
@@ -30,11 +32,15 @@ void setupServiceLocator() {
   serviceLocator.registerLazySingleton<MessageCryptoService>(
       () => MessageCryptoService());
 
-  serviceLocator
-      .registerLazySingleton<MessageRepository>(() => MessageRepository(
-            storageService: serviceLocator(),
-            cryptoService: serviceLocator(),
-          ));
+  serviceLocator.registerLazySingleton<AppDatabase>(() => AppDatabase());
+
+  serviceLocator.registerLazySingleton<DataPreloadService>(() => DataPreloadService());
+
+  serviceLocator.registerFactory<MessageRepository>(() => MessageRepository(
+    storageService: serviceLocator<StorageService>(),
+    cryptoService: serviceLocator<MessageCryptoService>(),
+    database: serviceLocator<AppDatabase>(),
+  ));
 
   serviceLocator.registerFactory<FileValidationService>(
         () => FileValidationService(storageService: serviceLocator<StorageService>()),

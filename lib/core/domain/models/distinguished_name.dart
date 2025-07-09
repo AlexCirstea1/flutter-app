@@ -50,6 +50,15 @@ class DistinguishedName {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'commonName': commonName,
+      'organization': organization,
+      'organizationalUnit': organizationalUnit,
+      'state': state,
+    };
+  }
+
   /// Converts this Distinguished Name to a Map representation required by X509 utilities
   Map<String, String> toMap() {
     final map = <String, String>{'CN': commonName};
@@ -63,4 +72,5 @@ class DistinguishedName {
 
     return map;
   }
+
 }

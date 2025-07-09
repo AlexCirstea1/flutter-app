@@ -35,6 +35,7 @@ class ChatMessagesList extends StatefulWidget {
   final ItemScrollController scrollController;
   final ItemPositionsListener positionsListener;
   final Function(MessageDTO)? onMessageDeleted;
+  final Function() onRefresh;
 
   const ChatMessagesList({
     super.key,
@@ -44,6 +45,7 @@ class ChatMessagesList extends StatefulWidget {
     required this.scrollController,
     required this.positionsListener,
     this.onMessageDeleted,
+    required this.onRefresh,
   });
 
   @override

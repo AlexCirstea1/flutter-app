@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../../../core/config/logger_config.dart';
+import '../../../../core/data/services/data_preload_service.dart';
 import '../../../../core/data/services/service_locator.dart';
 import '../../../../core/data/services/storage_service.dart';
 import '../../../../core/data/services/websocket_service.dart';
@@ -29,6 +30,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
   final StorageService _storageService = StorageService();
   final AuthService _authService = serviceLocator<AuthService>();
   final WebSocketService _webSocketService = WebSocketService();
+  final DataPreloadService _preloadService = serviceLocator<DataPreloadService>();
 
   late final AvatarService _avatarService =
       AvatarService(serviceLocator<StorageService>());
@@ -50,8 +52,17 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     super.initState();
     _loadUsername();
     _initializeUserId().then((_) {
-      _fetchChatHistory();
-      _fetchPendingRequestsCount();
+      // Check if data is already preloaded
+      if (_preloadService.isPreloadComplete) {
+        // Just load from cache
+        _fetchChatHistory(useCache: true);
+        _fetchPendingRequestsCount(useCache: true);
+      } else {
+        // Fall back to regular loading
+        _fetchChatHistory();
+        _fetchPendingRequestsCount();
+      }
+
       _initializeWebSocket();
       _loadUserAvatar();
     });
@@ -173,10 +184,10 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     });
   }
 
-  Future<void> _fetchChatHistory() async {
+  Future<void> _fetchChatHistory({bool useCache = false}) async {
     setState(() => _isLoadingHistory = true);
     try {
-      final newChats = await _chatService.fetchAllChats();
+      final newChats = await _chatService.fetchAllChats(forceRefresh: !useCache);
       setState(() {
         _chatHistory = newChats;
       });
@@ -184,6 +195,22 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
       LoggerService.logError('Error fetching chat listing', e);
     } finally {
       setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  Future<void> _fetchPendingRequestsCount({bool useCache = false}) async {
+    if (_isLoadingRequests) return;
+
+    setState(() => _isLoadingRequests = true);
+    try {
+      final requests = await _chatService.fetchPendingChatRequests(forceRefresh: !useCache);
+      setState(() {
+        _pendingRequestsCount = requests.length;
+      });
+    } catch (e) {
+      LoggerService.logError('Error fetching chat requests', e);
+    } finally {
+      setState(() => _isLoadingRequests = false);
     }
   }
 
@@ -233,22 +260,6 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
     setState(() {
       _userAvatar = avatar;
     });
-  }
-
-  Future<void> _fetchPendingRequestsCount() async {
-    if (_isLoadingRequests) return;
-
-    setState(() => _isLoadingRequests = true);
-    try {
-      final requests = await _chatService.fetchPendingChatRequests();
-      setState(() {
-        _pendingRequestsCount = requests.length;
-      });
-    } catch (e) {
-      LoggerService.logError('Error fetching chat requests', e);
-    } finally {
-      setState(() => _isLoadingRequests = false);
-    }
   }
 
   void _navigateToChatRequests() {

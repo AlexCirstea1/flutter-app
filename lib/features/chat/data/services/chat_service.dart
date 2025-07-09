@@ -75,15 +75,65 @@ class ChatService {
   List<MessageDTO> get messages => _repo.messages;
 
   bool get isFetchingHistory => _repo.isFetchingHistory;
+  List<ChatHistoryDTO> _cachedChats = [];
+  List<ChatRequestDTO> _cachedRequests = [];
+  DateTime? _lastChatFetch;
+  DateTime? _lastRequestFetch;
+
+  static const cacheDuration = Duration(minutes: 2);
+
+// Update fetchAllChats to use cache
+  Future<List<ChatHistoryDTO>> fetchAllChats({bool forceRefresh = false}) async {
+    // Return cache if valid and not forcing refresh
+    if (!forceRefresh &&
+        _lastChatFetch != null &&
+        DateTime.now().difference(_lastChatFetch!) < cacheDuration &&
+        _cachedChats.isNotEmpty) {
+      LoggerService.logInfo('Using cached chat history');
+      return _cachedChats;
+    }
+
+    // Otherwise fetch from repository
+    final chats = await _repo.fetchAllChats();
+    _cachedChats = chats;
+    _lastChatFetch = DateTime.now();
+    return chats;
+  }
+
+  // Update fetchPendingChatRequests to use cache
+  Future<List<ChatRequestDTO>> fetchPendingChatRequests({bool forceRefresh = false}) async {
+    // Return cache if valid and not forcing refresh
+    if (!forceRefresh &&
+        _lastRequestFetch != null &&
+        DateTime.now().difference(_lastRequestFetch!) < cacheDuration &&
+        _cachedRequests.isNotEmpty) {
+      LoggerService.logInfo('Using cached chat requests');
+      return _cachedRequests;
+    }
+
+    // Otherwise fetch from repository
+    final requests = await _requestRepo.fetchPendingChatRequests();
+    _cachedRequests = requests;
+    _lastRequestFetch = DateTime.now();
+    return requests;
+  }
+
+  // Add method to invalidate cache
+  void invalidateCache() {
+    _lastChatFetch = null;
+    _lastRequestFetch = null;
+  }
 
   /* ──────────── history / reading ───────────── */
   Future<void> fetchChatHistory({
     required String chatUserId,
     required VoidCallback onMessagesUpdated,
+    bool forceRefresh = false,
   }) =>
       _repo.fetchChatHistory(
         chatUserId: chatUserId,
         onMessagesUpdated: onMessagesUpdated,
+        forceRefresh: forceRefresh,
       );
 
   Future<void> markSingleMessageAsRead(String id) =>
@@ -233,8 +283,6 @@ class ChatService {
   }
 
   /* ───────────── chat listing ───────────── */
-  Future<List<ChatHistoryDTO>> fetchAllChats() => _repo.fetchAllChats();
-
   List<ChatHistoryDTO> buildChatHistorySnapshot(String currentUserId) {
     final Map<String, ChatHistoryDTO> map = {};
 
@@ -271,9 +319,6 @@ class ChatService {
   }
 
   /* ─────────── chat‑request API ─────────── */
-  Future<List<ChatRequestDTO>> fetchPendingChatRequests() =>
-      _requestRepo.fetchPendingChatRequests();
-
   Future<void> acceptChatRequest(String id) =>
       _requestRepo.acceptChatRequest(requestId: id);
 

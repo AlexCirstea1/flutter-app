@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../../core/config/environment.dart';
 import '../../../../core/config/logger_config.dart';
+import '../../../../core/data/services/dummy_password_store.dart';
 import '../../../../core/data/services/service_locator.dart';
 import '../../../../core/data/services/storage_service.dart';
 import '../../../../core/utils/key_cert_helper.dart';
@@ -165,23 +166,20 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _registerDummyUser() async {
-    // Generate a random password (adjust length as desired)
     final dummyPassword = _generateRandomPassword(12);
     setState(() => _isLoading = true);
 
     try {
-      // Call the dummy registration endpoint.
-      // Here we assume that registerDummyUser returns the parsed JSON as Map<String, dynamic>
       final Map<String, dynamic>? userJson =
           await _authService.registerDummyUser(dummyPassword);
       if (userJson != null) {
-        // Build a dummy user using the returned username and email,
-        // and the dummy password we generated.
         final dummyUser = User(
           username: userJson['username'] as String,
           email: userJson['email'] as String,
           password: dummyPassword,
         );
+        // Store generated password in memory.
+        DummyPasswordStore.setPassword(dummyUser.username, dummyPassword);
         await _loginUser(dummyUser);
       } else {
         _showError('Dummy registration failed.');

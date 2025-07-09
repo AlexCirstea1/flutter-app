@@ -19,4 +19,13 @@ class CertificateInfo {
   }
 
   bool get isExpired => daysRemaining < 0;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'distinguishedName': distinguishedName.toJson(),
+      'keySize': keySize,
+      'isExpired': isExpired,
+      'daysRemaining': daysRemaining,
+    };
+  }
 }
