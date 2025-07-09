@@ -1,23 +1,20 @@
 import 'package:local_auth/local_auth.dart';
 
 class BiometricAuthService {
-  final LocalAuthentication auth = LocalAuthentication();
+  final _auth = LocalAuthentication();
 
-  Future<bool> isBiometricAvailable() async {
-    return await auth.canCheckBiometrics;
-  }
+  Future<bool> isAvailable() => _auth.canCheckBiometrics;
 
-  Future<bool> authenticateWithBiometrics() async {
+  Future<bool> authenticate() async {
     try {
-      bool isAuthenticated = await auth.authenticate(
-        localizedReason: 'Authenticate to unlock Response',
+      return await _auth.authenticate(
+        localizedReason: 'Scan your face or fingerprint to unlock Response',
         options: const AuthenticationOptions(
-          biometricOnly: true,
           stickyAuth: true,
+          biometricOnly: true,
         ),
       );
-      return isAuthenticated;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }

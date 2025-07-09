@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../features/auth/domain/models/user_profile.dart';
 import '../../config/logger_config.dart';
@@ -14,6 +15,7 @@ class StorageService {
   final String USER_PROFILE = 'user_profile';
   static const RECENT_ACCOUNTS = 'recent_accounts';
   final String MY_PRIVATE_KEY = 'MY_PRIVATE_KEY';
+  static const BIOMETRIC_KEY = 'biometric_enabled';
 
   Future<void> saveAuthData(Map<String, dynamic> authResponse) async {
     // Extract tokens
@@ -256,5 +258,15 @@ class StorageService {
     // Get the certificate for the specific version and user
     final certificateKey = 'X509_CERTIFICATE_${userId}_$version';
     return await _secureStorage.read(key: certificateKey);
+  }
+
+  Future<void> setBiometricEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(BIOMETRIC_KEY, enabled);
+  }
+
+  Future<bool> isBiometricEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(BIOMETRIC_KEY) ?? false;
   }
 }

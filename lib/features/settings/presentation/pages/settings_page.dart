@@ -10,6 +10,7 @@ import '../../../../core/utils/key_cert_helper.dart';
 import '../../../../core/widget/bottom_nav_bar.dart';
 import '../../../../core/widget/consent_dialog.dart';
 import '../../../auth/data/services/auth_service.dart';
+import '../../../auth/data/services/biometric_auth_service.dart';
 import '../../../blockchain/presentation/pages/learn_more_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -25,6 +26,9 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isLoadingUserId = true;
   String? _userId;
 
+  bool _bioEnabled = false;
+  bool _bioAvail = false;
+
   final StorageService _storageService = StorageService();
   final AuthService _authService = serviceLocator<AuthService>();
 
@@ -32,6 +36,13 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadUserId();
+    _loadBiometricPref();
+  }
+
+  Future<void> _loadBiometricPref() async {
+    _bioEnabled = await _storageService.isBiometricEnabled();
+    _bioAvail = await BiometricAuthService().isAvailable();
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadUserId() async {
@@ -193,6 +204,57 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _setBiometric(bool enabled) async {
+    await _storageService.setBiometricEnabled(enabled);
+    if (mounted) setState(() => _bioEnabled = enabled);
+  }
+
+  Widget _buildBiometricItem() {
+    final cs = Theme.of(context).colorScheme;
+
+    if (!_bioAvail) {
+      return _buildSettingItem(
+        title: 'BIOMETRIC AUTHENTICATION',
+        subtitle: 'Not available on this device',
+        icon: Icons.not_interested,
+        onTap: null,
+        trailing: null,
+        titleStyle: TextStyle(
+          fontSize: 13,
+          letterSpacing: 0.5,
+          fontWeight: FontWeight.w500,
+          color: cs.error,
+        ),
+        subtitleStyle: TextStyle(
+          fontSize: 12,
+          color: cs.error.withOpacity(0.7),
+        ),
+      );
+    }
+
+    return _buildSettingItem(
+      title: 'BIOMETRIC AUTHENTICATION',
+      subtitle: _bioEnabled ? 'Enabled' : 'Disabled',
+      icon: Icons.fingerprint,
+      onTap: () async {
+        await _setBiometric(!_bioEnabled);
+      },
+      trailing: null,
+      titleStyle: TextStyle(
+        fontSize: 13,
+        letterSpacing: 0.5,
+        fontWeight: FontWeight.w500,
+        color: _bioEnabled ? cs.primary : cs.onSurface.withOpacity(0.6),
+      ),
+      subtitleStyle: TextStyle(
+        fontSize: 12,
+        color: _bioEnabled
+            ? cs.primary.withOpacity(0.8)
+            : cs.onSurface.withOpacity(0.7),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -266,14 +328,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   Divider(
                       height: 1, color: colorScheme.onSurface.withOpacity(0.1)),
-                  _buildSettingItem(
-                    title: 'BIOMETRIC AUTHENTICATION',
-                    subtitle: 'Use fingerprint or face recognition',
-                    icon: Icons.fingerprint,
-                    onTap: () {
-                      Navigator.pushNamed(context, '/biometric-setup');
-                    },
-                  ),
+                  _buildBiometricItem()
                 ],
               ),
 
@@ -496,7 +551,7 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Icon(
           icon,
           size: 18,
-          color: colorScheme.primary,
+          color: theme.iconTheme.color, // ensures contrast
         ),
       ),
       title: Text(
