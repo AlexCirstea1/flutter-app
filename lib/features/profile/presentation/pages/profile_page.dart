@@ -324,23 +324,32 @@ class _ProfilePageState extends State<ProfilePage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 12,
-              letterSpacing: 0.5,
-              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+          Expanded(
+            flex: 3,
+            child: Text(
+              label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 0.5,
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+              ),
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              fontFamily: 'monospace',
-              color: textColor ?? theme.textTheme.bodyLarge?.color,
+          Expanded(
+            flex: 5,
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                fontFamily: 'monospace',
+                color: textColor ?? theme.textTheme.bodyLarge?.color,
+              ),
             ),
           ),
         ],

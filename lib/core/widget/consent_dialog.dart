@@ -48,13 +48,15 @@ class ConsentDialog extends StatelessWidget {
               children: [
                 Icon(Icons.security, size: 18, color: colorScheme.primary),
                 const SizedBox(width: 10),
-                Text(
-                  'BLOCKCHAIN SERVICE CONSENT',
-                  style: TextStyle(
-                    color: colorScheme.primary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: 1.5,
+                Flexible(
+                  child: Text(
+                    'BLOCKCHAIN SERVICE CONSENT',
+                    style: TextStyle(
+                      color: colorScheme.primary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 1.5,
+                    ),
                   ),
                 ),
               ],
@@ -102,25 +104,26 @@ class ConsentDialog extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                /* ── DETAILS ─────────────────────────── */
                 InkWell(
                   onTap: onLearnMore,
+                  borderRadius: BorderRadius.circular(4),
                   child: Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.transparent,
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                          color: colorScheme.primary.withOpacity(0.3)),
+                        color: colorScheme.primary.withOpacity(0.3),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.info_outline,
                             size: 14, color: colorScheme.primary),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         Text(
                           'DETAILS',
                           style: TextStyle(
@@ -128,68 +131,57 @@ class ConsentDialog extends StatelessWidget {
                             fontSize: 11,
                             letterSpacing: 1,
                           ),
+                          overflow: TextOverflow.fade,
+                          softWrap: false,
                         ),
                       ],
                     ),
                   ),
                 ),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: onConsentDenied,
-                      style: TextButton.styleFrom(
-                        foregroundColor: theme.textTheme.bodyMedium?.color,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                      ),
-                      child: const Text(
-                        'OPT OUT',
-                        style: TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorScheme.primary.withOpacity(0.15),
-                            blurRadius: 12,
-                            spreadRadius: -3,
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: onConsentGiven,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colorScheme.primary,
-                          foregroundColor: colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                            side: BorderSide(
-                              color: colorScheme.primary.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: const Text(
-                          'I AGREE',
-                          style: TextStyle(
-                            fontSize: 11,
-                            letterSpacing: 1,
-                          ),
-                        ),
+
+                const Spacer(), // push the two action buttons right
+
+                /* ── OPT-OUT ────────────────────────── */
+                TextButton(
+                  onPressed: onConsentDenied,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'OPT OUT',
+                    style: TextStyle(fontSize: 11, letterSpacing: 1),
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                /* ── I AGREE ─────────────────────────── */
+                ElevatedButton(
+                  onPressed: onConsentGiven,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      side: BorderSide(
+                        color: colorScheme.primary.withOpacity(0.3),
                       ),
                     ),
-                  ],
+                    shadowColor: colorScheme.primary.withOpacity(0.15),
+                    elevation: 6,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'I AGREE',
+                    style: TextStyle(fontSize: 11, letterSpacing: 1),
+                  ),
                 ),
               ],
-            ),
+            )
           ],
         ),
       ),

@@ -31,10 +31,10 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Setup animation controller for the 3 second loading
+    // Setup animation controller for the 2 second loading
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 2),
     );
 
     _animation = Tween<double>(begin: 0, end: 1).animate(_animationController)
