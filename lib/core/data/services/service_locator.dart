@@ -6,6 +6,7 @@ import '../../../features/chat/data/repositories/chat_request_repository.dart';
 import '../../../features/chat/data/repositories/message_repository.dart';
 import '../../../features/chat/data/services/chat_service.dart';
 import '../../../features/chat/data/services/file_download_service.dart';
+import '../../../features/chat/data/services/file_validation_service.dart';
 import '../../../features/chat/data/services/key_management_service.dart';
 import '../../../features/chat/data/services/message_crypto_service.dart';
 import '../../../main.dart';
@@ -34,6 +35,10 @@ void setupServiceLocator() {
             storageService: serviceLocator(),
             cryptoService: serviceLocator(),
           ));
+
+  serviceLocator.registerFactory<FileValidationService>(
+        () => FileValidationService(storageService: serviceLocator<StorageService>()),
+  );
 
   serviceLocator.registerLazySingleton<FileDownloadService>(
         () => FileDownloadService(

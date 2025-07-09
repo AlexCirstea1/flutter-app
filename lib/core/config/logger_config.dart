@@ -10,7 +10,7 @@ class LoggerService {
       printEmojis: true,
       dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
-    level: Level.warning,
+    level: Level.info,
   );
 
   static void logInfo(String message) {
