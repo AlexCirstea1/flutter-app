@@ -47,6 +47,7 @@ class MessageRepository {
       if (resp.statusCode == 200) {
         final rawBody = utf8.decode(resp.bodyBytes);
         final List<dynamic> rawList = jsonDecode(rawBody);
+        LoggerService.logInfo('[HISTORY] server returned ${rawList.length} messages');
         messages.clear();
         final myUserId = await storageService.getUserId();
 
@@ -280,7 +281,8 @@ class MessageRepository {
       if (response.statusCode == 200) {
         return true;
       } else {
-        LoggerService.logError('[DEL] HTTP ${response.statusCode}: ${response.body}');
+        LoggerService.logError(
+            '[DEL] HTTP ${response.statusCode}: ${response.body}');
         return false;
       }
     } catch (e) {
