@@ -52,7 +52,7 @@ class MessageDTO {
   String? plaintext;
 
   /// File information if this is a file message
-  final FileInfo? file;
+  FileInfo? file;
 
   MessageDTO({
     required this.id,

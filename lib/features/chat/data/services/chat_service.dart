@@ -218,17 +218,25 @@ class ChatService {
   }
 
   /// Re‑insert or update by **server id** (avoids multi‑dupes)
-  void _upsert(MessageDTO m) {
-    final i = messages.indexWhere((e) => e.id == m.id);
+  void _upsert(MessageDTO incoming) {
+    final i = messages.indexWhere((e) => e.id == incoming.id);
     if (i >= 0) {
-      // preserve existing clear‑text if the newcomer is still encrypted
-      if ((messages[i].plaintext?.isNotEmpty ?? false) &&
-          (m.plaintext == null || m.plaintext!.isEmpty)) {
-        m.plaintext = messages[i].plaintext;
+      final existing = messages[i];
+
+      /* keep the decrypted/plain-text if the newcomer is still encrypted */
+      if ((existing.plaintext?.isNotEmpty ?? false) &&
+          (incoming.plaintext == null || incoming.plaintext!.isEmpty)) {
+        incoming.plaintext = existing.plaintext;
       }
-      messages[i] = m;
+
+      /* ⬇️  NEW — keep file info we already cached */
+      if (existing.file != null && incoming.file == null) {
+        incoming.file = existing.file;
+      }
+
+      messages[i] = incoming;
     } else {
-      messages.add(m);
+      messages.add(incoming);
     }
   }
 

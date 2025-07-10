@@ -198,16 +198,17 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
   List<_ChatListItem> _buildChatItems() {
     final items = <_ChatListItem>[];
 
-    DateTime? lastDay;                               // “current day” bucket
+    DateTime? lastDay; // “current day” bucket
     for (int i = widget.messages.length - 1; i >= 0; i--) {
-      final m = widget.messages[i];                  // newest → oldest
-      final msgDay = DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
+      final m = widget.messages[i]; // newest → oldest
+      final msgDay =
+          DateTime(m.timestamp.year, m.timestamp.month, m.timestamp.day);
 
       // If we’ve just crossed into an OLDER calendar day, insert the chip
       if (lastDay != null &&
-          (msgDay.year  != lastDay.year  ||
+          (msgDay.year != lastDay.year ||
               msgDay.month != lastDay.month ||
-              msgDay.day   != lastDay.day)) {
+              msgDay.day != lastDay.day)) {
         items.add(_ChatListItem.dateHeader(_formatDateHeader(lastDay)));
       }
 
@@ -221,7 +222,7 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
       items.add(_ChatListItem.dateHeader(_formatDateHeader(lastDay)));
     }
 
-    return items;   // still newest-first for reverse:true
+    return items; // still newest-first for reverse:true
   }
   /* ─────────────────────────────────────────── */
 
@@ -253,16 +254,33 @@ class _ChatMessagesListState extends State<ChatMessagesList> {
 
   Widget _buildDateDivider(BuildContext ctx, String label) {
     final cs = Theme.of(ctx).colorScheme;
-    return Center(
-      child: Chip(
-        label: Text(label,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Divider(
+              thickness: 1.0,
+              color: cs.onSurface.withOpacity(0.3),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
             style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w500,
               color: cs.onSurface.withOpacity(0.6),
-            )),
-        backgroundColor: cs.surface.withOpacity(0.1),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Divider(
+              thickness: 1.0,
+              color: cs.onSurface.withOpacity(0.3),
+            ),
+          ),
+        ],
       ),
     );
   }

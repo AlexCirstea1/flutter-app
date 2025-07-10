@@ -7,6 +7,7 @@ import '../../../../core/config/environment.dart';
 import '../../../../core/config/logger_config.dart';
 import '../../../../core/data/services/storage_service.dart';
 import '../../domain/models/chat_history_dto.dart';
+import '../../domain/models/file_info.dart';
 import '../../domain/models/message_dto.dart';
 import '../services/message_crypto_service.dart';
 
@@ -78,6 +79,12 @@ class MessageRepository {
   /// Parse JSON into MessageDTO, explicitly mapping 'read' & 'readTimestamp'.
   MessageDTO parseMessageFromJson(Map<String, dynamic> rawMsg) {
     final dto = MessageDTO.fromJson(rawMsg);
+
+    if (rawMsg['file'] != null) {
+      dto.file = FileInfo.fromJson(
+        Map<String, dynamic>.from(rawMsg['file']),
+      );
+    }
 
     // Override fields from server
     if (rawMsg.containsKey('read')) {
