@@ -2,12 +2,14 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 import '../../../../core/config/environment.dart';
 import '../../../../core/config/logger_config.dart';
 import '../../../../core/data/services/dummy_password_store.dart';
 import '../../../../core/data/services/service_locator.dart';
 import '../../../../core/data/services/storage_service.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/utils/key_cert_helper.dart';
 import '../../../../core/widget/consent_dialog.dart';
 import '../../../blockchain/presentation/pages/learn_more_page.dart';
@@ -79,6 +81,9 @@ class _RegisterPageState extends State<RegisterPage> {
         final userId = response['user']?['id'] as String?;
         if (userId != null) {
           await _storageService.addRecentAccount(userId);
+          final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+          await themeProvider.setThemeByUserRole(userId);
+
         }
 
         // Show the consent dialog after registration is complete.

@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/environment.dart';
 import '../utils/ui_overlay_helper.dart';
 
 /// ──────────────────────────────────────────────────────────
@@ -84,5 +88,51 @@ class ThemeProvider extends ChangeNotifier {
       AppThemeOption.system => 'system',
     };
     await prefs.setString('themeMode', str);
+  }
+
+  Future<void> setThemeByUserRole(String userId) async {
+    if (userId == null) return;
+
+    try {
+      // Fetch user roles from the backend
+      final url =
+          Uri.parse('${Environment.apiBaseUrl}/user/public/$userId/roles');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> rolesJson = jsonDecode(response.body);
+        final List<String> roles = rolesJson.cast<String>();
+
+        // Determine primary role (using logic similar to UserRoleChip)
+        String primaryRole = _getPrimaryRole(roles);
+
+        // Set theme based on role
+        if (primaryRole.toUpperCase().contains("VERIFIED")) {
+          setTheme(AppThemeOption.dark);
+        } else if (primaryRole.toUpperCase().contains("ANONYMOUS")) {
+          setTheme(AppThemeOption.cyber);
+        } else {
+          setTheme(AppThemeOption.system);
+        }
+      }
+    } catch (e) {
+      // Fallback to system theme on error
+      setTheme(AppThemeOption.system);
+    }
+  }
+
+  String _getPrimaryRole(List<String> roles) {
+    // Priority: ADMIN > VERIFIED > USER > ANONYMOUS
+    if (roles.any((role) => role.toUpperCase().contains("ADMIN"))) {
+      return "ADMIN";
+    } else if (roles.any((role) => role.toUpperCase().contains("VERIFIED"))) {
+      return "VERIFIED";
+    } else if (roles.any((role) => role.toUpperCase().contains("ANONYMOUS"))) {
+      return "ANONYMOUS";
+    } else if (roles.any((role) => role.toUpperCase().contains("USER"))) {
+      return "USER";
+    } else {
+      return "UNKNOWN";
+    }
   }
 }

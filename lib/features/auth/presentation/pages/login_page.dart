@@ -3,12 +3,14 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 import '../../../../core/config/environment.dart';
 import '../../../../core/config/logger_config.dart';
 import '../../../../core/data/services/dummy_password_store.dart';
 import '../../../../core/data/services/service_locator.dart';
 import '../../../../core/data/services/storage_service.dart';
+import '../../../../core/theme/theme_provider.dart';
 import '../../../chat/presentation/widgets/user_role_chip.dart';
 import '../../../profile/data/services/avatar_service.dart';
 import '../../data/services/auth_service.dart';
@@ -101,6 +103,8 @@ class _LoginPageState extends State<LoginPage> {
           if (userId != null) {
             // Add to recent accounts list.
             await _storageService.addRecentAccount(userId);
+            final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+            await themeProvider.setThemeByUserRole(userId);
           }
           Navigator.pushNamed(context, '/home');
         } else {

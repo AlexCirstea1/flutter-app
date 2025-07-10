@@ -39,7 +39,6 @@ void setupServiceLocator() {
   serviceLocator.registerFactory<MessageRepository>(() => MessageRepository(
     storageService: serviceLocator<StorageService>(),
     cryptoService: serviceLocator<MessageCryptoService>(),
-    database: serviceLocator<AppDatabase>(),
   ));
 
   serviceLocator.registerFactory<FileValidationService>(

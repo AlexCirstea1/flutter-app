@@ -187,7 +187,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
   Future<void> _fetchChatHistory({bool useCache = false}) async {
     setState(() => _isLoadingHistory = true);
     try {
-      final newChats = await _chatService.fetchAllChats(forceRefresh: !useCache);
+      final newChats = await _chatService.fetchAllChats();
       setState(() {
         _chatHistory = newChats;
       });
@@ -203,7 +203,7 @@ class _MyHomePageState extends State<MyHomePage> with RouteAware {
 
     setState(() => _isLoadingRequests = true);
     try {
-      final requests = await _chatService.fetchPendingChatRequests(forceRefresh: !useCache);
+      final requests = await _chatService.fetchPendingChatRequests();
       setState(() {
         _pendingRequestsCount = requests.length;
       });

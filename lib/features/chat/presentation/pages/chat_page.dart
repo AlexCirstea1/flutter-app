@@ -226,14 +226,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Future<void> _refreshMessages() async {
-    await _chatService.fetchChatHistory(
-      chatUserId: widget.chatUserId,
-      onMessagesUpdated: _onMessagesUpdated,
-      forceRefresh: true,
-    );
-  }
-
+  // dart
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -255,19 +248,7 @@ class _ChatPageState extends State<ChatPage> {
             Expanded(
               child: _isInitializing || _isFetchingHistory
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(color: cs.secondary),
-                          const SizedBox(height: 10),
-                          Text(
-                            "Securing",
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(color: cs.secondary),
-                          ),
-                        ],
-                      ),
-                    )
+                      child: CircularProgressIndicator(color: cs.secondary))
                   : _chatAuthorized
                       ? ChatMessagesList(
                           messages: _messages,
@@ -280,7 +261,6 @@ class _ChatPageState extends State<ChatPage> {
                               _messages.removeWhere((m) => m.id == msg.id);
                             });
                           },
-                          onRefresh: _refreshMessages, // Add this parameter
                         )
                       : ChatRequestGate(
                           chatUserId: widget.chatUserId,
@@ -288,8 +268,9 @@ class _ChatPageState extends State<ChatPage> {
                           chatRequestSent: _chatRequestSent,
                           chatService: _chatService,
                           onRequestSent: () {
-                            if (mounted)
+                            if (mounted) {
                               setState(() => _chatRequestSent = true);
+                            }
                           },
                         ),
             ),
