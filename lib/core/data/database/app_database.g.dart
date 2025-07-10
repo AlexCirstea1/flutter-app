@@ -850,215 +850,23 @@ typedef $$CachedMessagesTableUpdateCompanionBuilder = CachedMessagesCompanion
   Value<int> rowid,
 });
 
-class $$CachedMessagesTableFilterComposer
-    extends Composer<_$AppDatabase, $CachedMessagesTable> {
-  $$CachedMessagesTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get chatUserId => $composableBuilder(
-      column: $table.chatUserId, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get sender => $composableBuilder(
-      column: $table.sender, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get recipient => $composableBuilder(
-      column: $table.recipient, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get ciphertext => $composableBuilder(
-      column: $table.ciphertext, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get iv => $composableBuilder(
-      column: $table.iv, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get encryptedKeyForSender => $composableBuilder(
-      column: $table.encryptedKeyForSender,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get encryptedKeyForRecipient => $composableBuilder(
-      column: $table.encryptedKeyForRecipient,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get senderKeyVersion => $composableBuilder(
-      column: $table.senderKeyVersion,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get recipientKeyVersion => $composableBuilder(
-      column: $table.recipientKeyVersion,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get plaintext => $composableBuilder(
-      column: $table.plaintext, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get timestamp => $composableBuilder(
-      column: $table.timestamp, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get isRead => $composableBuilder(
-      column: $table.isRead, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get readTimestamp => $composableBuilder(
-      column: $table.readTimestamp, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get oneTime => $composableBuilder(
-      column: $table.oneTime, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get fileData => $composableBuilder(
-      column: $table.fileData, builder: (column) => ColumnFilters(column));
-}
-
-class $$CachedMessagesTableOrderingComposer
-    extends Composer<_$AppDatabase, $CachedMessagesTable> {
-  $$CachedMessagesTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get chatUserId => $composableBuilder(
-      column: $table.chatUserId, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get sender => $composableBuilder(
-      column: $table.sender, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get recipient => $composableBuilder(
-      column: $table.recipient, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get ciphertext => $composableBuilder(
-      column: $table.ciphertext, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get iv => $composableBuilder(
-      column: $table.iv, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get encryptedKeyForSender => $composableBuilder(
-      column: $table.encryptedKeyForSender,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get encryptedKeyForRecipient => $composableBuilder(
-      column: $table.encryptedKeyForRecipient,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get senderKeyVersion => $composableBuilder(
-      column: $table.senderKeyVersion,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get recipientKeyVersion => $composableBuilder(
-      column: $table.recipientKeyVersion,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get plaintext => $composableBuilder(
-      column: $table.plaintext, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
-      column: $table.timestamp, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get isRead => $composableBuilder(
-      column: $table.isRead, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get readTimestamp => $composableBuilder(
-      column: $table.readTimestamp,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get oneTime => $composableBuilder(
-      column: $table.oneTime, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get fileData => $composableBuilder(
-      column: $table.fileData, builder: (column) => ColumnOrderings(column));
-}
-
-class $$CachedMessagesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $CachedMessagesTable> {
-  $$CachedMessagesTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get chatUserId => $composableBuilder(
-      column: $table.chatUserId, builder: (column) => column);
-
-  GeneratedColumn<String> get sender =>
-      $composableBuilder(column: $table.sender, builder: (column) => column);
-
-  GeneratedColumn<String> get recipient =>
-      $composableBuilder(column: $table.recipient, builder: (column) => column);
-
-  GeneratedColumn<String> get ciphertext => $composableBuilder(
-      column: $table.ciphertext, builder: (column) => column);
-
-  GeneratedColumn<String> get iv =>
-      $composableBuilder(column: $table.iv, builder: (column) => column);
-
-  GeneratedColumn<String> get encryptedKeyForSender => $composableBuilder(
-      column: $table.encryptedKeyForSender, builder: (column) => column);
-
-  GeneratedColumn<String> get encryptedKeyForRecipient => $composableBuilder(
-      column: $table.encryptedKeyForRecipient, builder: (column) => column);
-
-  GeneratedColumn<String> get senderKeyVersion => $composableBuilder(
-      column: $table.senderKeyVersion, builder: (column) => column);
-
-  GeneratedColumn<String> get recipientKeyVersion => $composableBuilder(
-      column: $table.recipientKeyVersion, builder: (column) => column);
-
-  GeneratedColumn<String> get plaintext =>
-      $composableBuilder(column: $table.plaintext, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get timestamp =>
-      $composableBuilder(column: $table.timestamp, builder: (column) => column);
-
-  GeneratedColumn<bool> get isRead =>
-      $composableBuilder(column: $table.isRead, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get readTimestamp => $composableBuilder(
-      column: $table.readTimestamp, builder: (column) => column);
-
-  GeneratedColumn<bool> get oneTime =>
-      $composableBuilder(column: $table.oneTime, builder: (column) => column);
-
-  GeneratedColumn<String> get fileData =>
-      $composableBuilder(column: $table.fileData, builder: (column) => column);
-}
-
 class $$CachedMessagesTableTableManager extends RootTableManager<
     _$AppDatabase,
     $CachedMessagesTable,
     CachedMessage,
     $$CachedMessagesTableFilterComposer,
     $$CachedMessagesTableOrderingComposer,
-    $$CachedMessagesTableAnnotationComposer,
     $$CachedMessagesTableCreateCompanionBuilder,
-    $$CachedMessagesTableUpdateCompanionBuilder,
-    (
-      CachedMessage,
-      BaseReferences<_$AppDatabase, $CachedMessagesTable, CachedMessage>
-    ),
-    CachedMessage,
-    PrefetchHooks Function()> {
+    $$CachedMessagesTableUpdateCompanionBuilder> {
   $$CachedMessagesTableTableManager(
       _$AppDatabase db, $CachedMessagesTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () =>
-              $$CachedMessagesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$CachedMessagesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$CachedMessagesTableAnnotationComposer($db: db, $table: table),
+          filteringComposer:
+              $$CachedMessagesTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$CachedMessagesTableOrderingComposer(ComposerState(db, table)),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> chatUserId = const Value.absent(),
@@ -1135,28 +943,178 @@ class $$CachedMessagesTableTableManager extends RootTableManager<
             fileData: fileData,
             rowid: rowid,
           ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
         ));
 }
 
-typedef $$CachedMessagesTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $CachedMessagesTable,
-    CachedMessage,
-    $$CachedMessagesTableFilterComposer,
-    $$CachedMessagesTableOrderingComposer,
-    $$CachedMessagesTableAnnotationComposer,
-    $$CachedMessagesTableCreateCompanionBuilder,
-    $$CachedMessagesTableUpdateCompanionBuilder,
-    (
-      CachedMessage,
-      BaseReferences<_$AppDatabase, $CachedMessagesTable, CachedMessage>
-    ),
-    CachedMessage,
-    PrefetchHooks Function()>;
+class $$CachedMessagesTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $CachedMessagesTable> {
+  $$CachedMessagesTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get chatUserId => $state.composableBuilder(
+      column: $state.table.chatUserId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get sender => $state.composableBuilder(
+      column: $state.table.sender,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get recipient => $state.composableBuilder(
+      column: $state.table.recipient,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get ciphertext => $state.composableBuilder(
+      column: $state.table.ciphertext,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get iv => $state.composableBuilder(
+      column: $state.table.iv,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get encryptedKeyForSender => $state.composableBuilder(
+      column: $state.table.encryptedKeyForSender,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get encryptedKeyForRecipient =>
+      $state.composableBuilder(
+          column: $state.table.encryptedKeyForRecipient,
+          builder: (column, joinBuilders) =>
+              ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get senderKeyVersion => $state.composableBuilder(
+      column: $state.table.senderKeyVersion,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get recipientKeyVersion => $state.composableBuilder(
+      column: $state.table.recipientKeyVersion,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get plaintext => $state.composableBuilder(
+      column: $state.table.plaintext,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get timestamp => $state.composableBuilder(
+      column: $state.table.timestamp,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get isRead => $state.composableBuilder(
+      column: $state.table.isRead,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get readTimestamp => $state.composableBuilder(
+      column: $state.table.readTimestamp,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get oneTime => $state.composableBuilder(
+      column: $state.table.oneTime,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get fileData => $state.composableBuilder(
+      column: $state.table.fileData,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$CachedMessagesTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $CachedMessagesTable> {
+  $$CachedMessagesTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get chatUserId => $state.composableBuilder(
+      column: $state.table.chatUserId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get sender => $state.composableBuilder(
+      column: $state.table.sender,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get recipient => $state.composableBuilder(
+      column: $state.table.recipient,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get ciphertext => $state.composableBuilder(
+      column: $state.table.ciphertext,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get iv => $state.composableBuilder(
+      column: $state.table.iv,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get encryptedKeyForSender => $state.composableBuilder(
+      column: $state.table.encryptedKeyForSender,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get encryptedKeyForRecipient =>
+      $state.composableBuilder(
+          column: $state.table.encryptedKeyForRecipient,
+          builder: (column, joinBuilders) =>
+              ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get senderKeyVersion => $state.composableBuilder(
+      column: $state.table.senderKeyVersion,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get recipientKeyVersion => $state.composableBuilder(
+      column: $state.table.recipientKeyVersion,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get plaintext => $state.composableBuilder(
+      column: $state.table.plaintext,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get timestamp => $state.composableBuilder(
+      column: $state.table.timestamp,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get isRead => $state.composableBuilder(
+      column: $state.table.isRead,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get readTimestamp => $state.composableBuilder(
+      column: $state.table.readTimestamp,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get oneTime => $state.composableBuilder(
+      column: $state.table.oneTime,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get fileData => $state.composableBuilder(
+      column: $state.table.fileData,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;

@@ -118,11 +118,11 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
-  file_picker: ce3938a0df3cc1ef404671531facef740d03f920
+  file_picker: b159e0c068aef54932bb15dc9fd1571818edaf49
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   flutter_secure_storage: d33dac7ae2ea08509be337e775f6b59f1ff45f12
   image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
-  local_auth_darwin: 66e40372f1c29f383a314c738c7446e2f7fdadc3
+  local_auth_darwin: fa4b06454df7df8e97c18d7ee55151c57e7af0de
   open_filex: 6e26e659846ec990262224a12ef1c528bb4edbe4
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   SDWebImage: f84b0feeb08d2d11e6a9b843cb06d75ebf5b8868
