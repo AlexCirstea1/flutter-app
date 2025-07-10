@@ -70,7 +70,7 @@ class AppTheme {
       bodyLarge: TextStyle(color: Color(0xFF1A1A1A)),
       bodyMedium: TextStyle(color: Color(0xFF3C3C3C)),
     ),
-    dialogTheme: const DialogTheme(backgroundColor: Color(0xFFFFFFFF)),
+    dialogTheme: const DialogThemeData(backgroundColor: Color(0xFFFFFFFF)),
     dividerColor: Colors.grey,
     cardColor: const Color(0xFFFFFFFF),
     textButtonTheme: TextButtonThemeData(style: _textButton(_lightScheme)),
@@ -104,7 +104,7 @@ class AppTheme {
       bodyLarge: TextStyle(color: Colors.white),
       bodyMedium: TextStyle(color: Colors.white70),
     ),
-    dialogTheme: const DialogTheme(backgroundColor: Color(0xFF121A24)),
+    dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF121A24)),
     dividerColor: Colors.white12,
     cardColor: const Color(0xFF121A24),
     textButtonTheme: TextButtonThemeData(style: _textButton(_darkScheme)),
@@ -179,7 +179,7 @@ class AppTheme {
     textButtonTheme: TextButtonThemeData(style: _textButton(_cyberScheme)),
 
     /* misc */
-    dialogTheme: const DialogTheme(backgroundColor: Color(0xFF10151B)),
+    dialogTheme: const DialogThemeData(backgroundColor: Color(0xFF10151B)),
     cardColor: const Color(0xFF10151B),
     dividerColor: Colors.white12,
     iconTheme: const IconThemeData(color: Color(0xFF00C3FF)),
