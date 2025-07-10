@@ -103,37 +103,6 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _evaluateChatRelation() async {
-    LoggerService.logInfo('[EVAL] fetching pending requests…');
-    // 1. Fetch pending requests once
-    final pending = await _chatService.fetchPendingChatRequests();
-    LoggerService.logInfo('[EVAL] pending = ${pending.length}');
-
-    // 2. Is there a request involving *this* peer that is still PENDING?
-    bool hasPending = false;
-    bool iSentIt = false;
-
-    for (final r in pending) {
-      final involvesThisPeer = (r.requester == _currentUserId &&
-              r.recipient == widget.chatUserId) ||
-          (r.requester == widget.chatUserId && r.recipient == _currentUserId);
-
-      if (involvesThisPeer) {
-        hasPending = true;
-        iSentIt = r.requester == _currentUserId;
-        break;
-      }
-    }
-
-    setState(() {
-      _chatAuthorized = !hasPending; // authorised ⟺ no pending request
-      _chatRequestSent = hasPending && iSentIt;
-      LoggerService.logInfo('[EVAL] result → '
-          'authorized=$_chatAuthorized, '
-          'reqSent=$_chatRequestSent');
-    });
-  }
-
   Future<void> _initializeChat() async {
     try {
       final storage = StorageService();
@@ -150,29 +119,17 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
       await _fetchBlockStatus();
-      await _evaluateChatRelation(); // decides gate vs chat
-
       await _chatService.fetchChatHistory(
         chatUserId: widget.chatUserId,
         onMessagesUpdated: _onMessagesUpdated,
       );
 
-      if (_chatService.messages.isNotEmpty && mounted) {
-        setState(() => _chatAuthorized = true);
-      }
-
-      if (_chatService.messages.isNotEmpty) {
-        LoggerService.logInfo('[INIT] history not empty – enable chat');
-        if (mounted) setState(() => _chatAuthorized = true);
-      } else {
-        LoggerService.logInfo('[INIT] history empty – keeping current gate');
-      }
+      _chatAuthorized = _chatService.messages.isNotEmpty;
 
       final ws = WebSocketService();
       if (!ws.isConnected) await ws.connect();
 
       _messageSubscription = ws.messages.listen((message) {
-        LoggerService.logInfo('[WS] frame = ${message['type']}');
         final type = message['type'] ?? '';
         switch (type) {
           case 'INCOMING_MESSAGE':
@@ -193,18 +150,6 @@ class _ChatPageState extends State<ChatPage> {
             });
             break;
           case 'CHAT_REQUEST':
-            final status = message['status'] as String?;
-            if (status == 'ACCEPTED' &&
-                (message['participants'] as List<dynamic>?)
-                        ?.contains(widget.chatUserId) ==
-                    true) {
-              setState(() => _chatAuthorized = true);
-
-              _chatService.fetchChatHistory(
-                chatUserId: widget.chatUserId,
-                onMessagesUpdated: _onMessagesUpdated,
-              );
-            }
             break;
           case 'READ_RECEIPT':
             _chatService.handleReadReceipt(
@@ -287,11 +232,6 @@ class _ChatPageState extends State<ChatPage> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    LoggerService.logInfo('[BUILD] init=$_isInitializing '
-        'fetch=$_isFetchingHistory '
-        'auth=$_chatAuthorized '
-        'msgs=${_messages.length}');
-
     return Scaffold(
       appBar: ChatAppBar(
         chatUserId: widget.chatUserId,
@@ -306,7 +246,7 @@ class _ChatPageState extends State<ChatPage> {
         child: Column(
           children: [
             Expanded(
-              child: (_isInitializing || _isFetchingHistory)
+              child: _isInitializing || _isFetchingHistory
                   ? Center(
                       child: CircularProgressIndicator(color: cs.secondary))
                   : _chatAuthorized
